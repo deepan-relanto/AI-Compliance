@@ -1,0 +1,225 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-background: #f8f9fb;
+  --color-foreground: #18181b;
+  --color-muted: #71717a;
+  --color-muted-foreground: #a1a1aa;
+  --color-border: #e4e4e7;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-brand: #2e3192;
+  --color-brand-light: #3d42a8;
+  --color-accent: #f15a24;
+  --color-accent-light: #ff6b35;
+  --color-success: #059669;
+  --color-danger: #dc2626;
+
+  --shadow-crisp: 0 1px 2px rgba(24, 24, 27, 0.05), 0 0 0 1px rgba(24, 24, 27, 0.04);
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04), 0 4px 20px rgba(24, 24, 27, 0.06);
+  --shadow-elevated: 0 16px 48px rgba(46, 49, 146, 0.1), 0 0 0 1px rgba(24, 24, 27, 0.04);
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-zinc-200;
+    caret-color: transparent;
+  }
+
+  html {
+    @apply antialiased scroll-smooth cursor-default select-none;
+    height: 100%;
+    min-height: 100dvh;
+  }
+
+  body {
+    @apply bg-[#f8f9fb] text-zinc-900 font-sans text-[15px] leading-[1.55] cursor-default select-none;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.011em;
+  }
+
+  ::selection {
+    @apply bg-[#2e3192]/12 text-zinc-900;
+  }
+
+  h1, h2, h3, h4 {
+    @apply tracking-tight text-zinc-900;
+    letter-spacing: -0.025em;
+  }
+
+  /* Brand gradient headers — override global heading color */
+  .brand-panel-header h2 {
+    @apply text-white;
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  /* Text entry: allow selection, caret, and I-beam cursor */
+  input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="image"]):not([type="hidden"]):not([disabled]),
+  textarea:not([disabled]),
+  [contenteditable="true"] {
+    cursor: text;
+    caret-color: auto;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Optional copy-friendly blocks (emails, codes in admin tables) */
+  .select-text {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+    caret-color: auto;
+  }
+
+  /* Hand pointer on interactive controls and their labels */
+  button:not(:disabled),
+  button:not(:disabled) *,
+  a[href],
+  a[href] *,
+  [role="button"]:not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]) *,
+  label[for],
+  label[for] *,
+  select:not(:disabled),
+  summary,
+  .surface-card-interactive,
+  .surface-card-interactive * {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button:disabled * {
+    cursor: not-allowed !important;
+  }
+
+  /* Training / proctor shell — keep hand cursor on enabled controls */
+  .training-interactive button:not(:disabled),
+  .training-interactive a[href],
+  .training-interactive [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer !important;
+  }
+
+  /* Acknowledgement + feedback forms inside proctored shell */
+  .training-form-zone input:not([disabled]),
+  .training-form-zone textarea:not([disabled]) {
+    cursor: text !important;
+    caret-color: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    pointer-events: auto !important;
+  }
+
+  .training-form-input:not([disabled]) {
+    cursor: text !important;
+    caret-color: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    pointer-events: auto !important;
+  }
+
+  /* Filter pills, tab buttons, and other explicit click targets */
+  .cursor-pointer,
+  .cursor-pointer * {
+    cursor: pointer;
+  }
+
+  /* Clicking static UI must not leave a text caret or focus ring */
+  div:focus,
+  span:focus,
+  p:focus,
+  section:focus,
+  article:focus,
+  h1:focus,
+  h2:focus,
+  h3:focus,
+  h4:focus {
+    outline: none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .page-bg {
+    background-color: #f8f9fb;
+    background-image:
+      radial-gradient(ellipse 90% 60% at 50% -15%, rgba(46, 49, 146, 0.07), transparent),
+      radial-gradient(ellipse 50% 40% at 100% 0%, rgba(241, 90, 36, 0.04), transparent),
+      linear-gradient(to bottom, #f8f9fb, #f4f4f5);
+  }
+
+  .surface-card {
+    @apply bg-white border border-zinc-200/80 rounded-[var(--radius-card)];
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-card-interactive {
+    @apply bg-white border border-zinc-200/80 rounded-[var(--radius-card)] transition-all duration-200 cursor-pointer;
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-card-interactive:hover {
+    @apply border-zinc-300/90;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .glass-header {
+    @apply border-b border-zinc-200/70 bg-white/85 backdrop-blur-xl backdrop-saturate-150;
+  }
+
+  .grid-pattern-light {
+    background-image: linear-gradient(#ececee 1px, transparent 1px),
+      linear-gradient(90deg, #ececee 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .icon-tile {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-100 bg-zinc-50/90;
+  }
+
+  .icon-tile-brand {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2e3192]/12 bg-[#2e3192]/6;
+  }
+
+  .section-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400;
+  }
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center rounded-[var(--radius-card)] border border-zinc-200/80 bg-white px-6 py-16 text-center;
+    box-shadow: var(--shadow-card);
+  }
+
+  .nav-item-active {
+    @apply relative bg-[#2e3192] text-white shadow-sm;
+  }
+
+  .nav-item-active::before {
+    content: "";
+    @apply absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-[#f15a24];
+  }
+
+  .tab-nav {
+    @apply flex gap-1 border-b border-zinc-200;
+  }
+
+  .tab-nav-item {
+    @apply relative cursor-pointer border-b-2 border-transparent px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-500 transition-colors hover:text-zinc-700;
+  }
+
+  .tab-nav-item-active {
+    @apply border-[#2e3192] text-[#2e3192];
+  }
+}

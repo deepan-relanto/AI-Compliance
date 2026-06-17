@@ -1,0 +1,920 @@
+import type { getSql } from "@/lib/db";
+import { PASS_THRESHOLD_PERCENT, isPassingScore } from "@/lib/constants";
+import {
+  parseCorrectOptionIds,
+  validateMcqSelection,
+} from "@/lib/mcq-multi-select";
+import {
+  computeScoreFromAnswers,
+  countMcqAnswers,
+  resolveDisplayScorePercent,
+} from "@/lib/progress-score";
+
+type Sql = ReturnType<typeof getSql>;
+
+export type ProgressRow = {
+  user_email: string;
+  module_id: string;
+  module_title: string;
+  batch_id: string;
+  current_slide: number;
+  total_slides: number;
+  status: string;
+  warning_count: number;
+  retake_count: number;
+  mcq_correct: number;
+  mcq_total: number;
+  score_percent: number | null;
+  mcq_answers: Record<string, boolean>;
+  failed_reason: string | null;
+  completed_at: string | null;
+};
+
+/**
+ * Display status for progress rows.
+ * "Completed" only when the attempt is fully finished — not merely a passing score
+ * while acknowledgement or feedback is still pending.
+ */
+export function normalizeProgressStatus(
+  status: string | null | undefined,
+  scorePercent: number | null,
+  completedAt?: string | null,
+): string {
+  const s = status ?? "not_started";
+  if (s === "permanently_failed") return s;
+  if (s === "completed" || completedAt) return "completed";
+  if (s === "failed" && scorePercent != null) return "in_progress";
+  if (scorePercent != null && s === "not_started") return "in_progress";
+  if (s === "in_progress" || s === "failed") return s;
+  return s;
+}
+
+/** Clear or fix scores that do not match stored MCQ answers. */
+export async function reconcileInvalidProgressScores(sql: Sql): Promise<number> {
+  const cleared = await sql`
+    UPDATE assessment_progress
+    SET score_percent = NULL,
+        failed_reason = NULL,
+        updated_at = NOW()
+    WHERE score_percent IS NOT NULL
+      AND status NOT IN ('completed', 'permanently_failed')
+      AND (
+        (
+          COALESCE(mcq_correct, 0) = 0
+          AND (mcq_answers IS NULL OR mcq_answers = '{}'::jsonb)
+        )
+        OR (
+          COALESCE(mcq_correct, 0) = 0
+          AND score_percent > 0
+        )
+      )
+    RETURNING id
+  `;
+
+  const mismatched = await sql`
+    SELECT id, mcq_answers, mcq_total, mcq_correct, score_percent, status
+    FROM assessment_progress
+    WHERE score_percent IS NOT NULL
+      AND status NOT IN ('permanently_failed')
+      AND mcq_answers IS NOT NULL
+      AND mcq_answers::text <> '{}'
+  `;
+
+  let fixed = 0;
+  for (const row of mismatched) {
+    const answers = parseMcqAnswers(row.mcq_answers);
+    const assignedTotal = Number(row.mcq_total ?? 0);
+    const { mcqCorrect, mcqTotal, scorePercent } = computeScoreFromAnswers(
+      answers,
+      assignedTotal,
+    );
+    const stored = Number(row.score_percent);
+    const status = row.status as string;
+    const shouldStore =
+      status === "completed" ||
+      countMcqAnswers(answers) > 0 ||
+      scorePercent === 0;
+
+    if (!shouldStore && stored > 0) {
+      await sql`
+        UPDATE assessment_progress
+        SET score_percent = NULL, failed_reason = NULL, updated_at = NOW()
+        WHERE id = ${row.id as string}
+      `;
+      fixed++;
+      continue;
+    }
+
+    if (
+      mcqCorrect !== Number(row.mcq_correct ?? 0) ||
+      mcqTotal !== Number(row.mcq_total ?? 0) ||
+      scorePercent !== stored
+    ) {
+      await sql`
+        UPDATE assessment_progress
+        SET mcq_correct = ${mcqCorrect},
+            mcq_total = ${mcqTotal},
+            score_percent = ${shouldStore ? scorePercent : null},
+            updated_at = NOW()
+        WHERE id = ${row.id as string}
+      `;
+      fixed++;
+    }
+  }
+
+  return cleared.length + fixed;
+}
+
+/** Fix rows where acknowledgement was saved but status was not marked completed. */
+export async function reconcilePassedProgressStatus(sql: Sql): Promise<number> {
+  const rows = await sql`
+    UPDATE assessment_progress
+    SET status = 'completed',
+        completed_at = COALESCE(completed_at, last_accessed_at, updated_at, NOW()),
+        last_accessed_at = COALESCE(last_accessed_at, updated_at, NOW()),
+        updated_at = NOW()
+    WHERE score_percent IS NOT NULL
+      AND score_percent >= ${PASS_THRESHOLD_PERCENT}
+      AND status IN ('not_started', 'in_progress')
+      AND acknowledgement IS NOT NULL
+      AND (acknowledgement->>'accepted')::boolean IS TRUE
+    RETURNING id
+  `;
+
+  await sql`
+    UPDATE assessment_progress
+    SET completed_at = COALESCE(completed_at, last_accessed_at, updated_at, NOW()),
+        last_accessed_at = COALESCE(last_accessed_at, updated_at, NOW())
+    WHERE score_percent IS NOT NULL
+      AND status = 'completed'
+      AND (completed_at IS NULL OR last_accessed_at IS NULL)
+  `;
+
+  return rows.length;
+}
+
+/** Maintenance job: fix inconsistent progress rows (run via npm run db:reconcile-progress). */
+export async function reconcileAllProgress(sql: Sql): Promise<{
+  scoresFixed: number;
+  statusFixed: number;
+}> {
+  const scoresFixed = await reconcileInvalidProgressScores(sql);
+  const statusFixed = await reconcilePassedProgressStatus(sql);
+  return { scoresFixed, statusFixed };
+}
+
+function parseMcqAnswers(raw: unknown): Record<string, boolean> {
+  if (!raw || typeof raw !== "object") return {};
+  return raw as Record<string, boolean>;
+}
+
+function mapProgressRow(r: Record<string, unknown>): ProgressRow {
+  return {
+    user_email: r.user_email as string,
+    module_id: r.module_id as string,
+    module_title: r.module_title as string,
+    batch_id: r.batch_id as string,
+    current_slide: Number(r.current_slide),
+    total_slides: Number(r.total_slides),
+    status: r.status as string,
+    warning_count: Number(r.warning_count ?? 0),
+    retake_count: Number(r.retake_count ?? 0),
+    mcq_correct: Number(r.mcq_correct ?? 0),
+    mcq_total: Number(r.mcq_total ?? 0),
+    score_percent: r.score_percent != null ? Number(r.score_percent) : null,
+    mcq_answers: parseMcqAnswers(r.mcq_answers),
+    failed_reason: (r.failed_reason as string) ?? null,
+    completed_at: (r.completed_at as string) ?? null,
+  };
+}
+
+export async function getModuleMcqCount(sql: Sql, moduleId: string): Promise<number> {
+  const rows = await sql`
+    SELECT COUNT(*)::int AS c FROM mcq_questions WHERE module_id = ${moduleId}
+  `;
+  return Number(rows[0]?.c ?? 0);
+}
+
+export async function getProgressRow(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<ProgressRow | null> {
+  const rows = await sql`
+    SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
+           status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+           mcq_answers, failed_reason, completed_at
+    FROM assessment_progress
+    WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return mapProgressRow(rows[0] as Record<string, unknown>);
+}
+
+/** Start or resume training — optional fresh reset + single upsert. */
+export async function startTrainingSessionDb(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    batchId: string;
+    totalSlides: number;
+    assignedMcqCount?: number;
+    freshStart?: boolean;
+    currentSlide?: number;
+  },
+): Promise<ProgressRow> {
+  if (params.freshStart) {
+    await sql`
+      UPDATE assessment_progress
+      SET status = 'in_progress',
+          current_slide = 0,
+          mcq_answers = '{}'::jsonb,
+          mcq_correct = 0,
+          score_percent = NULL,
+          failed_reason = NULL,
+          completed_at = NULL,
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+        AND status NOT IN ('completed', 'permanently_failed')
+    `;
+  }
+
+  const mcqTotal =
+    params.assignedMcqCount && params.assignedMcqCount > 0
+      ? params.assignedMcqCount
+      : await getModuleMcqCount(sql, params.moduleId);
+
+  const slideValue =
+    typeof params.currentSlide === "number" ? params.currentSlide : 0;
+
+  const rows = await sql`
+    INSERT INTO assessment_progress (
+      user_email, module_id, module_title, batch_id, current_slide, total_slides,
+      status, mcq_total, mcq_correct, mcq_answers
+    )
+    VALUES (
+      ${params.userEmail},
+      ${params.moduleId},
+      ${params.moduleTitle},
+      ${params.batchId},
+      ${slideValue},
+      ${params.totalSlides},
+      'in_progress',
+      ${mcqTotal},
+      0,
+      ${JSON.stringify({})}::jsonb
+    )
+    ON CONFLICT (user_email, module_id) DO UPDATE SET
+      module_title = EXCLUDED.module_title,
+      batch_id = EXCLUDED.batch_id,
+      total_slides = EXCLUDED.total_slides,
+      mcq_total = CASE
+        WHEN assessment_progress.mcq_total > 0 THEN assessment_progress.mcq_total
+        ELSE EXCLUDED.mcq_total
+      END,
+      current_slide = CASE
+        WHEN ${typeof params.currentSlide === "number"} THEN ${slideValue}
+        ELSE assessment_progress.current_slide
+      END,
+      status = CASE
+        WHEN assessment_progress.status IN ('completed', 'permanently_failed') THEN assessment_progress.status
+        WHEN assessment_progress.status = 'failed' AND assessment_progress.score_percent IS NOT NULL THEN 'in_progress'
+        WHEN assessment_progress.status = 'not_started' THEN 'in_progress'
+        ELSE assessment_progress.status
+      END,
+      last_accessed_at = NOW(),
+      updated_at = NOW()
+    RETURNING user_email, module_id, module_title, batch_id, current_slide, total_slides,
+              status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+              mcq_answers, failed_reason, completed_at
+  `;
+
+  return mapProgressRow(rows[0] as Record<string, unknown>);
+}
+
+/** Validate MCQ + update progress in at most two DB round-trips. */
+export async function validateAndRecordMcqAnswerDb(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    batchId: string;
+    totalSlides: number;
+    questionId: string;
+    optionIds: string[];
+    assignedMcqCount?: number;
+  },
+): Promise<{
+  found: boolean;
+  correct: boolean;
+  correctOptionId: string;
+  correctOptionIds: string[];
+  mcqCorrect: number;
+  mcqTotal: number;
+  alreadyAnswered: boolean;
+}> {
+  const rows = await sql`
+    SELECT
+      q.correct_option_id,
+      p.status AS progress_status,
+      p.mcq_correct,
+      p.mcq_total,
+      p.mcq_answers,
+      p.score_percent
+    FROM mcq_questions q
+    LEFT JOIN assessment_progress p
+      ON p.user_email = ${params.userEmail} AND p.module_id = ${params.moduleId}
+    WHERE q.id = ${params.questionId} AND q.module_id = ${params.moduleId}
+    LIMIT 1
+  `;
+
+  if (rows.length === 0 || !rows[0].correct_option_id) {
+    return {
+      found: false,
+      correct: false,
+      correctOptionId: "",
+      correctOptionIds: [],
+      mcqCorrect: 0,
+      mcqTotal: 0,
+      alreadyAnswered: false,
+    };
+  }
+
+  const correctStored = String(rows[0].correct_option_id ?? "")
+    .trim()
+    .toLowerCase();
+  const correctOptionIds = parseCorrectOptionIds(correctStored);
+  const correct = validateMcqSelection(params.optionIds, correctStored);
+  const correctOptionId = correctOptionIds[0] ?? correctStored;
+  let progressStatus = rows[0].progress_status as string | null;
+
+  if (!progressStatus) {
+    const mcqTotal =
+      params.assignedMcqCount && params.assignedMcqCount > 0
+        ? params.assignedMcqCount
+        : await getModuleMcqCount(sql, params.moduleId);
+
+    await sql`
+      INSERT INTO assessment_progress (
+        user_email, module_id, module_title, batch_id, current_slide, total_slides,
+        status, mcq_total, mcq_correct, mcq_answers
+      )
+      VALUES (
+        ${params.userEmail},
+        ${params.moduleId},
+        ${params.moduleTitle},
+        ${params.batchId},
+        0,
+        ${params.totalSlides},
+        'in_progress',
+        ${mcqTotal},
+        0,
+        ${JSON.stringify({})}::jsonb
+      )
+      ON CONFLICT (user_email, module_id) DO UPDATE SET
+        module_title = EXCLUDED.module_title,
+        batch_id = EXCLUDED.batch_id,
+        total_slides = EXCLUDED.total_slides,
+        status = CASE
+          WHEN assessment_progress.status IN ('completed', 'permanently_failed') THEN assessment_progress.status
+          WHEN assessment_progress.status = 'not_started' THEN 'in_progress'
+          ELSE assessment_progress.status
+        END,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    `;
+
+    progressStatus = "in_progress";
+    rows[0].mcq_correct = 0;
+    rows[0].mcq_total = mcqTotal;
+    rows[0].mcq_answers = {};
+    rows[0].score_percent = null;
+  }
+
+  const mcqAnswers = parseMcqAnswers(rows[0].mcq_answers);
+  const mcqCorrectStored = Number(rows[0].mcq_correct ?? 0);
+  const mcqTotalStored = Number(rows[0].mcq_total ?? 0);
+
+  if (
+    progressStatus === "completed" ||
+    progressStatus === "permanently_failed" ||
+    (progressStatus === "failed" && rows[0].score_percent == null)
+  ) {
+    return {
+      found: true,
+      correct,
+      correctOptionId,
+      correctOptionIds,
+      mcqCorrect: mcqCorrectStored,
+      mcqTotal: mcqTotalStored,
+      alreadyAnswered: false,
+    };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(mcqAnswers, params.questionId)) {
+    return {
+      found: true,
+      correct,
+      correctOptionId,
+      correctOptionIds,
+      mcqCorrect: mcqCorrectStored,
+      mcqTotal: mcqTotalStored,
+      alreadyAnswered: true,
+    };
+  }
+
+  const answers = { ...mcqAnswers, [params.questionId]: correct };
+  const assignedTotal =
+    mcqTotalStored > 0
+      ? mcqTotalStored
+      : params.assignedMcqCount && params.assignedMcqCount > 0
+        ? params.assignedMcqCount
+        : await getModuleMcqCount(sql, params.moduleId);
+  const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
+
+  await sql`
+    UPDATE assessment_progress
+    SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
+        mcq_correct = ${mcqCorrect},
+        mcq_total = ${mcqTotal},
+        status = CASE
+          WHEN status IN ('not_started', 'failed') THEN 'in_progress'
+          ELSE status
+        END,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+  `;
+
+  return {
+    found: true,
+    correct,
+    correctOptionId,
+    correctOptionIds,
+    mcqCorrect,
+    mcqTotal,
+    alreadyAnswered: false,
+  };
+}
+
+export async function ensureProgressRow(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    batchId: string;
+    totalSlides: number;
+    assignedMcqCount?: number;
+  },
+): Promise<ProgressRow> {
+  const existing = await getProgressRow(sql, params.userEmail, params.moduleId);
+  if (existing) {
+    if (existing.status === "failed" && existing.score_percent != null) {
+      await sql`
+        UPDATE assessment_progress
+        SET status = 'in_progress', updated_at = NOW()
+        WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+      `;
+      const migrated = await getProgressRow(sql, params.userEmail, params.moduleId);
+      if (migrated) return migrated;
+    }
+    if (
+      params.assignedMcqCount &&
+      params.assignedMcqCount > 0 &&
+      !["completed", "failed", "permanently_failed"].includes(existing.status) &&
+      Object.keys(existing.mcq_answers).length === 0 &&
+      existing.mcq_total !== params.assignedMcqCount
+    ) {
+      await sql`
+        UPDATE assessment_progress
+        SET mcq_total = ${params.assignedMcqCount}, updated_at = NOW()
+        WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+      `;
+      const updated = await getProgressRow(sql, params.userEmail, params.moduleId);
+      if (updated) return updated;
+    }
+    return existing;
+  }
+
+  const mcqTotal =
+    params.assignedMcqCount && params.assignedMcqCount > 0
+      ? params.assignedMcqCount
+      : await getModuleMcqCount(sql, params.moduleId);
+
+  await sql`
+    INSERT INTO assessment_progress (
+      user_email, module_id, module_title, batch_id, current_slide, total_slides,
+      status, mcq_total, mcq_correct, mcq_answers
+    )
+    VALUES (
+      ${params.userEmail},
+      ${params.moduleId},
+      ${params.moduleTitle},
+      ${params.batchId},
+      0,
+      ${params.totalSlides},
+      'in_progress',
+      ${mcqTotal},
+      0,
+      ${JSON.stringify({})}::jsonb
+    )
+    ON CONFLICT (user_email, module_id) DO NOTHING
+  `;
+
+  const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+  if (!row) {
+    throw new Error("Could not create progress record.");
+  }
+  return row;
+}
+
+export async function saveSlideProgressDb(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+  currentSlide: number,
+): Promise<void> {
+  await sql`
+    UPDATE assessment_progress
+    SET current_slide = ${currentSlide}, last_accessed_at = NOW(), updated_at = NOW()
+    WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+      AND status IN ('not_started', 'in_progress')
+  `;
+}
+
+export async function recordMcqAnswerDb(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    batchId: string;
+    totalSlides: number;
+    questionId: string;
+    wasCorrect: boolean;
+  },
+): Promise<{ mcqCorrect: number; mcqTotal: number; alreadyAnswered?: boolean }> {
+  await ensureProgressRow(sql, {
+    userEmail: params.userEmail,
+    moduleId: params.moduleId,
+    moduleTitle: params.moduleTitle,
+    batchId: params.batchId,
+    totalSlides: params.totalSlides,
+  });
+
+  const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+  if (!row) throw new Error("Progress not found.");
+
+  if (row.status === "completed" || row.status === "permanently_failed") {
+    return { mcqCorrect: row.mcq_correct, mcqTotal: row.mcq_total };
+  }
+  if (row.status === "failed" && row.score_percent == null) {
+    return { mcqCorrect: row.mcq_correct, mcqTotal: row.mcq_total };
+  }
+
+  if (Object.prototype.hasOwnProperty.call(row.mcq_answers, params.questionId)) {
+    return {
+      mcqCorrect: row.mcq_correct,
+      mcqTotal: row.mcq_total,
+      alreadyAnswered: true,
+    };
+  }
+
+  const answers = { ...row.mcq_answers, [params.questionId]: params.wasCorrect };
+  const assignedTotal =
+    row.mcq_total > 0 ? row.mcq_total : await getModuleMcqCount(sql, params.moduleId);
+  const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
+
+  await sql`
+    UPDATE assessment_progress
+    SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
+        mcq_correct = ${mcqCorrect},
+        mcq_total = ${mcqTotal},
+        status = CASE
+          WHEN status IN ('not_started', 'failed') THEN 'in_progress'
+          ELSE status
+        END,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+  `;
+
+  return { mcqCorrect, mcqTotal };
+}
+
+export async function finalizeAssessmentDb(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<{
+  scorePercent: number;
+  passed: boolean;
+  canRetake: boolean;
+  mcqCorrect: number;
+  mcqTotal: number;
+}> {
+  const row = await getProgressRow(sql, userEmail, moduleId);
+  if (!row) {
+    return { scorePercent: 0, passed: false, canRetake: true, mcqCorrect: 0, mcqTotal: 0 };
+  }
+
+  const answerCount = countMcqAnswers(row.mcq_answers);
+  const { mcqCorrect, mcqTotal, scorePercent } = computeScoreFromAnswers(
+    row.mcq_answers,
+    row.mcq_total,
+  );
+  const passed = isPassingScore(scorePercent) && answerCount > 0;
+  const retakeCount = Number(row.retake_count ?? 0);
+  const canRetake = !passed && retakeCount < 2;
+
+  // Pass/fail score is saved here; status stays in_progress until acknowledgement (and feedback if required).
+  const status = "in_progress";
+  const failedReason = passed
+    ? null
+    : answerCount > 0
+      ? `Score ${scorePercent}% is below the passing threshold (${PASS_THRESHOLD_PERCENT}%).`
+      : null;
+  const persistScorePercent = answerCount > 0 ? scorePercent : null;
+
+  if (passed) {
+    await sql`
+      UPDATE assessment_progress
+      SET status = ${status},
+          score_percent = ${persistScorePercent},
+          mcq_correct = ${mcqCorrect},
+          mcq_total = ${mcqTotal},
+          failed_reason = NULL,
+          completed_at = NULL,
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+    `;
+  } else {
+    await sql`
+      UPDATE assessment_progress
+      SET status = ${status},
+          score_percent = ${persistScorePercent},
+          mcq_correct = ${mcqCorrect},
+          mcq_total = ${mcqTotal},
+          failed_reason = ${failedReason},
+          last_failure_at = NOW(),
+          last_failure_reason = ${failedReason},
+          completed_at = NULL,
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+    `;
+  }
+
+  return { scorePercent, passed, canRetake, mcqCorrect, mcqTotal };
+}
+
+/** Persist training acknowledgement attestation for admin monitoring. */
+export async function saveAcknowledgementDb(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    feedbackRequired: boolean;
+    signatureName: string;
+    digitalSignature: string;
+  },
+): Promise<void> {
+  const ack = {
+    userId: params.userEmail,
+    userName: params.signatureName,
+    signerEmail: params.userEmail,
+    assessmentId: params.moduleId,
+    assessmentName: params.moduleTitle,
+    accepted: true,
+    timestamp: Date.now(),
+    digitalSignature: params.digitalSignature,
+  };
+
+  const ackJson = JSON.stringify(ack);
+
+  if (!params.feedbackRequired) {
+    await sql`
+      UPDATE assessment_progress
+      SET acknowledgement = ${ackJson}::jsonb,
+          status = 'completed',
+          completed_at = COALESCE(completed_at, NOW()),
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+    `;
+  } else {
+    await sql`
+      UPDATE assessment_progress
+      SET acknowledgement = ${ackJson}::jsonb,
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+    `;
+  }
+}
+
+/** Mark assessment completed after required feedback is submitted. */
+export async function markAssessmentCompletedDb(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<void> {
+  await sql`
+    UPDATE assessment_progress
+    SET status = 'completed',
+        completed_at = COALESCE(completed_at, NOW()),
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${userEmail}
+      AND module_id = ${moduleId}
+      AND acknowledgement IS NOT NULL
+  `;
+}
+
+/** Clear slide + quiz answers so learner must start fresh (no resume). */
+export async function resetInProgressAttemptDb(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<void> {
+  await sql`
+    UPDATE assessment_progress
+    SET status = 'in_progress',
+        current_slide = 0,
+        mcq_answers = ${JSON.stringify({})}::jsonb,
+        mcq_correct = 0,
+        score_percent = NULL,
+        failed_reason = NULL,
+        completed_at = NULL,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${userEmail}
+      AND module_id = ${moduleId}
+      AND status NOT IN ('completed', 'permanently_failed')
+  `;
+}
+
+export async function startScoreRetakeDb(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const row = await getProgressRow(sql, userEmail, moduleId);
+  if (!row) {
+    return { ok: false, message: "No progress found for this assessment." };
+  }
+
+  const canRetake =
+    row.score_percent != null && row.score_percent < PASS_THRESHOLD_PERCENT;
+
+  if (!canRetake && row.status === "completed") {
+    return { ok: false, message: "You passed this assessment and cannot retake it." };
+  }
+
+  if (row.status === "permanently_failed") {
+    return { ok: false, message: "Maximum retakes reached." };
+  }
+
+  if (Number(row.retake_count ?? 0) >= 2) {
+    return {
+      ok: false,
+      message: "Maximum score retakes reached. Please contact your administrator.",
+    };
+  }
+
+  await sql`
+    UPDATE assessment_progress
+    SET status = 'in_progress',
+        current_slide = 0,
+        mcq_answers = ${JSON.stringify({})}::jsonb,
+        mcq_correct = 0,
+        mcq_total = 0,
+        score_percent = NULL,
+        failed_reason = NULL,
+        completed_at = NULL,
+        acknowledgement = NULL,
+        retake_count = retake_count + 1,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+  `;
+
+  return { ok: true };
+}
+
+export async function listProgressForUser(sql: Sql, userEmail: string) {
+  const rows = await sql`
+    SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
+           status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+           mcq_answers, failed_reason, completed_at
+    FROM assessment_progress
+    WHERE user_email = ${userEmail}
+    ORDER BY last_accessed_at DESC
+  `;
+  return rows.map((r) => {
+    const mcqCorrect = Number(r.mcq_correct ?? 0);
+    const mcqTotal = Number(r.mcq_total ?? 0);
+    const storedScorePercent =
+      r.score_percent != null ? Number(r.score_percent) : null;
+    const answers = parseMcqAnswers(r.mcq_answers);
+    const displayStatus = normalizeProgressStatus(
+      r.status as string,
+      storedScorePercent,
+      (r.completed_at as string) ?? null,
+    );
+    return {
+      userEmail: r.user_email as string,
+      moduleId: r.module_id as string,
+      moduleTitle: r.module_title as string,
+      batchId: r.batch_id as string,
+      currentSlide: Number(r.current_slide),
+      totalSlides: Number(r.total_slides),
+      status: displayStatus,
+      warningCount: Number(r.warning_count),
+      retakeCount: Number(r.retake_count),
+      mcqCorrect,
+      mcqTotal,
+      scorePercent: resolveDisplayScorePercent({
+        status: displayStatus,
+        storedScorePercent,
+        mcqCorrect,
+        mcqTotal,
+        answerCount: countMcqAnswers(answers),
+      }),
+      failedReason: (r.failed_reason as string) ?? null,
+      completedAt: (r.completed_at as string) ?? null,
+    };
+  });
+}
+
+export async function listProgressForBatch(sql: Sql, batchId: string) {
+  const rows = await sql`
+    SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
+           status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+           failed_reason, completed_at
+    FROM assessment_progress
+    WHERE batch_id = ${batchId}
+    ORDER BY module_title, user_email
+  `;
+  return rows.map((r) => ({
+    userEmail: r.user_email as string,
+    moduleId: r.module_id as string,
+    moduleTitle: r.module_title as string,
+    batchId: r.batch_id as string,
+    status: r.status as string,
+    retakeCount: Number(r.retake_count),
+    mcqCorrect: Number(r.mcq_correct ?? 0),
+    mcqTotal: Number(r.mcq_total ?? 0),
+    scorePercent: r.score_percent != null ? Number(r.score_percent) : null,
+    failedReason: (r.failed_reason as string) ?? null,
+    completedAt: (r.completed_at as string) ?? null,
+  }));
+}
+
+export async function listAllProgressAdmin(sql: Sql) {
+  const rows = await sql`
+    SELECT user_email, module_id, module_title, batch_id, status, retake_count,
+           mcq_correct, mcq_total, score_percent, mcq_answers, failed_reason, completed_at
+    FROM assessment_progress
+    WHERE score_percent IS NOT NULL OR status IN ('completed', 'failed')
+    ORDER BY completed_at DESC NULLS LAST, module_title
+  `;
+  return rows.map((r) => {
+    const mcqCorrect = Number(r.mcq_correct ?? 0);
+    const mcqTotal = Number(r.mcq_total ?? 0);
+    const storedScorePercent =
+      r.score_percent != null ? Number(r.score_percent) : null;
+    const displayStatus = normalizeProgressStatus(
+      r.status as string,
+      storedScorePercent,
+      (r.completed_at as string) ?? null,
+    );
+    return {
+      userEmail: r.user_email as string,
+      moduleId: r.module_id as string,
+      moduleTitle: r.module_title as string,
+      batchId: r.batch_id as string,
+      status: displayStatus,
+      retakeCount: Number(r.retake_count),
+      mcqCorrect,
+      mcqTotal,
+      scorePercent: resolveDisplayScorePercent({
+        status: displayStatus,
+        storedScorePercent,
+        mcqCorrect,
+        mcqTotal,
+        answerCount: countMcqAnswers(parseMcqAnswers(r.mcq_answers)),
+      }),
+      failedReason: (r.failed_reason as string) ?? null,
+      completedAt: (r.completed_at as string) ?? null,
+    };
+  });
+}
