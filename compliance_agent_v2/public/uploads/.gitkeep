@@ -1,0 +1,2 @@
+# uploads directory — committed to keep the folder in git
+# actual .ppt, .pptx, and .pdf files are ignored via .gitignore

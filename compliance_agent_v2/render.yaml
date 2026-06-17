@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: compliance-agent
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/auth/status
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+    # Set secrets in Render dashboard (sync: false):
+    # DATABASE_URL, AUTH_AZURE_AD_*, AUTH_SECRET, AUTH_URL, NEXTAUTH_URL,
+    # MAIL_FROM_ADDRESS, NVIDIA_API_KEY, NVIDIA_MODEL
