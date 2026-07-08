@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 const SERVICE_ID = "srv-d8j4pum47okc739t3c30";
-const REPO = "https://github.com/deepan-relanto/compliance_agent_v2";
+const REPO = "https://github.com/deepan-relanto/AI-Compliance";
 
 function readRenderKey() {
   const cfg = fs.readFileSync(path.join(os.homedir(), ".render", "cli.yaml"), "utf8");
@@ -35,6 +35,7 @@ console.log("Refreshing repo connection…");
 await api("PATCH", `/services/${SERVICE_ID}`, {
   repo: REPO,
   branch: "main",
+  rootDir: "compliance_agent_v2",
   autoDeploy: "yes",
 });
 
