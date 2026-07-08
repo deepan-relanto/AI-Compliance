@@ -2,11 +2,12 @@
 
 import {
   COURSE_STEP_LABELS,
+  isHtmlCourseAsset,
   type CourseStepRow,
   type CourseStepType,
 } from "@/lib/course-step-types";
 import { MindMapPlayground } from "@/components/employee/mind-map-playground";
-import { FileText, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
+import { FileCode2, FileText, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
@@ -16,12 +17,47 @@ const PdfPageViewer = dynamic(
 );
 
 const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
-  pdf: FileText,
+  pdf: FileCode2,
   video: Video,
   mindmap: Network,
   infographic: ImageIcon,
   quiz: FileText,
 };
+
+function HtmlEmbed({
+  url,
+  title,
+  eyebrow,
+}: {
+  url: string;
+  title?: string;
+  eyebrow: string;
+}) {
+  return (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
+      <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
+        <FileCode2 className="h-4 w-4 text-[#f15a24]" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
+          {eyebrow}
+        </p>
+        {title && (
+          <span className="max-w-[min(40vw,280px)] truncate text-xs text-zinc-400">
+            {title}
+          </span>
+        )}
+      </div>
+      <div className="relative min-h-0 flex-1 bg-white">
+        <iframe
+          key={url}
+          src={url}
+          title={title ?? eyebrow}
+          className="absolute inset-0 h-full w-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+      </div>
+    </div>
+  );
+}
 
 export function CourseStepContent({
   step,
@@ -38,8 +74,22 @@ export function CourseStepContent({
 }) {
   const Icon = STEP_ICONS[step.stepType];
   const url = step.config.assetUrl;
+  const htmlAsset = isHtmlCourseAsset(
+    step.config.mimeType,
+    step.config.assetUrl,
+    step.config.originalName,
+  );
 
   if (step.stepType === "pdf" && url) {
+    if (htmlAsset) {
+      return (
+        <HtmlEmbed
+          url={url}
+          title={step.config.originalName ?? moduleTitle}
+          eyebrow="Interactive lesson"
+        />
+      );
+    }
     return (
       <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
         <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-1.5">
@@ -87,6 +137,15 @@ export function CourseStepContent({
   }
 
   if (step.stepType === "mindmap" && url) {
+    if (htmlAsset) {
+      return (
+        <HtmlEmbed
+          url={url}
+          title={step.config.originalName}
+          eyebrow="Interactive mind map"
+        />
+      );
+    }
     return <MindMapPanel url={url} title={step.config.originalName} />;
   }
 

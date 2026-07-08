@@ -91,8 +91,8 @@ export function ContentLibraryHub() {
       {track === "courses" && (
         <>
           <p className="text-sm text-zinc-600">
-            Mandatory courses with proctored training — upload a full content bundle (PDF, video,
-            mind map, infographic, quiz) or reuse an existing bundle across batches.
+            Mandatory courses with proctored training — upload a full content bundle (HTML lesson,
+            video, HTML mind map, infographic, quiz) or reuse an existing bundle across batches.
           </p>
           <div className="inline-flex flex-wrap gap-1 rounded-xl border border-zinc-200/80 bg-zinc-50 p-1">
             {COURSE_TABS.map((t) => {

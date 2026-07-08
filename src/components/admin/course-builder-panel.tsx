@@ -1,6 +1,5 @@
 "use client";
 
-import { MindMapPlayground } from "@/components/employee/mind-map-playground";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +16,8 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  FileCode2,
   FileJson,
-  FileText,
   GraduationCap,
   Image,
   Loader2,
@@ -29,6 +28,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 
 type WizardStep = "info" | CourseStepType | "publish" | "done";
+type MediaKind = "lesson" | "video" | "mindmap" | "infographic";
 
 const WIZARD_STEPS: WizardStep[] = [
   "info",
@@ -36,24 +36,25 @@ const WIZARD_STEPS: WizardStep[] = [
   "publish",
 ];
 
-const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
-  pdf: FileText,
+const STEP_ICONS: Record<CourseStepType, typeof FileCode2> = {
+  pdf: FileCode2,
   video: Video,
   mindmap: Network,
   infographic: Image,
   quiz: FileJson,
 };
 
-const MEDIA_KIND: Partial<Record<CourseStepType, "video" | "mindmap" | "infographic">> = {
+const MEDIA_KIND: Partial<Record<CourseStepType, MediaKind>> = {
+  pdf: "lesson",
   video: "video",
   mindmap: "mindmap",
   infographic: "infographic",
 };
 
 const ACCEPT_BY_STEP: Partial<Record<CourseStepType, string>> = {
-  pdf: ".pdf,application/pdf",
+  pdf: ".html,.htm,text/html",
   video: ".mp4,.webm,.mov,video/*",
-  mindmap: ".json,application/json",
+  mindmap: ".html,.htm,text/html",
   infographic: ".png,.jpg,.jpeg,.webp,.pdf,image/*,application/pdf",
   quiz: ".json,application/json",
 };
@@ -74,8 +75,7 @@ export function CourseBuilderPanel() {
   const [questionCount, setQuestionCount] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading" | "saving">("idle");
-  const [mindMapPreview, setMindMapPreview] = useState<unknown>(null);
-  const [mindMapPreviewError, setMindMapPreviewError] = useState<string | null>(null);
+  const [htmlPreviewUrl, setHtmlPreviewUrl] = useState<string | null>(null);
 
   const stepIndex = WIZARD_STEPS.indexOf(step);
 
@@ -126,7 +126,7 @@ export function CourseBuilderPanel() {
       setModuleId(data.moduleId as string);
       markComplete("info");
       setStep("pdf");
-      setSuccessMsg("Course draft created. Upload your PDF guide first.");
+      setSuccessMsg("Course draft created. Upload your interactive HTML lesson first.");
     } catch {
       setError("Could not reach the server.");
     } finally {
@@ -134,41 +134,9 @@ export function CourseBuilderPanel() {
     }
   };
 
-  const handleUploadPdf = async () => {
-    if (!uploadFile) {
-      setError("Choose a PDF file.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append("file", uploadFile);
-      const res = await fetch("/api/convert", { method: "POST", body: form });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setError(json.message ?? "PDF conversion failed.");
-        return;
-      }
-      await saveStepConfig("pdf", {
-        assetUrl: json.pdfUrl,
-        originalName: json.originalName,
-        mimeType: "application/pdf",
-        pageCount:
-          typeof json.pageCount === "number" && json.pageCount > 0 ? json.pageCount : 1,
-      });
-      markComplete("pdf");
-      setUploadFile(null);
-      setStep("video");
-      setSuccessMsg("PDF guide saved. Next: training video.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "PDF upload failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUploadMedia = async (stepType: "video" | "mindmap" | "infographic") => {
+  const handleUploadMedia = async (
+    stepType: "pdf" | "video" | "mindmap" | "infographic",
+  ) => {
     const kind = MEDIA_KIND[stepType];
     if (!uploadFile || !kind) {
       setError("Choose a file to upload.");
@@ -195,11 +163,14 @@ export function CourseBuilderPanel() {
         assetUrl: json.assetUrl as string,
         originalName: json.originalName as string,
         mimeType: json.mimeType as string,
+        ...(stepType === "pdf" ? { pageCount: 1 } : {}),
       });
       markComplete(stepType);
       setUploadFile(null);
-      setMindMapPreview(null);
-      setMindMapPreviewError(null);
+      if (htmlPreviewUrl) {
+        URL.revokeObjectURL(htmlPreviewUrl);
+        setHtmlPreviewUrl(null);
+      }
       const nextIdx = COURSE_STEP_ORDER.indexOf(stepType) + 1;
       setStep(COURSE_STEP_ORDER[nextIdx] ?? "publish");
       setSuccessMsg(`${COURSE_STEP_LABELS[stepType]} saved.`);
@@ -286,37 +257,29 @@ export function CourseBuilderPanel() {
     setCompletedSteps(new Set());
     setSelectedBatchIds([]);
     setUploadFile(null);
-    setMindMapPreview(null);
-    setMindMapPreviewError(null);
+    if (htmlPreviewUrl) URL.revokeObjectURL(htmlPreviewUrl);
+    setHtmlPreviewUrl(null);
     setError(null);
     setSuccessMsg(null);
     setQuestionCount(0);
-  }, []);
+  }, [htmlPreviewUrl]);
 
   const handleUploadFile = useCallback(
     (file: File | null) => {
       setUploadFile(file);
-      if (step !== "mindmap") {
-        setMindMapPreview(null);
-        setMindMapPreviewError(null);
-        return;
+      if (htmlPreviewUrl) {
+        URL.revokeObjectURL(htmlPreviewUrl);
+        setHtmlPreviewUrl(null);
       }
-      if (!file) {
-        setMindMapPreview(null);
-        setMindMapPreviewError(null);
-        return;
-      }
-      void file.text().then((text) => {
-        try {
-          setMindMapPreview(JSON.parse(text));
-          setMindMapPreviewError(null);
-        } catch {
-          setMindMapPreview(null);
-          setMindMapPreviewError("Invalid JSON — could not build mind map preview.");
+      if (!file) return;
+      if (step === "pdf" || step === "mindmap") {
+        const name = file.name.toLowerCase();
+        if (name.endsWith(".html") || name.endsWith(".htm") || file.type.includes("html")) {
+          setHtmlPreviewUrl(URL.createObjectURL(file));
         }
-      });
+      }
     },
-    [step],
+    [step, htmlPreviewUrl],
   );
 
   const currentContentStep = step !== "info" && step !== "publish" && step !== "done" ? step : null;
@@ -338,8 +301,9 @@ export function CourseBuilderPanel() {
           <div>
             <h2 className="text-lg font-semibold text-zinc-900">Build new course bundle</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-600">
-              Upload content in order: PDF guide → training video → mind map → infographic →
-              quiz. The full bundle is stored together and can be reused for other batches.
+              Upload content in order: interactive HTML lesson → training video → HTML mind map →
+              infographic → quiz. The full bundle is stored together and can be reused for other
+              batches.
             </p>
           </div>
         </div>
@@ -458,31 +422,9 @@ export function CourseBuilderPanel() {
             </>
           )}
 
-          {currentContentStep === "pdf" && (
-            <>
-              <UploadZone
-                icon={FileText}
-                title="PDF course guide"
-                hint="Upload the primary reading material (PDF, max 50 MB)."
-                accept={ACCEPT_BY_STEP.pdf!}
-                file={uploadFile}
-                onFile={setUploadFile}
-              />
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  onClick={() => void handleUploadPdf()}
-                  disabled={loading || !uploadFile}
-                >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Upload PDF &amp; continue
-                </Button>
-              </div>
-            </>
-          )}
-
           {currentContentStep &&
-            (currentContentStep === "video" ||
+            (currentContentStep === "pdf" ||
+              currentContentStep === "video" ||
               currentContentStep === "mindmap" ||
               currentContentStep === "infographic") && (
               <>
@@ -490,42 +432,44 @@ export function CourseBuilderPanel() {
                   icon={STEP_ICONS[currentContentStep]}
                   title={COURSE_STEP_LABELS[currentContentStep]}
                   hint={
-                    currentContentStep === "video"
-                      ? "MP4, WebM, or MOV (max 100 MB). Stored locally on the server."
-                      : currentContentStep === "mindmap"
-                        ? "JSON mind map export (max 100 MB)."
-                        : "PNG, JPEG, WebP, or PDF infographic (max 100 MB)."
+                    currentContentStep === "pdf"
+                      ? "Self-contained .html lesson (interactive slides). Stored in course assets."
+                      : currentContentStep === "video"
+                        ? "MP4, WebM, or MOV (max 100 MB). Stored locally on the server."
+                        : currentContentStep === "mindmap"
+                          ? "Interactive .html mind map (e.g. mindmap-01.html). Stored in course assets."
+                          : "PNG, JPEG, WebP, or PDF infographic (max 100 MB)."
                   }
                   accept={ACCEPT_BY_STEP[currentContentStep]!}
                   file={uploadFile}
                   onFile={
-                    currentContentStep === "mindmap" ? handleUploadFile : setUploadFile
+                    currentContentStep === "pdf" || currentContentStep === "mindmap"
+                      ? handleUploadFile
+                      : setUploadFile
                   }
                   disabled={loading}
                 />
-                {currentContentStep === "mindmap" && (
-                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-950">
-                    <div className="border-b border-zinc-800 px-4 py-2">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-violet-300">
+                {(currentContentStep === "pdf" || currentContentStep === "mindmap") && (
+                  <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                    <div className="border-b border-zinc-100 px-4 py-2">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
                         Live preview
                       </p>
                       <p className="text-[11px] text-zinc-500">
-                        Interactive playground — same view learners will see after upload.
+                        Same iframe view learners will see after upload.
                       </p>
                     </div>
-                    <div className="h-[min(420px,50vh)]">
-                      {mindMapPreviewError ? (
-                        <p className="flex h-full items-center justify-center px-4 text-center text-sm text-red-400">
-                          {mindMapPreviewError}
-                        </p>
-                      ) : mindMapPreview ? (
-                        <MindMapPlayground
-                          data={mindMapPreview}
-                          title={uploadFile?.name}
+                    <div className="h-[min(420px,50vh)] bg-[#f8f9fb]">
+                      {htmlPreviewUrl ? (
+                        <iframe
+                          title="HTML preview"
+                          src={htmlPreviewUrl}
+                          className="h-full w-full border-0"
+                          sandbox="allow-scripts allow-same-origin allow-forms"
                         />
                       ) : (
                         <p className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
-                          Select a JSON mind map file to preview the interactive layout.
+                          Select an HTML file to preview.
                         </p>
                       )}
                     </div>
@@ -544,8 +488,10 @@ export function CourseBuilderPanel() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      const prev = COURSE_STEP_ORDER[COURSE_STEP_ORDER.indexOf(currentContentStep) - 1];
+                      const prev =
+                        COURSE_STEP_ORDER[COURSE_STEP_ORDER.indexOf(currentContentStep) - 1];
                       if (prev) setStep(prev);
+                      else setStep("info");
                     }}
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -650,8 +596,8 @@ export function CourseBuilderPanel() {
               <h3 className="text-lg font-semibold text-zinc-900">Course bundle published</h3>
               <p className="max-w-md text-sm text-zinc-600">
                 Learners in the selected batches will see this course under My training. The full
-                bundle (PDF, video, mind map, infographic, {questionCount || "quiz"} questions) is
-                stored and available for reuse.
+                bundle (HTML lesson, video, HTML mind map, infographic,{" "}
+                {questionCount || "quiz"} questions) is stored and available for reuse.
               </p>
               <Button variant="secondary" onClick={resetForm}>
                 Build another course
@@ -673,7 +619,7 @@ function UploadZone({
   onFile,
   disabled = false,
 }: {
-  icon: typeof FileText;
+  icon: typeof FileCode2;
   title: string;
   hint: string;
   accept: string;

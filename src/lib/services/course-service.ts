@@ -114,12 +114,32 @@ export async function upsertModuleStepDb(
       updated_at = NOW()
   `;
 
-  if (stepType === "pdf" && config.pageCount) {
-    await sql`
-      UPDATE training_modules
-      SET slide_count = ${config.pageCount}, content_type = 'pdf', pdf_url = ${config.assetUrl ?? null}
-      WHERE id = ${moduleId}
-    `;
+  if (stepType === "pdf") {
+    const isHtml =
+      (config.mimeType ?? "").toLowerCase().includes("html") ||
+      (config.assetUrl ?? "").toLowerCase().endsWith(".html") ||
+      (config.originalName ?? "").toLowerCase().endsWith(".html") ||
+      (config.originalName ?? "").toLowerCase().endsWith(".htm");
+
+    if (isHtml) {
+      await sql`
+        UPDATE training_modules
+        SET slide_count = 1,
+            content_type = 'text',
+            pdf_url = NULL,
+            updated_at = NOW()
+        WHERE id = ${moduleId}
+      `;
+    } else if (config.pageCount) {
+      await sql`
+        UPDATE training_modules
+        SET slide_count = ${config.pageCount},
+            content_type = 'pdf',
+            pdf_url = ${config.assetUrl ?? null},
+            updated_at = NOW()
+        WHERE id = ${moduleId}
+      `;
+    }
   }
 }
 
@@ -274,7 +294,7 @@ export async function publishCourseModuleDb(
 
   if (!isCourseBundleComplete(steps, questionCount)) {
     throw new Error(
-      "Complete all bundle steps (PDF, video, mind map, infographic, quiz) before publishing.",
+      "Complete all bundle steps (HTML lesson, video, HTML mind map, infographic, quiz) before publishing.",
     );
   }
 
