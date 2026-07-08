@@ -15,12 +15,26 @@ export const COURSE_STEP_ORDER: CourseStepType[] = [
 ];
 
 export const COURSE_STEP_LABELS: Record<CourseStepType, string> = {
-  pdf: "PDF guide",
+  pdf: "Interactive HTML lesson",
   video: "Training video",
-  mindmap: "Interactive mind map",
+  mindmap: "Interactive HTML mind map",
   infographic: "Infographics",
   quiz: "Assessment quiz",
 };
+
+/** True when a course step asset should be rendered as embedded HTML. */
+export function isHtmlCourseAsset(
+  mimeType?: string | null,
+  assetUrl?: string | null,
+  originalName?: string | null,
+): boolean {
+  const mime = (mimeType ?? "").toLowerCase();
+  if (mime.includes("html")) return true;
+  const url = (assetUrl ?? "").toLowerCase();
+  if (url.endsWith(".html") || url.endsWith(".htm")) return true;
+  const name = (originalName ?? "").toLowerCase();
+  return name.endsWith(".html") || name.endsWith(".htm");
+}
 
 export type CourseStepConfig = {
   assetUrl?: string;

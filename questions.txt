@@ -1,0 +1,220 @@
+{
+  "questions": [
+    {
+      "prompt": "Your colleague says: \"I set up a rule so every email with the subject 'Invoice' automatically forwards to Finance. That's AI.\" What is the most accurate response?",
+      "options": [
+        { "id": "a", "label": "Correct — any software that acts without a human is AI." },
+        { "id": "b", "label": "Incorrect — this is rule-based automation, because it follows a fixed condition with no learning or interpretation involved." },
+        { "id": "c", "label": "Incorrect — it would only be AI if it ran in the cloud." },
+        { "id": "d", "label": "Correct — email tools are AI by definition." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "A fixed if-then rule is classic automation. AI involves learned patterns and the ability to handle varied, ambiguous input — neither is present here. Where the software runs (cloud or not) is irrelevant to the distinction."
+    },
+    {
+      "prompt": "An AI assistant gives you a detailed answer about a competitor's 2025 revenue, including an exact figure and a quote from their CEO. The answer is fluent and specific. What should you conclude?",
+      "options": [
+        { "id": "a", "label": "Specific details indicate the answer is reliable." },
+        { "id": "b", "label": "The answer may be accurate, hallucinated, or outdated — specificity and fluency are no evidence of truth, so the figure and quote must be verified." },
+        { "id": "c", "label": "It must be accurate because the model was trained on financial data." },
+        { "id": "d", "label": "The quote is reliable but the number should be checked." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "LLMs produce plausible text. Precise-sounding figures and quotations are among the most commonly hallucinated elements. There is no basis to trust the quote more than the number — both require verification against a primary source."
+    },
+    {
+      "prompt": "True or False: When you paste a document into an AI assistant's conversation, the model can use that document's contents to answer your questions, even though the document was not part of its training data.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "a",
+      "explanation": "This is the difference between training data and context. The model cannot know your document from training, but anything supplied in the conversation becomes context the model can use — which is exactly how to get reliable answers about company-specific material."
+    },
+    {
+      "prompt": "You're a new support agent. A customer asks whether their plan covers data recovery. Your general AI assistant answers \"Yes, all business plans include data recovery.\" The official plan documentation is two clicks away. The best course of action is to:",
+      "options": [
+        { "id": "a", "label": "Tell the customer yes, since the AI was confident." },
+        { "id": "b", "label": "Tell the customer yes, but add \"I believe so\" to be safe." },
+        { "id": "c", "label": "Check the official plan documentation and answer based on that; optionally provide the documentation to the assistant in future for grounded answers." },
+        { "id": "d", "label": "Ask the AI the same question again to double-check." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "A general assistant has no knowledge of your company's current plans unless given the documents — its confident answer is a guess. Re-asking the same model adds no verification. Hedging a guess is still guessing. The authoritative source is the documentation."
+    },
+    {
+      "prompt": "[Select all that apply] Which of the following tasks are well-suited to a general-purpose AI assistant with appropriate human review?",
+      "options": [
+        { "id": "a", "label": "Drafting a first version of a project status email" },
+        { "id": "b", "label": "Producing the final, exact figures for a financial report" },
+        { "id": "c", "label": "Summarizing a long meeting transcript you paste in" },
+        { "id": "d", "label": "Serving as the authoritative source on current employment law" },
+        { "id": "e", "label": "Brainstorming names for an internal initiative" }
+      ],
+      "correctOptionId": "a",
+      "explanation": "MULTI-SELECT — Correct answers: A, C, and E. Drafting, summarizing supplied material, and brainstorming play to LLM strengths. Exact financial figures require deterministic tools (spreadsheets) since LLM arithmetic is unreliable; current legal questions require authoritative, up-to-date professional sources because of knowledge cutoffs and hallucination risk. Note: current system only grades a single answer; full multi-select support requires a platform update."
+    },
+    {
+      "prompt": "A project manager pastes raw stand-up notes into an AI assistant for a weekly summary. The notes say \"started user testing\"; the AI summary says the milestone is \"completed.\" What best describes what happened?",
+      "options": [
+        { "id": "a", "label": "A software bug that should be reported to IT." },
+        { "id": "b", "label": "The model smoothed ambiguity into a plausible but unsupported conclusion — a form of hallucination typical of LLM summarization." },
+        { "id": "c", "label": "The model accessed the project tracker and found newer information." },
+        { "id": "d", "label": "The notes must have been corrupted during pasting." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Models tend to resolve ambiguity into confident, plausible statements. The assistant cannot access trackers it isn't connected to. This is expected behavior to manage with prompting (\"flag unclear status\") and verification — not a bug."
+    },
+    {
+      "prompt": "Why does an AI model's training-data cutoff matter in everyday work?",
+      "options": [
+        { "id": "a", "label": "It limits how many words you can type per prompt." },
+        { "id": "b", "label": "It means the model may not know about recent events, new products, or current personnel — so recency-sensitive answers need verification or a tool with live search." },
+        { "id": "c", "label": "It causes the model to delete old conversations." },
+        { "id": "d", "label": "It only matters for programmers." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The cutoff is about what the model learned, not about prompt length (that's the context window) or conversation storage. Anyone asking about recent or changing facts is affected, not just technical staff."
+    },
+    {
+      "prompt": "Your manager asks you to evaluate two tools for routing customer complaints written in free text. Tool X uses keyword rules (\"if message contains 'refund', send to Billing\"). Tool Y uses a language model to interpret each message. Which consideration is most accurate?",
+      "options": [
+        { "id": "a", "label": "Tool X is AI and Tool Y is automation." },
+        { "id": "b", "label": "Tool Y will be 100% accurate because it understands language." },
+        { "id": "c", "label": "Tool X is predictable but brittle with varied phrasing; Tool Y handles variation better but its outputs vary and should be monitored with periodic human spot-checks." },
+        { "id": "d", "label": "Both tools are identical in practice." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Keyword rules are automation: predictable, but they miss messages phrased without the keywords. An AI router handles paraphrase and ambiguity but is probabilistic — it reduces, never eliminates, errors, so monitoring is part of responsible deployment."
+    },
+    {
+      "prompt": "True or False: Because AI assistants are trained on large amounts of text, their outputs are free from human bias.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The opposite is closer to the truth: models learn from human-produced data, so they can absorb and reproduce biases present in that data. This is one reason human review matters, especially in HR, hiring, and customer-facing contexts."
+    },
+    {
+      "prompt": "Which prompt is most likely to produce a usable first draft?",
+      "options": [
+        { "id": "a", "label": "Write something about the product launch." },
+        { "id": "b", "label": "Write an email." },
+        { "id": "c", "label": "Draft a 120-word internal announcement of the 1 July launch of our Atlas dashboard for all staff, upbeat but professional, ending with a link placeholder for the training session." },
+        { "id": "d", "label": "You are the world's best writer. Write the best launch email ever written." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Option C specifies task, audience, length, tone, key facts, and required elements — the components of an effective prompt. Flattery and superlatives (option D) add no usable information; vague prompts (A, B) force the model to guess everything."
+    },
+    {
+      "prompt": "[Select all that apply] Which statements about tokens and context are correct?",
+      "options": [
+        { "id": "a", "label": "Tokens are roughly word fragments; AI usage is often measured in them." },
+        { "id": "b", "label": "The context window limits how much conversation and document text the model can consider at once." },
+        { "id": "c", "label": "In a very long conversation, details from the beginning may effectively be lost." },
+        { "id": "d", "label": "Tokens are a security feature that encrypts your prompts." }
+      ],
+      "correctOptionId": "a",
+      "explanation": "MULTI-SELECT — Correct answers: A, B, and C. A, B, and C correctly describe tokens and context limits, including the practical effect of long conversations. Tokens have nothing to do with encryption or security. Note: current system only grades a single answer; full multi-select support requires a platform update."
+    },
+    {
+      "prompt": "A vendor demo claims its AI \"eliminates forecasting errors completely.\" As an evaluator with basic AI literacy, your strongest follow-up is:",
+      "options": [
+        { "id": "a", "label": "\"What colour schemes does the dashboard support?\"" },
+        { "id": "b", "label": "\"How is accuracy measured on data like ours, what are the typical error rates, and how are errors detected and corrected?\"" },
+        { "id": "c", "label": "\"Can we get a discount for a three-year contract?\"" },
+        { "id": "d", "label": "Accept the claim — vendors must legally prove such statements before making them." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Machine-learning systems are probabilistic; \"eliminates errors completely\" is a marketing red flag. The literate response probes measurement, error rates, and failure handling. Vendor claims in demos are not pre-verified by any authority."
+    },
+    {
+      "prompt": "What is fine-tuning?",
+      "options": [
+        { "id": "a", "label": "Adjusting your prompt wording until the answer improves." },
+        { "id": "b", "label": "Additional training of an existing model on specialized examples so it performs better in a specific domain." },
+        { "id": "c", "label": "Manually correcting an AI's answer in the chat." },
+        { "id": "d", "label": "Increasing the font size of AI output." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Fine-tuning is a technical process of further training a model on domain data (e.g., a company's support tickets). Iteratively improving prompts is prompt refinement — useful, but a different concept."
+    },
+    {
+      "prompt": "An employee asks an AI assistant to compute percentage changes across a 15-row table and pastes the result directly into a board report. What is the main risk?",
+      "options": [
+        { "id": "a", "label": "The table formatting may not match the corporate template." },
+        { "id": "b", "label": "LLMs generate text rather than performing guaranteed-exact arithmetic, so some figures may be wrong; calculations belong in a spreadsheet with AI used for narrative." },
+        { "id": "c", "label": "AI-generated tables are illegal in board reports." },
+        { "id": "d", "label": "There is no risk; computers do not make arithmetic errors." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Token-by-token text generation is not calculation. Arithmetic slips in multi-number tables are a known failure mode. Deterministic tools (spreadsheets, calculators, or an AI tool's genuine code-execution feature) should produce the numbers; the AI can draft the commentary."
+    },
+    {
+      "prompt": "True or False: If an AI assistant answered a question incorrectly, asking the identical question again in the same conversation is a reliable way to verify the truth.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Re-asking the same model is not independent verification — it may repeat the error or confidently produce a different wrong answer. Verification means checking an authoritative source: documentation, official records, or a qualified colleague."
+    },
+    {
+      "prompt": "You've used one AI conversation all day for three unrelated tasks. The assistant now confuses details between tasks and has \"forgotten\" this morning's information. The best fix is to:",
+      "options": [
+        { "id": "a", "label": "Type your instructions in capital letters for emphasis." },
+        { "id": "b", "label": "Start a fresh conversation per task and restate or re-paste the key facts and documents each time." },
+        { "id": "c", "label": "Report the tool as broken to IT." },
+        { "id": "d", "label": "Switch to a longer, more detailed single conversation." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "This is the context window in action: finite working memory plus topic interference. One task per conversation with essentials restated is the standard remedy. Capitals don't expand memory, and the behavior is a known characteristic, not a defect."
+    },
+    {
+      "prompt": "Which of the following is the best description of how a Large Language Model produces its answers?",
+      "options": [
+        { "id": "a", "label": "It searches a built-in database of verified facts and copies the matching entry." },
+        { "id": "b", "label": "It predicts, piece by piece, the most plausible continuation of the text, based on patterns learned from training data." },
+        { "id": "c", "label": "It contacts human experts in real time." },
+        { "id": "d", "label": "It runs formal logical proofs to guarantee correctness." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "LLMs are next-token predictors over learned patterns. This single fact explains both their fluency and their hallucinations: plausibility, not verified truth, drives generation. They contain no verified-facts database and no correctness guarantee."
+    },
+    {
+      "prompt": "[Select all that apply] Which behaviors align with responsible everyday AI use at work?",
+      "options": [
+        { "id": "a", "label": "Using only company-approved AI tools for work content" },
+        { "id": "b", "label": "Pasting a client's contract into a free personal AI app to summarize it quickly" },
+        { "id": "c", "label": "Scaling review effort to the stakes of the output" },
+        { "id": "d", "label": "Disclosing AI assistance where policy requires" },
+        { "id": "e", "label": "Treating a confident AI answer about company policy as final" }
+      ],
+      "correctOptionId": "a",
+      "explanation": "MULTI-SELECT — Correct answers: A, C, and D. Approved tools, proportionate review, and disclosure are core responsible-use behaviors. Pasting client material into unapproved personal tools risks confidentiality breaches; company-policy questions need verification against the actual policy regardless of the model's confidence. Note: current system only grades a single answer; full multi-select support requires a platform update."
+    },
+    {
+      "prompt": "An HR colleague asks an AI assistant to summarize themes from 40 exit interviews she pastes in. The assistant produces five themes, one of which (\"dissatisfaction with parking\") appears in none of the interviews. This is best described as:",
+      "options": [
+        { "id": "a", "label": "Evidence the assistant accessed other companies' data." },
+        { "id": "b", "label": "A hallucination — a plausible-sounding theme generated without support in the provided material — which is why summaries should be spot-checked against the source." },
+        { "id": "c", "label": "Proof that AI cannot be used in HR." },
+        { "id": "d", "label": "An indication that more interviews are needed." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Inventing an unsupported item in a summary is textbook hallucination. It doesn't imply data leakage from elsewhere, nor does one error disqualify the use case — it confirms that spot-checking AI summaries against source material is a required step."
+    },
+    {
+      "prompt": "A teammate proposes: \"Let's stop writing meeting minutes — the AI summary is good enough to file without anyone reading it.\" The most sound response reflects which principle?",
+      "options": [
+        { "id": "a", "label": "Agreed — AI summaries are more objective than humans." },
+        { "id": "b", "label": "AI summarization is a strong use case, but unreviewed summaries can contain smoothed-over ambiguities or invented details; a quick human review before filing keeps the time savings while protecting accuracy." },
+        { "id": "c", "label": "AI should never be used for minutes under any circumstances." },
+        { "id": "d", "label": "Summaries only need review if the meeting was longer than an hour." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Both extremes are wrong: blind trust ignores hallucination risk on a document of record; a blanket ban discards a legitimate productivity gain. Proportionate human review is the principle — and meeting length is not what determines the need for it."
+    }
+  ]
+}

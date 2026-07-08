@@ -5,13 +5,18 @@ import path from "path";
 const ASSETS_DIR = path.join(process.cwd(), "public", "course-assets");
 const MAX_BYTES = 100 * 1024 * 1024;
 
-const ALLOWED: Record<string, string[]> = {
+export type CourseAssetKind = "lesson" | "video" | "mindmap" | "infographic";
+
+const ALLOWED: Record<CourseAssetKind, string[]> = {
+  lesson: ["text/html", "application/xhtml+xml"],
   video: ["video/mp4", "video/webm", "video/quicktime"],
-  mindmap: ["application/json"],
+  mindmap: ["text/html", "application/xhtml+xml", "application/json"],
   infographic: ["image/png", "image/jpeg", "image/webp", "application/pdf"],
 };
 
 const EXT_BY_MIME: Record<string, string> = {
+  "text/html": ".html",
+  "application/xhtml+xml": ".html",
   "video/mp4": ".mp4",
   "video/webm": ".webm",
   "video/quicktime": ".mov",
@@ -23,6 +28,8 @@ const EXT_BY_MIME: Record<string, string> = {
 };
 
 const MIME_BY_EXT: Record<string, string> = {
+  ".html": "text/html",
+  ".htm": "text/html",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mov": "video/quicktime",
@@ -69,15 +76,24 @@ function mimeFromFilename(filename: string): string {
   return MIME_BY_EXT[ext] ?? "application/octet-stream";
 }
 
+export function isHtmlMimeOrExt(mimeType: string, fileName: string): boolean {
+  const ext = path.extname(fileName).toLowerCase();
+  if (ext === ".html" || ext === ".htm") return true;
+  const mime = mimeType.toLowerCase();
+  return mime === "text/html" || mime === "application/xhtml+xml" || mime.includes("html");
+}
+
 export function isAllowedCourseAsset(
-  kind: "video" | "mindmap" | "infographic",
+  kind: CourseAssetKind,
   mimeType: string,
   fileName: string,
 ): boolean {
   const ext = path.extname(fileName).toLowerCase();
   const allowed = ALLOWED[kind];
   if (allowed.includes(mimeType)) return true;
-  if (kind === "mindmap" && ext === ".json") return true;
+
+  if (kind === "lesson" && [".html", ".htm"].includes(ext)) return true;
+  if (kind === "mindmap" && [".html", ".htm", ".json"].includes(ext)) return true;
   if (kind === "infographic" && [".png", ".jpg", ".jpeg", ".webp", ".pdf"].includes(ext)) {
     return true;
   }
@@ -85,12 +101,12 @@ export function isAllowedCourseAsset(
   return false;
 }
 
-/** Store course media on local disk only — no database blob storage. */
+/** Store course media on local disk (public/course-assets). */
 export async function storeCourseAsset(
   buffer: Buffer,
   originalName: string,
   mimeType: string,
-  kind: "video" | "mindmap" | "infographic",
+  kind: CourseAssetKind,
 ): Promise<{ assetUrl: string; mimeType: string; originalName: string }> {
   if (buffer.length > MAX_BYTES) {
     throw new Error("File exceeds the 100 MB limit.");
@@ -100,22 +116,29 @@ export async function storeCourseAsset(
   }
 
   ensureDir();
-  const ext =
-    path.extname(originalName).toLowerCase() ||
-    EXT_BY_MIME[mimeType] ||
-    ".bin";
+  let ext = path.extname(originalName).toLowerCase();
+  if (!ext) {
+    ext = EXT_BY_MIME[mimeType] || ".bin";
+  }
+  if (ext === ".htm") ext = ".html";
+
+  const resolvedMime =
+    mimeType && mimeType !== "application/octet-stream"
+      ? mimeType
+      : mimeFromFilename(`file${ext}`);
+
   const filename = `${crypto.randomUUID()}${ext}`;
   const assetUrl = `/course-assets/${filename}`;
   const filePath = path.join(ASSETS_DIR, filename);
 
   fs.writeFileSync(filePath, buffer);
   writeMeta(filename, {
-    mimeType: mimeType || mimeFromFilename(filename),
+    mimeType: resolvedMime,
     originalName,
     sizeBytes: buffer.length,
   });
 
-  return { assetUrl, mimeType: mimeType || mimeFromFilename(filename), originalName };
+  return { assetUrl, mimeType: resolvedMime, originalName };
 }
 
 export async function getCourseAssetBuffer(assetUrl: string): Promise<{

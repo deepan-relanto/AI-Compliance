@@ -20,7 +20,7 @@ import {
 import { isValidSignatureName, normalizeSignatureName } from "@/lib/signature-canvas";
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
-import type { CourseStepRow } from "@/lib/course-step-types";
+import { isHtmlCourseAsset, type CourseStepRow } from "@/lib/course-step-types";
 import type { McqQuestion, TrainingModule, WarningHistoryEntry, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -235,7 +235,13 @@ export function CoursePlayer({
   const [badgePopup, setBadgePopup] = useState<GamificationBadge | null>(null);
 
   const currentContentStep = contentSteps[contentStepIndex];
-  const isPdfStep = currentContentStep?.stepType === "pdf";
+  const isPdfStep =
+    currentContentStep?.stepType === "pdf" &&
+    !isHtmlCourseAsset(
+      currentContentStep.config.mimeType,
+      currentContentStep.config.assetUrl,
+      currentContentStep.config.originalName,
+    );
   const isLastPdfPage = !isPdfStep || pdfPage >= pdfPages;
   const isLastContentStep = contentStepIndex >= contentSteps.length - 1;
   const isLastContentUnit = isLastContentStep && isLastPdfPage;

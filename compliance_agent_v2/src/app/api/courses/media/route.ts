@@ -1,5 +1,6 @@
 import {
   isAllowedCourseAsset,
+  type CourseAssetKind,
   storeCourseAsset,
 } from "@/lib/services/course-asset-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +10,9 @@ export const maxDuration = 120;
 
 const MAX_BYTES = 100 * 1024 * 1024;
 
-/** POST multipart: kind=video|mindmap|infographic, file=... */
+const KINDS = new Set<CourseAssetKind>(["lesson", "video", "mindmap", "infographic"]);
+
+/** POST multipart: kind=lesson|video|mindmap|infographic, file=... */
 export async function POST(req: NextRequest) {
   let formData: FormData;
   try {
@@ -24,12 +27,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const kind = String(formData.get("kind") ?? "");
+    const kind = String(formData.get("kind") ?? "") as CourseAssetKind;
     const file = formData.get("file");
 
-    if (!["video", "mindmap", "infographic"].includes(kind)) {
+    if (!KINDS.has(kind)) {
       return NextResponse.json(
-        { ok: false, message: "kind must be video, mindmap, or infographic." },
+        {
+          ok: false,
+          message: "kind must be lesson, video, mindmap, or infographic.",
+        },
         { status: 400 },
       );
     }
@@ -49,13 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    if (
-      !isAllowedCourseAsset(
-        kind as "video" | "mindmap" | "infographic",
-        file.type,
-        file.name,
-      )
-    ) {
+    if (!isAllowedCourseAsset(kind, file.type, file.name)) {
       return NextResponse.json(
         { ok: false, message: `Invalid file type for ${kind}.` },
         { status: 415 },
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       buffer,
       file.name,
       file.type || "application/octet-stream",
-      kind as "video" | "mindmap" | "infographic",
+      kind,
     );
 
     return NextResponse.json({ ok: true, ...stored });

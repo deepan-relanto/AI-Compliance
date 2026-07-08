@@ -100,8 +100,8 @@ export function ReuseCoursePanel() {
           <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           <h3 className="text-lg font-semibold text-zinc-900">Course bundle published</h3>
           <p className="max-w-md text-sm text-zinc-600">
-            Reused full bundle (PDF, video, mind map, infographic, {mcqCount} quiz questions)
-            without re-uploading assets.
+            Reused full bundle (HTML lesson, video, HTML mind map, infographic, {mcqCount} quiz
+            questions) without re-uploading assets.
           </p>
           <Button
             variant="secondary"
@@ -129,8 +129,8 @@ export function ReuseCoursePanel() {
             Push an existing course bundle to more batches
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Select a published bundle with all five steps. PDF, video, mind map, infographic,
-            and quiz are copied together — no new uploads required.
+            Select a published bundle with all five steps. HTML lesson, video, HTML mind map,
+            infographic, and quiz are copied together — no new uploads required.
           </p>
         </CardHeader>
         <CardContent className="p-6">
