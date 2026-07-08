@@ -101,6 +101,11 @@ export function MonitoringPanel() {
     }
   }, [activeTab, page, pageSize]);
 
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalCount / pageSize)),
+    [totalCount, pageSize],
+  );
+
   useEffect(() => {
     void refreshData({ preserveViewport: loading === false });
   }, [refreshData]);
@@ -120,10 +125,6 @@ export function MonitoringPanel() {
   const permanentlyFailedCount = summary.permanentlyFailedCount;
   const pendingReviewsCount = summary.pendingReviewsCount;
   const totalWarnings = summary.totalWarnings;
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(totalCount / pageSize)),
-    [totalCount, pageSize],
-  );
 
   // Sort violations: 1) Highest warning count, 2) Most recent activity
   const sortedRecords = [...records].sort((a, b) => {
