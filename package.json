@@ -15,6 +15,7 @@
     "db:seed:employees": "node scripts/db-seed-employees.mjs",
     "db:reset-course-assignments": "node scripts/db-reset-course-assignments.mjs",
     "db:sync-course-assets": "node scripts/db-sync-course-assets.mjs",
+    "db:verify-course-assets": "node scripts/db-verify-course-assets.mjs",
     "db:clear-modules": "node scripts/db-clear-modules.mjs",
     "db:clear-progress": "node scripts/db-clear-progress.mjs",
     "db:fix-failed-scores": "node scripts/db-fix-failed-scores.mjs",
