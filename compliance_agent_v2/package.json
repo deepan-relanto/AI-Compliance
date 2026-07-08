@@ -13,6 +13,8 @@
     "db:seed": "node scripts/db-seed.mjs",
     "db:seed:relanto": "node scripts/db-seed-relanto-users.mjs",
     "db:seed:employees": "node scripts/db-seed-employees.mjs",
+    "db:reset-course-assignments": "node scripts/db-reset-course-assignments.mjs",
+    "db:sync-course-assets": "node scripts/db-sync-course-assets.mjs",
     "db:clear-modules": "node scripts/db-clear-modules.mjs",
     "db:clear-progress": "node scripts/db-clear-progress.mjs",
     "db:fix-failed-scores": "node scripts/db-fix-failed-scores.mjs",
@@ -36,6 +38,7 @@
     "react-dom": "^19.1.0",
     "react-pdf": "^9.2.1",
     "tailwind-merge": "^3.3.0",
+    "ws": "^8.21.0",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
