@@ -1,10 +1,12 @@
 import { getSql } from "@/lib/db";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import { reuseCourseModuleDb } from "@/lib/services/course-service";
+import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** POST — clone a published course bundle to new batches */
+/** POST — clone a published course bundle to new batches and email learners */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -31,11 +33,21 @@ export async function POST(req: NextRequest) {
       batchIds,
     });
 
+    invalidateAdminCaches();
+    const invites = await sendModuleInvitationEmails(sql, result.id);
+    const message =
+      invites.sent > 0
+        ? `Course "${title.trim()}" published with ${result.mcqCount} question(s). ${invites.message}`
+        : invites.failed > 0
+          ? `Course published, but email failed: ${invites.message}`
+          : `Course "${title.trim()}" published with ${result.mcqCount} question(s). ${invites.message}`;
+
     return NextResponse.json({
       ok: true,
       moduleId: result.id,
       mcqCount: result.mcqCount,
-      message: `Course "${title.trim()}" published with ${result.mcqCount} question(s).`,
+      message,
+      invites,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Reuse failed";

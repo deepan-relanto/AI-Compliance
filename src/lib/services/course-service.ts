@@ -306,6 +306,12 @@ export async function publishCourseModuleDb(
     ? (await sql`SELECT id FROM batches`).map((r) => r.id as string)
     : batchIds;
 
+  // Clear prior invite history so republish emails go out again
+  await sql`
+    DELETE FROM training_notifications
+    WHERE module_id = ${moduleId} AND notification_type = 'invited'
+  `;
+
   await sql`DELETE FROM module_batches WHERE module_id = ${moduleId}`;
   for (const batchId of ids) {
     await sql`

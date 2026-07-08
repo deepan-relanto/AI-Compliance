@@ -240,6 +240,9 @@ export function CourseBuilderPanel() {
         setError(data.message ?? "Publish failed.");
         return;
       }
+      if (typeof data.message === "string" && data.message.trim()) {
+        setSuccessMsg(data.message);
+      }
       markComplete("publish");
       setStep("done");
     } catch {
@@ -595,9 +598,8 @@ export function CourseBuilderPanel() {
               <CheckCircle2 className="h-12 w-12 text-emerald-500" />
               <h3 className="text-lg font-semibold text-zinc-900">Course bundle published</h3>
               <p className="max-w-md text-sm text-zinc-600">
-                Learners in the selected batches will see this course under My training. The full
-                bundle (HTML lesson, video, HTML mind map, infographic,{" "}
-                {questionCount || "quiz"} questions) is stored and available for reuse.
+                {successMsg ??
+                  `Learners in the selected batches will see this course under My training. The full bundle (HTML lesson, video, HTML mind map, infographic, ${questionCount || "quiz"} questions) is stored and available for reuse.`}
               </p>
               <Button variant="secondary" onClick={resetForm}>
                 Build another course
