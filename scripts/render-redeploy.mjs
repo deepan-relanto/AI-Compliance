@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const SERVICE_ID = "srv-d8j4pum47okc739t3c30";
+const SERVICE_ID = "srv-d972b3naqgkc73cpj610";
 const REPO = "https://github.com/deepan-relanto/AI-Compliance";
 
 function readRenderKey() {

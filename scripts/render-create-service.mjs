@@ -7,8 +7,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const OWNER_ID = "tea-d8j4nse7r5hc73dge4mg";
-const PROD_URL = "https://compliance-agent.onrender.com";
+const OWNER_ID = "tea-d84vg2mk1jcs73an97bg";
+const PROD_URL = "https://compliance-agent-j3na.onrender.com";
 
 function readRenderKey() {
   const cfg = fs.readFileSync(path.join(os.homedir(), ".render", "cli.yaml"), "utf8");
@@ -63,8 +63,9 @@ const payload = {
   type: "web_service",
   name: "compliance-agent",
   ownerId: OWNER_ID,
-  repo: "https://github.com/deepan-relanto/compliance_agent_v2",
+  repo: "https://github.com/deepan-relanto/AI-Compliance",
   branch: "main",
+  rootDir: "compliance_agent_v2",
   autoDeploy: "yes",
   envVars: [
     { key: "NODE_VERSION", value: "22" },
@@ -83,7 +84,7 @@ const payload = {
   serviceDetails: {
     runtime: "node",
     region: "oregon",
-    plan: "starter",
+    plan: "free",
     healthCheckPath: "/api/auth/status",
     envSpecificDetails: {
       buildCommand: "npm install && npm run build",
