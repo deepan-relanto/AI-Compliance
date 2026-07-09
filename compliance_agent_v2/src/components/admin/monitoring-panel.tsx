@@ -23,7 +23,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
@@ -106,8 +106,10 @@ export function MonitoringPanel() {
     [totalCount, pageSize],
   );
 
+  const initialLoadDone = useRef(false);
   useEffect(() => {
-    void refreshData({ preserveViewport: loading === false });
+    void refreshData({ preserveViewport: initialLoadDone.current });
+    initialLoadDone.current = true;
   }, [refreshData]);
 
   if (loading) {
@@ -732,6 +734,8 @@ export function MonitoringPanel() {
                         <p className="text-[10px] font-medium text-zinc-500 mb-1">
                           Electronic signature
                         </p>
+                        {/* Data-URL signature from learner attestation — not a static asset */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={selectedRecord.acknowledgement.digitalSignature}
                           alt={`Signature: ${selectedRecord.acknowledgement.userName}`}

@@ -49,6 +49,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
+    "@types/ws": "^8.18.1",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",
     "postgres": "^3.4.5",
