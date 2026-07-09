@@ -1,5 +1,6 @@
 "use client";
 
+import { InviteResultBanner } from "@/components/admin/invite-result-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import {
   COURSE_STEP_ORDER,
   type CourseStepType,
 } from "@/lib/course-step-types";
+import type { InviteSendResult } from "@/lib/invite-result";
 import { postFormWithProgress } from "@/lib/upload-with-progress";
 import { cn } from "@/lib/utils";
 import {
@@ -71,6 +73,7 @@ export function CourseBuilderPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [publishInvites, setPublishInvites] = useState<InviteSendResult | undefined>();
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [questionCount, setQuestionCount] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -243,6 +246,7 @@ export function CourseBuilderPanel() {
       if (typeof data.message === "string" && data.message.trim()) {
         setSuccessMsg(data.message);
       }
+      setPublishInvites(data.invites);
       markComplete("publish");
       setStep("done");
     } catch {
@@ -264,6 +268,7 @@ export function CourseBuilderPanel() {
     setHtmlPreviewUrl(null);
     setError(null);
     setSuccessMsg(null);
+    setPublishInvites(undefined);
     setQuestionCount(0);
   }, [htmlPreviewUrl]);
 
@@ -601,6 +606,7 @@ export function CourseBuilderPanel() {
                 {successMsg ??
                   `Learners in the selected batches will see this course under My training. The full bundle (HTML lesson, video, HTML mind map, infographic, ${questionCount || "quiz"} questions) is stored and available for reuse.`}
               </p>
+              <InviteResultBanner invites={publishInvites} />
               <Button variant="secondary" onClick={resetForm}>
                 Build another course
               </Button>

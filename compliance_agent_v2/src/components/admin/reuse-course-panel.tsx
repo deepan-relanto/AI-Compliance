@@ -1,14 +1,17 @@
 "use client";
 
+import { InviteResultBanner } from "@/components/admin/invite-result-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useBatches } from "@/hooks/use-batches";
 import type { CourseLibraryItem } from "@/lib/course-step-types";
+import type { InviteSendResult } from "@/lib/invite-result";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   GraduationCap,
   Layers,
   Loader2,
@@ -17,17 +20,25 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+type DoneState = {
+  mode: "assign" | "clone";
+  invites?: InviteSendResult;
+  mcqCount: number;
+  bundleTitle: string;
+};
+
 export function ReuseCoursePanel() {
   const { batches } = useBatches();
   const [library, setLibrary] = useState<CourseLibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
+  const [cloneTitle, setCloneTitle] = useState("");
+  const [showClone, setShowClone] = useState(false);
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [doneMsg, setDoneMsg] = useState<string | null>(null);
-  const [mcqCount, setMcqCount] = useState(0);
+  const [done, setDone] = useState<DoneState | null>(null);
+  const [mailReady, setMailReady] = useState<boolean | null>(null);
 
   const loadLibrary = useCallback(async () => {
     setLoading(true);
@@ -47,6 +58,18 @@ export function ReuseCoursePanel() {
   useEffect(() => {
     void loadLibrary();
   }, [loadLibrary]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/mail/status");
+        const data = await res.json();
+        setMailReady(Boolean(data.ok));
+      } catch {
+        setMailReady(null);
+      }
+    })();
+  }, []);
 
   const selected = library.find((m) => m.id === selectedId);
 
@@ -75,8 +98,12 @@ export function ReuseCoursePanel() {
         setError(data.message ?? "Could not assign course.");
         return;
       }
-      setMcqCount(selected.mcqCount);
-      setDoneMsg(data.message ?? "Course assigned. Invitation emails sent when mail is configured.");
+      setDone({
+        mode: "assign",
+        invites: data.invites,
+        mcqCount: selected.mcqCount,
+        bundleTitle: selected.title,
+      });
     } catch {
       setError("Could not reach the server.");
     } finally {
@@ -86,9 +113,15 @@ export function ReuseCoursePanel() {
 
   async function handleClone() {
     if (!selected) return;
-    const trimmed = title.trim();
+    const trimmed = cloneTitle.trim();
     if (!trimmed || trimmed.length < 3) {
-      setError("Enter a title (at least 3 characters) to clone as a new course.");
+      setError("Enter a new title (at least 3 characters) for the cloned copy.");
+      return;
+    }
+    if (trimmed.toLowerCase() === selected.title.trim().toLowerCase()) {
+      setError(
+        'Same title as the source bundle. Use "Assign & email batches" instead, or pick a different title for a clone.',
+      );
       return;
     }
     if (selectedBatchIds.length === 0) {
@@ -110,11 +143,15 @@ export function ReuseCoursePanel() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.message ?? "Could not publish course.");
+        setError(data.message ?? "Could not clone course.");
         return;
       }
-      setMcqCount(data.mcqCount ?? selected.mcqCount);
-      setDoneMsg(data.message ?? "Course cloned and published.");
+      setDone({
+        mode: "clone",
+        invites: data.invites,
+        mcqCount: data.mcqCount ?? selected.mcqCount,
+        bundleTitle: trimmed,
+      });
     } catch {
       setError("Could not reach the server.");
     } finally {
@@ -122,22 +159,29 @@ export function ReuseCoursePanel() {
     }
   }
 
-  if (doneMsg) {
+  if (done) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
           <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-          <h3 className="text-lg font-semibold text-zinc-900">Course bundle assigned</h3>
+          <h3 className="text-lg font-semibold text-zinc-900">
+            {done.mode === "assign" ? "Bundle assigned" : "Bundle cloned"}
+          </h3>
           <p className="max-w-md text-sm text-zinc-600">
-            {doneMsg}
-            {mcqCount ? ` (${mcqCount} quiz questions).` : ""}
+            <strong>{done.bundleTitle}</strong> — {done.mcqCount} quiz question
+            {done.mcqCount === 1 ? "" : "s"}.
+            {done.mode === "assign"
+              ? " The same course bundle was assigned to the selected batches."
+              : " A new copy was created and assigned."}
           </p>
+          <InviteResultBanner invites={done.invites} />
           <Button
             variant="secondary"
             onClick={() => {
-              setDoneMsg(null);
+              setDone(null);
               setSelectedId(null);
-              setTitle("");
+              setCloneTitle("");
+              setShowClone(false);
               setSelectedBatchIds([]);
               void loadLibrary();
             }}
@@ -155,12 +199,18 @@ export function ReuseCoursePanel() {
         <CardHeader className="border-b border-zinc-100">
           <p className="section-label">Course reuse library</p>
           <h2 className="mt-1 text-base font-semibold text-zinc-900">
-            Assign an existing course bundle and email learners
+            Assign an existing bundle and email learners
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
-            Pick your published bundle, choose batches, then Assign &amp; email. Learners with a
-            Microsoft account in those batches get an invitation link.
+            Select your bundle, choose batches, then click <strong>Assign &amp; email</strong>.
+            This reuses the same bundle — it does not create a duplicate.
           </p>
+          {mailReady === false && (
+            <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Mail is not fully configured on this server. Bundles can still be assigned, but
+              invitation emails will not send until MAIL_FROM_ADDRESS and Azure Mail.Send are set.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="p-6">
           {loading ? (
@@ -186,7 +236,8 @@ export function ReuseCoursePanel() {
                     type="button"
                     onClick={() => {
                       setSelectedId(item.id);
-                      setTitle(item.title);
+                      setCloneTitle("");
+                      setShowClone(false);
                       setError(null);
                     }}
                     className={cn(
@@ -209,6 +260,11 @@ export function ReuseCoursePanel() {
                           {item.stepCount} steps · {item.mcqCount} questions · ~
                           {item.durationMinutes} min
                         </p>
+                        {item.batches.length > 0 && (
+                          <p className="mt-1 text-[10px] text-zinc-400">
+                            Currently on: {item.batches.map((b) => b.label).join(", ")}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -222,7 +278,13 @@ export function ReuseCoursePanel() {
       {selected && (
         <Card>
           <CardHeader className="border-b border-zinc-100">
-            <h3 className="text-sm font-semibold text-zinc-900">Assign to batches</h3>
+            <h3 className="text-sm font-semibold text-zinc-900">
+              Assign &quot;{selected.title}&quot; to batches
+            </h3>
+            <p className="text-xs text-zinc-500">
+              Learners with <code className="text-zinc-600">role=user</code> and a matching{" "}
+              <code className="text-zinc-600">batch_id</code> receive an invitation email.
+            </p>
           </CardHeader>
           <CardContent className="space-y-5 p-6">
             <div className="space-y-2">
@@ -248,24 +310,13 @@ export function ReuseCoursePanel() {
               })}
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-zinc-700">
-                Optional — new title if cloning a copy
-              </label>
-              <Input
-                className="mt-1.5"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Only needed for Clone as new course"
-              />
-            </div>
-
             {error && (
               <p className="flex items-center gap-2 text-sm text-red-600">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {error}
               </p>
             )}
+
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="primary"
@@ -279,21 +330,48 @@ export function ReuseCoursePanel() {
                 )}
                 Assign &amp; email batches
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => void handleClone()}
-                disabled={publishing}
-              >
-                {publishing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCcw className="h-4 w-4" />
-                )}
-                Clone as new course
-              </Button>
               <Button variant="ghost" size="sm" onClick={() => void loadLibrary()}>
                 Refresh library
               </Button>
+            </div>
+
+            <div className="border-t border-zinc-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowClone((v) => !v)}
+                className="flex w-full items-center gap-2 text-left text-xs font-medium text-zinc-500 hover:text-zinc-700"
+              >
+                <ChevronDown
+                  className={cn("h-4 w-4 transition-transform", showClone && "rotate-180")}
+                />
+                Advanced: clone as a separate copy (creates a new bundle)
+              </button>
+              {showClone && (
+                <div className="mt-3 space-y-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4">
+                  <p className="text-xs text-zinc-600">
+                    Only use this if you need a second, independent course record. You must enter a{" "}
+                    <strong>different title</strong> than &quot;{selected.title}&quot;.
+                  </p>
+                  <Input
+                    value={cloneTitle}
+                    onChange={(e) => setCloneTitle(e.target.value)}
+                    placeholder={`e.g. ${selected.title} — Q2 cohort`}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleClone()}
+                    disabled={publishing || !cloneTitle.trim()}
+                  >
+                    {publishing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="h-4 w-4" />
+                    )}
+                    Clone as new course
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
