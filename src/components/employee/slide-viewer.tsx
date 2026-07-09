@@ -717,6 +717,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     totalSlides,
     slideIndex,
     quizOnlyIndex,
+    module.moduleKind,
   ]);
 
   const closeAfterCompletion = useCallback(() => {

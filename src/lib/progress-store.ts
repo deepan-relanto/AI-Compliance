@@ -9,7 +9,6 @@
 
 import type { ModuleStatus, WarningHistoryEntry, AssessmentAcknowledgement } from "./types";
 import { logAudit } from "./audit-store";
-import { isPassingScore } from "./constants";
 
 export interface AssessmentProgress {
   username: string;

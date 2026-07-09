@@ -3,7 +3,6 @@ import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 export type SqlClient = NeonQueryFunction<false, false>;
 
 declare global {
-  // eslint-disable-next-line no-var
   var __complianceSql: SqlClient | undefined;
 }
 
