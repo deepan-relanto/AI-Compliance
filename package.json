@@ -14,6 +14,7 @@
     "db:seed:relanto": "node scripts/db-seed-relanto-users.mjs",
     "db:seed:employees": "node scripts/db-seed-employees.mjs",
     "db:reset-course-assignments": "node scripts/db-reset-course-assignments.mjs",
+    "db:update-bundle-html": "node scripts/db-update-bundle-html.mjs",
     "db:sync-course-assets": "node scripts/db-sync-course-assets.mjs",
     "db:verify-course-assets": "node scripts/db-verify-course-assets.mjs",
     "db:clear-modules": "node scripts/db-clear-modules.mjs",

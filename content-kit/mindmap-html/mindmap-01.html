@@ -243,6 +243,7 @@
         stroke: url(#linkGradient);
         stroke-width: 1.75;
         opacity: 0.88;
+        marker-end: url(#arrowEnd);
       }
 
       .node { cursor: pointer; }
@@ -374,13 +375,27 @@
         #search { order: 3; margin-left: 0; max-width: none; width: 100%; }
         #viewport { top: 108px; }
       }
+
+      body.embed #topbar,
+      body.embed #hint,
+      body.embed #zoomBadge {
+        display: none !important;
+      }
+
+      body.embed #viewport {
+        top: 0 !important;
+      }
+
+      body.embed {
+        background: var(--background);
+      }
     </style>
   </head>
   <body>
     <div id="shell">
       <header id="topbar">
         <div class="brand">
-          <img src="./assets/relanto-logo.png" alt="Relanto" />
+          <img src="/relanto-logo.png" alt="Relanto" />
           <div class="brand-copy">
             <strong>Relanto</strong>
             <span>Compliance Agent</span>
@@ -649,6 +664,9 @@
       const svg = document.getElementById("svg");
       const searchEl = document.getElementById("search");
       const zoomBadge = document.getElementById("zoomBadge");
+      const urlParams = new URLSearchParams(window.location.search);
+      const embedMode = urlParams.get("embed") === "1";
+      if (embedMode) document.body.classList.add("embed");
 
       /* Horizontal (left → right) layout — matches NotebookLM screenshots */
       const NODE_H = 40;
@@ -795,9 +813,22 @@
           <feDropShadow dx="0" dy="2" stdDeviation="3.5" flood-color="#18181b" flood-opacity="0.07"/>
         `;
 
+        const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        arrowEnd.id = "arrowEnd";
+        arrowEnd.setAttribute("markerWidth", "8");
+        arrowEnd.setAttribute("markerHeight", "8");
+        arrowEnd.setAttribute("refX", "7");
+        arrowEnd.setAttribute("refY", "4");
+        arrowEnd.setAttribute("orient", "auto");
+        arrowEnd.setAttribute("markerUnits", "strokeWidth");
+        arrowEnd.innerHTML = `
+          <path d="M0,0 L8,4 L0,8 Z" fill="#2e3192" fill-opacity="0.55"/>
+        `;
+
         defs.appendChild(rootFill);
         defs.appendChild(linkGradient);
         defs.appendChild(nodeShadow);
+        defs.appendChild(arrowEnd);
         svg.appendChild(defs);
       }
 
@@ -806,11 +837,11 @@
       }
 
       function drawCurve(x1, y1, x2, y2) {
-        const midX = (x1 + x2) / 2;
+        const dx = Math.max(48, Math.abs(x2 - x1) * 0.42);
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute(
           "d",
-          `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`,
+          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
         );
         path.setAttribute("class", "link");
         svg.appendChild(path);
@@ -884,14 +915,16 @@
         const parentSize = sizes.get(node.id);
         if (!parent || !parentSize) return;
 
-        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 4 : 0);
+        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 8 : 4);
         const y1 = parent.y + parentSize.h / 2;
 
         for (const child of kids) {
           const childPos = positions.get(child.id);
           const childSize = sizes.get(child.id);
           if (!childPos || !childSize) continue;
-          drawCurve(x1, y1, childPos.x, childPos.y + childSize.h / 2);
+          const x2 = childPos.x - 6;
+          const y2 = childPos.y + childSize.h / 2;
+          drawCurve(x1, y1, x2, y2);
           renderLinks(child, positions, sizes);
         }
       }

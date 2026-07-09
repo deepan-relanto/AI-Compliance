@@ -237,6 +237,15 @@ export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   buffer: Buffer;
   mimeType: string;
 }> {
+  const meta = await getCourseAssetMeta(assetUrl);
+  const chunk = await readCourseAssetRange(assetUrl, 0, meta.size - 1);
+  return { buffer: chunk.buffer, mimeType: chunk.mimeType };
+}
+
+export async function getCourseAssetMeta(assetUrl: string): Promise<{
+  size: number;
+  mimeType: string;
+}> {
   const relative = assetUrl.replace(/^\//, "");
   const publicRoot = path.join(process.cwd(), "public");
   const localPath = path.normalize(path.join(publicRoot, relative));
@@ -244,8 +253,9 @@ export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   if (localPath.startsWith(publicRoot) && fs.existsSync(localPath)) {
     const filename = path.basename(localPath);
     const meta = readMeta(filename);
+    const stat = fs.statSync(localPath);
     return {
-      buffer: fs.readFileSync(localPath),
+      size: stat.size,
       mimeType: meta?.mimeType ?? mimeFromFilename(filename),
     };
   }
@@ -253,27 +263,74 @@ export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   const filename = courseAssetUrlToFilename(assetUrl);
   const sql = getSql();
   const rows = await sql`
-    SELECT data, mime_type FROM course_assets WHERE filename = ${filename} LIMIT 1
+    SELECT length(data)::int AS size, mime_type
+    FROM course_assets
+    WHERE filename = ${filename}
+    LIMIT 1
+  `;
+  if (rows.length === 0 || rows[0].size == null) {
+    throw new Error("Asset not found.");
+  }
+  return {
+    size: Number(rows[0].size),
+    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
+  };
+}
+
+/** Read a byte range without loading the entire asset when served from Neon. */
+export async function readCourseAssetRange(
+  assetUrl: string,
+  start: number,
+  end: number,
+): Promise<{ buffer: Buffer; mimeType: string; size: number }> {
+  if (start < 0 || end < start) {
+    throw new Error("Invalid byte range.");
+  }
+
+  const relative = assetUrl.replace(/^\//, "");
+  const publicRoot = path.join(process.cwd(), "public");
+  const localPath = path.normalize(path.join(publicRoot, relative));
+
+  if (localPath.startsWith(publicRoot) && fs.existsSync(localPath)) {
+    const filename = path.basename(localPath);
+    const meta = readMeta(filename);
+    const stat = fs.statSync(localPath);
+    const safeEnd = Math.min(end, stat.size - 1);
+    const length = safeEnd - start + 1;
+    const fd = fs.openSync(localPath, "r");
+    try {
+      const buffer = Buffer.alloc(length);
+      fs.readSync(fd, buffer, 0, length, start);
+      return {
+        buffer,
+        mimeType: meta?.mimeType ?? mimeFromFilename(filename),
+        size: stat.size,
+      };
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+
+  const filename = courseAssetUrlToFilename(assetUrl);
+  const sql = getSql();
+  const length = end - start + 1;
+  const rows = await sql`
+    SELECT
+      length(data)::int AS size,
+      mime_type,
+      substring(data FROM ${start + 1} FOR ${length}) AS chunk
+    FROM course_assets
+    WHERE filename = ${filename}
+    LIMIT 1
   `;
 
-  if (rows.length === 0 || rows[0].data == null) {
+  if (rows.length === 0 || rows[0].size == null || rows[0].chunk == null) {
     throw new Error("Asset not found.");
   }
 
-  const buffer = bufferFromDbValue(rows[0].data);
-  const mimeType = String(rows[0].mime_type ?? mimeFromFilename(filename));
-
-  try {
-    ensureDir();
-    fs.writeFileSync(path.join(ASSETS_DIR, filename), buffer);
-    writeMeta(filename, {
-      mimeType,
-      originalName: filename,
-      sizeBytes: buffer.length,
-    });
-  } catch {
-    /* disk cache optional */
-  }
-
-  return { buffer, mimeType };
+  return {
+    buffer: bufferFromDbValue(rows[0].chunk),
+    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
+    size: Number(rows[0].size),
+  };
 }

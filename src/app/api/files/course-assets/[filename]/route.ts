@@ -1,4 +1,4 @@
-import { getCourseAssetBuffer } from "@/lib/services/course-asset-service";
+import { getCourseAssetBuffer, readCourseAssetRange } from "@/lib/services/course-asset-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -27,18 +27,28 @@ export async function GET(
     return NextResponse.json({ ok: false, message: "Invalid file." }, { status: 400 });
   }
 
-  try {
-    const { buffer, mimeType } = await getCourseAssetBuffer(`/course-assets/${filename}`);
-    const size = buffer.length;
-    const range = parseRange(req.headers.get("range"), size);
+  const assetUrl = `/course-assets/${filename}`;
 
-    if (range) {
-      const chunk = buffer.subarray(range.start, range.end + 1);
-      return new NextResponse(new Uint8Array(chunk), {
+  try {
+    const rangeHeader = req.headers.get("range");
+
+    if (rangeHeader) {
+      const { getCourseAssetMeta } = await import("@/lib/services/course-asset-service");
+      const meta = await getCourseAssetMeta(assetUrl);
+      const range = parseRange(rangeHeader, meta.size);
+      if (!range) {
+        return new NextResponse(null, { status: 416 });
+      }
+      const { buffer, mimeType, size } = await readCourseAssetRange(
+        assetUrl,
+        range.start,
+        range.end,
+      );
+      return new NextResponse(new Uint8Array(buffer), {
         status: 206,
         headers: {
           "Content-Type": mimeType,
-          "Content-Length": String(chunk.length),
+          "Content-Length": String(buffer.length),
           "Content-Range": `bytes ${range.start}-${range.end}/${size}`,
           "Accept-Ranges": "bytes",
           "Cache-Control": "private, max-age=3600",
@@ -46,11 +56,12 @@ export async function GET(
       });
     }
 
+    const { buffer, mimeType } = await getCourseAssetBuffer(assetUrl);
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": mimeType,
-        "Content-Length": String(size),
+        "Content-Length": String(buffer.length),
         "Accept-Ranges": "bytes",
         "Cache-Control": "private, max-age=3600",
       },
