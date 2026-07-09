@@ -65,6 +65,8 @@ const envVars = [
 
 await api("PUT", `/services/${SERVICE_ID}/env-vars`, envVars);
 console.log("Env vars set.");
+console.log("  AUTH_URL =", PROD_URL);
+console.log("  NEXTAUTH_URL =", PROD_URL);
 
 await api("PATCH", `/services/${SERVICE_ID}`, {
   serviceDetails: {
@@ -72,6 +74,12 @@ await api("PATCH", `/services/${SERVICE_ID}`, {
   },
 });
 console.log("Health check path set.");
+
+const service = await api("GET", `/services/${SERVICE_ID}`);
+if (service?.suspended === "suspended") {
+  console.log("Resuming suspended service…");
+  await api("POST", `/services/${SERVICE_ID}/resume`, {});
+}
 
 const deploy = await api("POST", `/services/${SERVICE_ID}/deploys`, {
   clearCache: "clear",
