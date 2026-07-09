@@ -21,6 +21,12 @@ import { isValidSignatureName, normalizeSignatureName } from "@/lib/signature-ca
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import { isHtmlCourseAsset, type CourseStepRow } from "@/lib/course-step-types";
+import {
+  COURSE_EMBED_COMMAND,
+  COURSE_EMBED_EVENT,
+  isCourseEmbedState,
+  type CourseEmbedState,
+} from "@/lib/course-embed";
 import type { McqQuestion, TrainingModule, WarningHistoryEntry, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -234,7 +240,17 @@ export function CoursePlayer({
   const [earnedBadges, setEarnedBadges] = useState<GamificationBadge[]>([]);
   const [badgePopup, setBadgePopup] = useState<GamificationBadge | null>(null);
 
+  const [htmlEmbedState, setHtmlEmbedState] = useState<CourseEmbedState | null>(null);
+  const htmlIframeRef = useRef<HTMLIFrameElement | null>(null);
+
   const currentContentStep = contentSteps[contentStepIndex];
+  const isHtmlLessonStep =
+    currentContentStep?.stepType === "pdf" &&
+    isHtmlCourseAsset(
+      currentContentStep.config.mimeType,
+      currentContentStep.config.assetUrl,
+      currentContentStep.config.originalName,
+    );
   const isPdfStep =
     currentContentStep?.stepType === "pdf" &&
     !isHtmlCourseAsset(
@@ -243,8 +259,10 @@ export function CoursePlayer({
       currentContentStep.config.originalName,
     );
   const isLastPdfPage = !isPdfStep || pdfPage >= pdfPages;
+  const isLastHtmlSlide =
+    !isHtmlLessonStep || (htmlEmbedState?.atEnd ?? false);
   const isLastContentStep = contentStepIndex >= contentSteps.length - 1;
-  const isLastContentUnit = isLastContentStep && isLastPdfPage;
+  const isLastContentUnit = isLastContentStep && isLastPdfPage && isLastHtmlSlide;
 
   const totalQuestions = moduleMcqs.length;
   const totalPossibleScore = totalQuestions * POINTS_PER_MCQ;
@@ -371,7 +389,12 @@ export function CoursePlayer({
     }
     const stepFraction =
       contentSteps.length > 0
-        ? (contentStepIndex + (isPdfStep ? (pdfPage - 1) / Math.max(pdfPages, 1) : 1)) /
+        ? (contentStepIndex +
+            (isPdfStep
+              ? (pdfPage - 1) / Math.max(pdfPages, 1)
+              : isHtmlLessonStep && htmlEmbedState
+                ? (htmlEmbedState.slideIndex + 1) / Math.max(htmlEmbedState.slideCount, 1)
+                : 1)) /
           contentSteps.length
         : 0;
     return (stepFraction * contentSteps.length) / totalUnits * 100;
@@ -379,6 +402,8 @@ export function CoursePlayer({
     answeredCount,
     contentStepIndex,
     contentSteps.length,
+    htmlEmbedState,
+    isHtmlLessonStep,
     isPdfStep,
     pdfPage,
     pdfPages,
@@ -698,6 +723,15 @@ export function CoursePlayer({
 
   const tryAdvanceContent = useCallback(() => {
     if (phase !== "content" || quizOnlyMode) return;
+    if (isHtmlLessonStep) {
+      if (!htmlEmbedState?.atEnd) {
+        htmlIframeRef.current?.contentWindow?.postMessage(
+          { type: COURSE_EMBED_COMMAND, command: "next" },
+          "*",
+        );
+        return;
+      }
+    }
     if (isPdfStep && !pdfReady) return;
     if (isPdfStep && pdfPage < pdfPages) {
       setPdfPage((p) => p + 1);
@@ -708,6 +742,7 @@ export function CoursePlayer({
         setContentStepIndex((i) => i + 1);
         setPdfPage(1);
         setPdfPages(currentContentStep?.config.pageCount ?? 1);
+        setHtmlEmbedState(null);
       }
       return;
     }
@@ -715,6 +750,8 @@ export function CoursePlayer({
   }, [
     phase,
     quizOnlyMode,
+    isHtmlLessonStep,
+    htmlEmbedState?.atEnd,
     isPdfStep,
     pdfReady,
     pdfPage,
@@ -903,6 +940,7 @@ export function CoursePlayer({
 
   useEffect(() => {
     setPdfPage(1);
+    setHtmlEmbedState(null);
     const configuredPages = currentContentStep?.config.pageCount;
     if (isPdfStep) {
       if (configuredPages && configuredPages > 0) {
@@ -917,6 +955,22 @@ export function CoursePlayer({
       setPdfReady(true);
     }
   }, [contentStepIndex, currentContentStep?.config.pageCount, isPdfStep]);
+
+  useEffect(() => {
+    const onEmbedMessage = (event: MessageEvent) => {
+      if (!isCourseEmbedState(event.data) || event.data.type !== COURSE_EMBED_EVENT) return;
+      if (event.data.kind !== "lesson") return;
+      setHtmlEmbedState({
+        kind: event.data.kind,
+        slideIndex: event.data.slideIndex,
+        slideCount: event.data.slideCount,
+        atEnd: event.data.atEnd,
+        atStart: event.data.atStart,
+      });
+    };
+    window.addEventListener("message", onEmbedMessage);
+    return () => window.removeEventListener("message", onEmbedMessage);
+  }, []);
 
   const handlePdfPagesLoaded = useCallback((pageCount: number) => {
     if (pageCount > 0) {
@@ -1113,7 +1167,9 @@ export function CoursePlayer({
           )}
           {phase === "content" && !quizOnlyMode && contentSteps.length > 0 && (
             <span className="font-mono text-xs text-zinc-400">
-              Step {contentStepIndex + 1} / {contentSteps.length}
+              {isHtmlLessonStep && htmlEmbedState
+                ? `Slide ${htmlEmbedState.slideIndex + 1} / ${htmlEmbedState.slideCount}`
+                : `Step ${contentStepIndex + 1} / ${contentSteps.length}`}
             </span>
           )}
           {phase === "quiz" && (
@@ -1210,6 +1266,7 @@ export function CoursePlayer({
                   pdfPages={pdfPages}
                   moduleTitle={module.title}
                   onPdfPages={handlePdfPagesLoaded}
+                  htmlIframeRef={htmlIframeRef}
                 />
               ) : phase === "quiz" && !mcqOpen ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -1271,7 +1328,11 @@ export function CoursePlayer({
         !showAcknowledgement &&
         !showScoreResult && (
           <footer className="relative z-[70] flex h-12 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
-            <span className="text-xs text-zinc-500">Forward only</span>
+            <span className="text-xs text-zinc-500">
+              {isHtmlLessonStep && htmlEmbedState
+                ? `Slide ${htmlEmbedState.slideIndex + 1} of ${htmlEmbedState.slideCount}`
+                : "Forward only"}
+            </span>
             <div className="flex gap-1">
               {contentSteps.map((_, i) => (
                 <div
@@ -1291,7 +1352,11 @@ export function CoursePlayer({
               onClick={tryAdvanceContent}
               className="cursor-pointer bg-[#f15a24] text-white hover:bg-[#d94e1f] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {isLastContentUnit ? "Start quiz" : "Next"}
+              {isLastContentUnit
+                ? "Start quiz"
+                : isHtmlLessonStep && htmlEmbedState && !htmlEmbedState.atEnd
+                  ? "Next slide"
+                  : "Next"}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </footer>

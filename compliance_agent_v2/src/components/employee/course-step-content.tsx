@@ -6,6 +6,8 @@ import {
   type CourseStepRow,
   type CourseStepType,
 } from "@/lib/course-step-types";
+import { clientCourseAssetUrl } from "@/lib/course-asset-url";
+import { withEmbedQuery } from "@/lib/course-embed";
 import { MindMapPlayground } from "@/components/employee/mind-map-playground";
 import { FileCode2, FileText, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -28,11 +30,32 @@ function HtmlEmbed({
   url,
   title,
   eyebrow,
+  chrome = true,
+  iframeRef,
 }: {
   url: string;
   title?: string;
   eyebrow: string;
+  chrome?: boolean;
+  iframeRef?: React.Ref<HTMLIFrameElement>;
 }) {
+  const embedUrl = withEmbedQuery(url) ?? url;
+
+  if (!chrome) {
+    return (
+      <div className="relative mx-auto flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f8f9fb]">
+        <iframe
+          ref={iframeRef}
+          key={embedUrl}
+          src={embedUrl}
+          title={title ?? eyebrow}
+          className="absolute inset-0 h-full w-full border-0"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
       <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
@@ -48,8 +71,9 @@ function HtmlEmbed({
       </div>
       <div className="relative min-h-0 flex-1 bg-white">
         <iframe
-          key={url}
-          src={url}
+          ref={iframeRef}
+          key={embedUrl}
+          src={embedUrl}
           title={title ?? eyebrow}
           className="absolute inset-0 h-full w-full border-0"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
@@ -65,15 +89,17 @@ export function CourseStepContent({
   pdfPages,
   moduleTitle,
   onPdfPages,
+  htmlIframeRef,
 }: {
   step: CourseStepRow;
   pdfPage: number;
   pdfPages: number;
   moduleTitle: string;
   onPdfPages: (n: number) => void;
+  htmlIframeRef?: React.Ref<HTMLIFrameElement>;
 }) {
   const Icon = STEP_ICONS[step.stepType];
-  const url = step.config.assetUrl;
+  const url = clientCourseAssetUrl(step.config.assetUrl);
   const htmlAsset = isHtmlCourseAsset(
     step.config.mimeType,
     step.config.assetUrl,
@@ -87,6 +113,8 @@ export function CourseStepContent({
           url={url}
           title={step.config.originalName ?? moduleTitle}
           eyebrow="Interactive lesson"
+          chrome={false}
+          iframeRef={htmlIframeRef}
         />
       );
     }
@@ -112,7 +140,7 @@ export function CourseStepContent({
 
   if (step.stepType === "video" && url) {
     return (
-      <div className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
           <Video className="h-4 w-4 text-violet-400" />
           <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
@@ -120,14 +148,15 @@ export function CourseStepContent({
           </p>
           <span className="truncate text-xs text-zinc-400">{step.config.originalName}</span>
         </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-black p-2">
+        <div className="relative min-h-0 flex-1 bg-black">
           <video
             key={url}
             src={url}
             controls
             controlsList="nodownload"
-            className="max-h-full max-w-full rounded-md"
+            preload="metadata"
             playsInline
+            className="absolute inset-0 h-full w-full object-contain"
           >
             Your browser does not support video playback.
           </video>
@@ -143,6 +172,7 @@ export function CourseStepContent({
           url={url}
           title={step.config.originalName}
           eyebrow="Interactive mind map"
+          chrome={false}
         />
       );
     }
@@ -160,7 +190,7 @@ export function CourseStepContent({
       );
     }
     return (
-      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 p-4">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
           Infographic
         </p>

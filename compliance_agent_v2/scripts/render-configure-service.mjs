@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 const SERVICE_ID = "srv-d8j4pum47okc739t3c30";
-const PROD_URL = "https://compliance-agent-fe1t.onrender.com";
+const PROD_URL = "https://compliance-agent-teit.onrender.com";
 
 function readRenderKey() {
   const cfg = fs.readFileSync(path.join(os.homedir(), ".render", "cli.yaml"), "utf8");
