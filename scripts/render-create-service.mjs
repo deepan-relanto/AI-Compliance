@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 
 const OWNER_ID = "tea-d84vg2mk1jcs73an97bg";
-const PROD_URL = "https://compliance-agent-j3na.onrender.com";
+const PROD_URL = "https://compliance-agent-fe1t.onrender.com";
 
 function readRenderKey() {
   const cfg = fs.readFileSync(path.join(os.homedir(), ".render", "cli.yaml"), "utf8");
