@@ -17,7 +17,7 @@ import {
   CourseProctorFailOverlay,
 } from "@/components/employee/course-player-overlays";
 import { ProctorWarningModal } from "@/components/employee/proctor-warning-modal";
-import { toProctorViolationReason } from "@/hooks/use-proctor-monitor";
+import { toProctorViolationReason, useProctorMonitor } from "@/hooks/use-proctor-monitor";
 import { isValidSignatureName, normalizeSignatureName } from "@/lib/signature-canvas";
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import {
   isCourseEmbedState,
   type CourseEmbedState,
 } from "@/lib/course-embed";
-import type { McqQuestion, TrainingModule, WarningHistoryEntry, ReviewRequest, ModuleStatus } from "@/lib/types";
+import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { ProctorRulesModal } from "@/components/employee/proctor-rules-modal";
@@ -40,24 +40,27 @@ import {
   isProctorLocked,
   markCompleted,
   getProgress,
-  addWarning,
   saveAcknowledgement,
   applyScoreResult,
   resetForScoreRetake,
   resetForProctorRetake,
   mergeServerProgress,
+  clearLocalModuleProgressIfServerAbsent,
+  clearStaleLocalProgress,
+  clearAllLocalProgressForUser,
 } from "@/lib/progress-store";
 import {
-  syncAcknowledgement,
-  syncProgressStart,
-  syncProgressComplete,
-  finalizeAssessmentScore,
-  requestScoreRetake,
-  fetchUserProgress,
-} from "@/lib/progress-api";
-import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ } from "@/lib/constants";
+  syncCourseAcknowledgement,
+  syncCourseProgressStart,
+  syncCourseProgressComplete,
+  finalizeCourseAssessmentScore,
+  requestCourseScoreRetake,
+  fetchCourseUserProgress,
+} from "@/lib/course-progress-api";
+import type { ServerProgressEntry } from "@/lib/progress-api";
+import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ, isPassingScore } from "@/lib/constants";
 import { getAllReviewRequests } from "@/lib/review-store";
-import { fetchLatestReviewRequest, submitReviewRequestApi } from "@/lib/review-api";
+import { fetchLatestCourseReviewRequest, submitCourseReviewRequestApi } from "@/lib/review-api";
 
 const FALLBACK_MCQ: McqQuestion = {
   id: "gate-fallback",
@@ -177,25 +180,13 @@ export function CoursePlayer({
   const signatureReady =
     isValidSignatureName(normalizeSignatureName(signatureName)) && !!signatureDataUrl;
 
-  const [liveWarningCount, setLiveWarningCount] = useState<number>(() => {
-    if (!user?.username) return 0;
-    const progress = getProgress(user.username, module.id);
-    return progress?.warningCount ?? 0;
-  });
-
-  const [liveWarningHistory, setLiveWarningHistory] = useState<WarningHistoryEntry[]>(() => {
-    if (!user?.username) return [];
-    const progress = getProgress(user.username, module.id);
-    return progress?.warningHistory ?? [];
-  });
-
   const [isFailed, setIsFailed] = useState<boolean>(() => {
     if (!user?.username) return false;
     const progress = getProgress(user.username, module.id);
     return progress ? isProctorLocked(progress) : false;
   });
 
-  const [activeWarningReason, setActiveWarningReason] = useState<string | null>(null);
+  const proctorRetakeStartedRef = useRef(false);
   const [retakeCount, setRetakeCount] = useState<number>(0);
   const [dbStatus, setDbStatus] = useState<ModuleStatus>("in_progress");
   const [reviewRequest, setReviewRequest] = useState<ReviewRequest | null>(null);
@@ -255,59 +246,171 @@ export function CoursePlayer({
   const liveScore = correctAnswers * POINTS_PER_MCQ;
   const totalSlides = Math.max(contentSteps.length, 1);
 
+  const handleProctorLockout = useCallback(() => {
+    setIsFailed(true);
+    setMcqOpen(false);
+  }, []);
+
+  const proctorHook = useProctorMonitor({
+    enabled:
+      sessionStarted &&
+      !showAcknowledgement &&
+      !showFinalQa &&
+      !showScoreResult &&
+      !showExitModal &&
+      !isFailed,
+    sessionActive: sessionStarted && !isFailed,
+    username: user?.username,
+    moduleId: module.id,
+    moduleTitle: module.title,
+    batchId: user?.batchId ?? "",
+    totalSlides,
+    reviewOnlyMode: false,
+    courseMode: true,
+    onLockout: handleProctorLockout,
+    onStatusChange: (status) => setDbStatus(status),
+  });
+  const liveWarningCount = proctorHook.warningCount;
+  const liveWarningHistory = proctorHook.warningHistory;
+  const activeWarningReason = toProctorViolationReason(proctorHook.activeReason);
+  const handleWarningContinue = proctorHook.handleWarningContinue;
+  const isExitingRef = proctorHook.isExitingRef;
+
   const loadIntegrityState = useCallback(async () => {
     if (!user?.username) return;
 
     const progBefore = getProgress(user.username, module.id);
     const wasLocked = progBefore ? isProctorLocked(progBefore) : false;
 
-    try {
-      const result = await fetchUserProgress(user.username);
-      const serverEntries = result.progress;
-      const mine = serverEntries.find((e) => e.moduleId === module.id);
-      const serverGrantedRetake =
-        Boolean(mine) &&
-        mine!.status === "not_started" &&
-        mine!.warningCount === 0 &&
-        wasLocked;
+    let serverEntry: ServerProgressEntry | undefined;
+    let progressFetchOk = false;
 
-      if (mine && !serverGrantedRetake) {
-        mergeServerProgress(user.username, [
-          {
-            moduleId: mine.moduleId,
-            moduleTitle: mine.moduleTitle,
-            batchId: mine.batchId,
-            currentSlide: mine.currentSlide,
-            totalSlides: mine.totalSlides,
-            status: mine.status,
-            retakeCount: mine.retakeCount,
-            mcqCorrect: mine.mcqCorrect,
-            mcqTotal: mine.mcqTotal,
-            scorePercent: mine.scorePercent,
-            warningCount: mine.warningCount,
-            failedReason: mine.failedReason,
-            completedAt: mine.completedAt,
-          },
-        ]);
-      } else if (mine && serverGrantedRetake) {
-        setRetakeCount(mine.retakeCount);
+    try {
+      const result = await fetchCourseUserProgress(user.username);
+      progressFetchOk = result.ok;
+      const entries = result.progress;
+      serverEntry = entries.find((e) => e.moduleId === module.id);
+
+      if (progressFetchOk) {
+        const serverGrantedRetake =
+          Boolean(serverEntry) &&
+          serverEntry!.status === "not_started" &&
+          serverEntry!.warningCount === 0 &&
+          wasLocked;
+
+        if (serverEntry && !serverGrantedRetake) {
+          mergeServerProgress(user.username, [
+            {
+              moduleId: serverEntry.moduleId,
+              moduleTitle: serverEntry.moduleTitle,
+              batchId: serverEntry.batchId,
+              currentSlide: serverEntry.currentSlide,
+              totalSlides: serverEntry.totalSlides,
+              status: serverEntry.status,
+              retakeCount: serverEntry.retakeCount,
+              mcqCorrect: serverEntry.mcqCorrect,
+              mcqTotal: serverEntry.mcqTotal,
+              scorePercent: serverEntry.scorePercent,
+              failedReason: serverEntry.failedReason,
+              completedAt: serverEntry.completedAt,
+              warningCount: serverEntry.warningCount,
+            },
+          ]);
+          if (serverEntry.mcqCorrect > 0) {
+            setCorrectAnswers(serverEntry.mcqCorrect);
+          }
+        } else if (serverEntry && serverGrantedRetake) {
+          setRetakeCount(serverEntry.retakeCount);
+        } else {
+          clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
+          setIsFailed(false);
+          proctorHook.hydrateFromProgress(null);
+          setRetakeCount(0);
+          setDbStatus("not_started");
+        }
+
+        if (entries.length === 0) {
+          clearAllLocalProgressForUser(user.username);
+        } else {
+          clearStaleLocalProgress(user.username, {
+            serverModuleIds: entries.map((e) => e.moduleId),
+            assignedModuleIds: [module.id],
+          });
+        }
       }
     } catch {
-      /* keep local state */
+      /* fall back to local snapshot below */
     }
+
+    const serverFresh =
+      !progressFetchOk ||
+      !serverEntry ||
+      (serverEntry.status === "not_started" &&
+        (serverEntry.warningCount ?? 0) === 0);
 
     const prog = getProgress(user.username, module.id);
     const locallyLocked = prog ? isProctorLocked(prog) : false;
 
+    if (prog && !serverFresh) {
+      setRetakeCount(prog.retakeCount ?? 0);
+      setDbStatus(prog.status);
+      setIsFailed(isProctorLocked(prog));
+      proctorHook.hydrateFromProgress(prog);
+      if (typeof prog.mcqCorrect === "number" && prog.mcqCorrect > 0) {
+        setCorrectAnswers(prog.mcqCorrect);
+      }
+
+      const storedScore = prog.scorePercent;
+      const storedMcqCorrect = prog.mcqCorrect ?? 0;
+      const storedMcqTotal = prog.mcqTotal ?? moduleMcqs.length;
+      const pendingScoreFailure =
+        storedScore != null &&
+        !isPassingScore(storedScore) &&
+        !isProctorLocked(prog) &&
+        !quizOnlyModeFromModule &&
+        !ackPendingMode;
+
+      if (pendingScoreFailure) {
+        const retakes = prog.retakeCount ?? 0;
+        setShowProctorRules(false);
+        setSessionStarted(true);
+        setSessionStartMs((current) => current ?? Date.now());
+        setScoreResult({
+          scorePercent: storedScore,
+          passed: false,
+          canRetake: retakes < 2,
+          mcqCorrect: storedMcqCorrect,
+          mcqTotal: storedMcqTotal,
+        });
+        setShowScoreResult(true);
+      }
+    } else {
+      setRetakeCount(serverEntry?.retakeCount ?? 0);
+      setDbStatus(serverEntry?.status ?? "not_started");
+      setIsFailed(false);
+      proctorHook.hydrateFromProgress(null);
+    }
+
     try {
-      const latest = await fetchLatestReviewRequest(user.username, module.id);
-      setReviewRequest(latest);
-      if (
-        latest?.status === "Approved" &&
-        (locallyLocked || wasLocked) &&
-        !proctorRetakeStartedRef.current
-      ) {
-        setAwaitingRetakeRestart(true);
+      const latest = await fetchLatestCourseReviewRequest(user.username, module.id);
+      if (serverFresh && latest?.status === "Pending") {
+        setReviewRequest(null);
+      } else {
+        setReviewRequest(latest);
+        const serverNotStarted = serverEntry?.status === "not_started";
+        if (
+          latest?.status === "Approved" &&
+          (locallyLocked || wasLocked || serverNotStarted) &&
+          !proctorRetakeStartedRef.current
+        ) {
+          if (serverNotStarted) {
+            setIsFailed(false);
+            proctorHook.hydrateFromProgress(null);
+            setDbStatus("not_started");
+            setRetakeCount(serverEntry?.retakeCount ?? prog?.retakeCount ?? 0);
+          }
+          setAwaitingRetakeRestart(true);
+        }
       }
     } catch {
       const requests = getAllReviewRequests();
@@ -324,15 +427,8 @@ export function CoursePlayer({
         setAwaitingRetakeRestart(true);
       }
     }
-
-    if (prog) {
-      setRetakeCount(prog.retakeCount ?? 0);
-      setDbStatus(prog.status);
-      setLiveWarningCount(prog.warningCount ?? 0);
-      setLiveWarningHistory(prog.warningHistory ?? []);
-      setIsFailed(locallyLocked);
-    }
-  }, [user?.username, module.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, module.id, moduleMcqs.length, ackPendingMode, quizOnlyModeFromModule]);
 
   useEffect(() => {
     loadIntegrityState();
@@ -346,25 +442,10 @@ export function CoursePlayer({
     return () => window.clearInterval(id);
   }, [user?.username, isFailed, awaitingRetakeRestart, reviewRequest?.status, loadIntegrityState]);
 
-  const isExitingRef = useRef(false);
-  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const proctorGraceUntilRef = useRef(0);
   const earnedBadgeIdsRef = useRef<Set<string>>(new Set());
   const badgeQueueRef = useRef<GamificationBadge[]>([]);
   const badgeShowingRef = useRef(false);
   const answeredQuestionIdsRef = useRef(new Set<string>());
-  const proctorRetakeStartedRef = useRef(false);
-
-  const proctorMonitorsActive = useMemo(
-    () =>
-      sessionStarted &&
-      !showAcknowledgement &&
-      !showFinalQa &&
-      !showScoreResult &&
-      !showExitModal &&
-      !isFailed,
-    [sessionStarted, showAcknowledgement, showFinalQa, showScoreResult, showExitModal, isFailed],
-  );
 
   const rawProgressPercent = useMemo(() => {
     if (showScoreResult || showAcknowledgement || showFinalQa) return 100;
@@ -513,136 +594,18 @@ export function CoursePlayer({
     }
   }, [autoStartSession, sessionStartMs]);
 
-  const handleWarningContinue = useCallback(async () => {
-    proctorGraceUntilRef.current = Date.now() + 2500;
-    setActiveWarningReason(null);
-    if (focusTimeoutRef.current) {
-      clearTimeout(focusTimeoutRef.current);
-      focusTimeoutRef.current = null;
-    }
-
-    const shouldRestoreFullscreen =
-      sessionStarted && !showAcknowledgement && !showFinalQa && !showScoreResult;
-
-    if (!shouldRestoreFullscreen) return;
-
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-      setIsFullscreen(true);
-    } catch {
-      setIsFullscreen(false);
-    }
-  }, [sessionStarted, showAcknowledgement, showFinalQa, showScoreResult]);
-
-  const triggerWarning = useCallback(
-    (reason: string) => {
-      if (!proctorMonitorsActive || isExitingRef.current || !user?.username) {
-        return;
-      }
-
-      const currentProgress = getProgress(user.username, module.id);
-      if (
-        currentProgress &&
-        (currentProgress.status === "completed" || isProctorLocked(currentProgress))
-      ) {
-        return;
-      }
-
-      const updated = addWarning(user.username, module.id, reason);
-      setLiveWarningCount(updated.warningCount);
-      setLiveWarningHistory(updated.warningHistory);
-
-      if (isProctorLocked(updated)) {
-        setIsFailed(true);
-        setActiveWarningReason(null);
-        void loadIntegrityState();
-      } else if (updated.warningCount !== liveWarningCount) {
-        setActiveWarningReason(reason);
-      }
-    },
-    [proctorMonitorsActive, user?.username, module.id, liveWarningCount, loadIntegrityState],
-  );
-
   useEffect(() => {
     const onFsChange = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (document.fullscreenElement === null) {
-        setIsFullscreen(false);
-        triggerWarning("Exited Fullscreen");
-      } else {
-        setIsFullscreen(true);
-      }
+      setIsFullscreen(document.fullscreenElement !== null);
     };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (document.visibilityState === "hidden") {
-        triggerWarning("Switched Browser Tab");
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  useEffect(() => {
-    const handleBlur = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
-      focusTimeoutRef.current = setTimeout(() => {
-        triggerWarning("Window Lost Focus");
-      }, 3000);
-    };
-
-    const handleFocus = () => {
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-        focusTimeoutRef.current = null;
-      }
-    };
-
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
-      if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
-    };
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isExitingRef.current || !user?.username) return;
-      const currentProgress = getProgress(user.username, module.id);
-      if (
-        currentProgress &&
-        (currentProgress.status === "completed" || isProctorLocked(currentProgress))
-      ) {
-        return;
-      }
-
-      addWarning(user.username, module.id, "Attempted Navigation");
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [user?.username, module.id]);
+  }, []);
 
   useEffect(() => {
     if (user?.username) {
       markInProgress(user.username, module.id, module.title, user.batchId, totalSlides);
-      void syncProgressStart({
+      void syncCourseProgressStart({
         userEmail: user.username,
         moduleId: module.id,
         moduleTitle: module.title,
@@ -661,7 +624,7 @@ export function CoursePlayer({
       return;
     }
 
-    const result = await finalizeAssessmentScore(user.username, module.id);
+    const result = await finalizeCourseAssessmentScore(user.username, module.id);
     if (result) {
       if (result.scorePercent >= 80) unlockBadge("champion");
       if (result.scorePercent === 100) unlockBadge("perfect");
@@ -772,7 +735,7 @@ export function CoursePlayer({
     setMcqOpen(false);
     if (user?.username) {
       markCompleted(user.username, module.id);
-      void syncProgressComplete(user.username, module.id);
+      void syncCourseProgressComplete(user.username, module.id);
     }
     setCompletionNotice({
       title: "Course submitted successfully",
@@ -805,7 +768,7 @@ export function CoursePlayer({
       signatureName: normalizedName,
       digitalSignature: signatureDataUrl,
     });
-    const ok = await syncAcknowledgement({
+    const ok = await syncCourseAcknowledgement({
       userEmail: user.username,
       moduleId: module.id,
       moduleTitle: module.title,
@@ -826,11 +789,10 @@ export function CoursePlayer({
   const handleScoreRetake = async () => {
     if (!user?.username) return;
     setRetakeLoading(true);
-    const res = await requestScoreRetake(user.username, module.id);
+    const res = await requestCourseScoreRetake(user.username, module.id);
     setRetakeLoading(false);
     if (!res.ok) return;
 
-    proctorGraceUntilRef.current = Date.now() + 2500;
     resetForScoreRetake(user.username, module.id);
     loadIntegrityState();
     setShowScoreResult(false);
@@ -892,12 +854,6 @@ export function CoursePlayer({
   const checkpointOpen = mcqOpen && !showAcknowledgement && !showFinalQa && !showScoreResult;
   const navLocked = checkpointOpen || !!activeWarningReason || showScoreResult;
   const passedPendingAcknowledgement = showAcknowledgement && Boolean(scoreResult?.passed);
-
-  useEffect(() => {
-    if (checkpointOpen) {
-      proctorGraceUntilRef.current = 0;
-    }
-  }, [checkpointOpen]);
 
   useEffect(() => {
     if (!sessionStarted || !ackPendingMode) return;
@@ -1014,7 +970,6 @@ export function CoursePlayer({
     try {
       await loadIntegrityState();
       resetForProctorRetake(user.username, module.id);
-      proctorGraceUntilRef.current = Date.now() + 2500;
       answeredQuestionIdsRef.current = new Set();
       resetGamificationState();
       setContentStepIndex(0);
@@ -1034,10 +989,8 @@ export function CoursePlayer({
       setShowFinalQa(false);
       setCompletionNotice(null);
       setForceQuizOnlyRetake(false);
-      setActiveWarningReason(null);
       setShowExitModal(false);
-      setLiveWarningCount(0);
-      setLiveWarningHistory([]);
+      proctorHook.hydrateFromProgress(null);
       setIsFailed(false);
       setAwaitingRetakeRestart(false);
       proctorRetakeStartedRef.current = true;
@@ -1046,7 +999,7 @@ export function CoursePlayer({
       setSessionStarted(false);
       setSessionStartMs(null);
       resetAcknowledgementForm();
-      void syncProgressStart({
+      void syncCourseProgressStart({
         userEmail: user.username,
         moduleId: module.id,
         moduleTitle: module.title,
@@ -1080,7 +1033,7 @@ export function CoursePlayer({
     setReviewSubmitting(true);
     setReviewError("");
     try {
-      const request = await submitReviewRequestApi({
+      const request = await submitCourseReviewRequestApi({
         username: user.username,
         moduleId: module.id,
         moduleTitle: module.title,
@@ -1217,7 +1170,7 @@ export function CoursePlayer({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
               transition={{ duration: 0.2 }}
-              className="flex min-h-0 flex-1 flex-col p-1 sm:p-2"
+              className="flex min-h-0 flex-1 flex-col p-0"
             >
               {quizOnlyMode ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -1406,10 +1359,10 @@ export function CoursePlayer({
         }
       />
 
-      {toProctorViolationReason(activeWarningReason) && (
+      {activeWarningReason && !isFailed && (
         <ProctorWarningModal
           open
-          reason={toProctorViolationReason(activeWarningReason)!}
+          reason={activeWarningReason}
           warningCount={liveWarningCount}
           continueLabel="Continue course"
           failMessage="One more violation will automatically fail this course attempt."
@@ -1421,11 +1374,20 @@ export function CoursePlayer({
         <CourseExitModal
           onCancel={() => setShowExitModal(false)}
           onConfirm={() => {
-            isExitingRef.current = true;
-            if (document.fullscreenElement) {
-              document.exitFullscreen().catch(() => undefined);
-            }
-            window.location.href = "/dashboard";
+            void (async () => {
+              isExitingRef.current = true;
+              if (user?.username && sessionStarted) {
+                proctorHook.recordAbandonmentFailure(
+                  activeWarningReason
+                    ? "Assessment abandoned after exiting fullscreen"
+                    : "Assessment abandoned",
+                );
+              }
+              if (document.fullscreenElement) {
+                await document.exitFullscreen().catch(() => undefined);
+              }
+              window.location.href = "/dashboard";
+            })();
           }}
         />
       )}

@@ -26,6 +26,83 @@ const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
   quiz: FileText,
 };
 
+const EMBED_SIZE_FIX_CSS = `
+html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
+body.embed .deck-shell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+body.embed .deck-shell > .deck,
+body.embed .deck {
+  position: relative !important;
+  flex-shrink: 0 !important;
+  transform-origin: center center !important;
+  overflow: hidden !important;
+}
+body.embed .slide { overflow: auto !important; box-sizing: border-box !important; }
+`;
+
+const EMBED_FIT_SCRIPT = `(function(){
+  function isEmbed(){try{return new URLSearchParams(location.search).get("embed")==="1"||document.body.classList.contains("embed");}catch(e){return false;}}
+  if(!isEmbed())return;
+  function fitEmbedDeck(){
+    var shell=document.querySelector(".deck-shell");
+    var deck=shell&&(shell.querySelector(".deck")||document.querySelector(".deck"));
+    if(!shell||!deck)return;
+    deck.style.transform="none";
+    var sw=shell.clientWidth,sh=shell.clientHeight;
+    if(sw<1||sh<1)return;
+    var dw=deck.offsetWidth,dh=deck.offsetHeight;
+    if(dw<1||dh<1)return;
+    var scale=Math.min(sw/dw,sh/dh,1);
+    deck.style.transform="scale("+scale+")";
+    deck.style.transformOrigin="center center";
+  }
+  window.relantoFitEmbedDeck=fitEmbedDeck;
+  window.addEventListener("resize",fitEmbedDeck);
+  function schedule(){setTimeout(fitEmbedDeck,0);setTimeout(fitEmbedDeck,150);}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule);
+  else schedule();
+  try{
+    var deck=document.querySelector(".deck");
+    if(deck)new MutationObserver(fitEmbedDeck).observe(deck,{attributes:true,subtree:true,attributeFilter:["class"]});
+    var shell=document.querySelector(".deck-shell");
+    if(shell&&typeof ResizeObserver!=="undefined")new ResizeObserver(fitEmbedDeck).observe(shell);
+  }catch(e){}
+})();`;
+
+function injectEmbedSizeFix(iframe: HTMLIFrameElement | null) {
+  if (!iframe) return;
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc?.head) return;
+    if (!doc.getElementById("relanto-embed-size-fix")) {
+      const style = doc.createElement("style");
+      style.id = "relanto-embed-size-fix";
+      style.textContent = EMBED_SIZE_FIX_CSS;
+      doc.head.appendChild(style);
+    }
+    if (!doc.getElementById("relanto-embed-fit")) {
+      const script = doc.createElement("script");
+      script.id = "relanto-embed-fit";
+      script.textContent = EMBED_FIT_SCRIPT;
+      doc.body.appendChild(script);
+    } else {
+      const win = doc.defaultView as (Window & { relantoFitEmbedDeck?: () => void }) | null;
+      if (typeof win?.relantoFitEmbedDeck === "function") {
+        win.relantoFitEmbedDeck();
+      }
+    }
+  } catch {
+    /* cross-origin — ignore */
+  }
+}
+
 function HtmlEmbed({
   url,
   title,
@@ -40,6 +117,9 @@ function HtmlEmbed({
   iframeRef?: React.Ref<HTMLIFrameElement>;
 }) {
   const embedUrl = withEmbedQuery(url) ?? url;
+  const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
+    injectEmbedSizeFix(e.currentTarget);
+  };
 
   if (!chrome) {
     return (
@@ -51,6 +131,7 @@ function HtmlEmbed({
           title={title ?? eyebrow}
           className="absolute inset-0 h-full w-full border-0"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          onLoad={handleIframeLoad}
         />
       </div>
     );
@@ -77,6 +158,7 @@ function HtmlEmbed({
           title={title ?? eyebrow}
           className="absolute inset-0 h-full w-full border-0"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          onLoad={handleIframeLoad}
         />
       </div>
     </div>
@@ -139,30 +221,7 @@ export function CourseStepContent({
   }
 
   if (step.stepType === "video" && url) {
-    return (
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
-        <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
-          <Video className="h-4 w-4 text-[#2e3192]" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
-            Training video
-          </p>
-          <span className="truncate text-xs text-zinc-400">{step.config.originalName}</span>
-        </div>
-        <div className="relative min-h-0 flex-1 bg-black">
-          <video
-            key={url}
-            src={url}
-            controls
-            controlsList="nodownload"
-            preload="metadata"
-            playsInline
-            className="absolute inset-0 h-full w-full object-contain"
-          >
-            Your browser does not support video playback.
-          </video>
-        </div>
-      </div>
-    );
+    return <CourseVideoPlayer url={url} originalName={step.config.originalName} />;
   }
 
   if (step.stepType === "mindmap" && url) {
@@ -212,6 +271,56 @@ export function CourseStepContent({
       <p className="text-sm text-zinc-400">
         {COURSE_STEP_LABELS[step.stepType]} content is not available. Contact your administrator.
       </p>
+    </div>
+  );
+}
+
+function CourseVideoPlayer({
+  url,
+  originalName,
+}: {
+  url: string;
+  originalName?: string;
+}) {
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  return (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
+      <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
+        <Video className="h-4 w-4 text-[#2e3192]" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
+          Training video
+        </p>
+        <span className="truncate text-xs text-zinc-400">{originalName}</span>
+      </div>
+      <div className="relative min-h-0 flex-1 bg-black">
+        {videoError ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+            <Video className="h-8 w-8 text-zinc-500" />
+            <p className="text-sm text-zinc-300">{videoError}</p>
+            <p className="text-xs text-zinc-500">
+              Ask your administrator to re-upload the video in the course builder.
+            </p>
+          </div>
+        ) : (
+          <video
+            key={url}
+            src={url}
+            controls
+            controlsList="nodownload"
+            preload="auto"
+            playsInline
+            className="absolute inset-0 h-full w-full object-contain"
+            onError={() =>
+              setVideoError(
+                "This video could not be loaded. It may be missing from storage or use an unsupported format.",
+              )
+            }
+          >
+            Your browser does not support video playback.
+          </video>
+        )}
+      </div>
     </div>
   );
 }

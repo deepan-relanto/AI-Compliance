@@ -90,6 +90,7 @@ function FilterPill({
 }
 
 function buildMonitoringUrl(
+  apiBase: string,
   tab: TabType,
   page: number,
   filter: string,
@@ -106,10 +107,20 @@ function buildMonitoringUrl(
     if (moduleId && moduleId !== "all") params.set("moduleId", moduleId);
     params.set("sort", sort);
   }
-  return `/api/monitoring?${params.toString()}`;
+  return `${apiBase}?${params.toString()}`;
 }
 
-export function MonitoringPanel() {
+interface MonitoringPanelProps {
+  apiBase?: string;
+  approveReview?: typeof approveReviewRequestApi;
+  rejectReview?: typeof rejectReviewRequestApi;
+}
+
+export function MonitoringPanel({
+  apiBase = "/api/monitoring",
+  approveReview = approveReviewRequestApi,
+  rejectReview = rejectReviewRequestApi,
+}: MonitoringPanelProps = {}) {
   const adminUser = useAuthStore((s) => s.user);
   const adminName = adminUser?.username || "Admin";
 
@@ -131,7 +142,7 @@ export function MonitoringPanel() {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const { data: summaryData, mutate: mutateSummary } = useSWR("/api/monitoring?summary=1", fetcher);
+  const { data: summaryData, mutate: mutateSummary } = useSWR(`${apiBase}?summary=1`, fetcher);
   const summary = summaryData?.ok ? (summaryData as Summary) : null;
 
   const activeFilter =
@@ -142,7 +153,7 @@ export function MonitoringPanel() {
         : auditFilter;
 
   const { data: tabData, isLoading: tabLoading, isValidating: tabRefreshing, mutate: mutateTab } = useSWR(
-    buildMonitoringUrl(activeTab, page, activeFilter, assessmentFilter, sortMode),
+    buildMonitoringUrl(apiBase, activeTab, page, activeFilter, assessmentFilter, sortMode),
     fetcher,
   );
 
@@ -221,7 +232,7 @@ export function MonitoringPanel() {
   const handleApprove = async (reqId: string) => {
     setActionError("");
     try {
-      await approveReviewRequestApi(reqId, adminName);
+      await approveReview(reqId, adminName);
       await refreshData();
       setSelectedReview(null);
     } catch (err: unknown) {
@@ -239,7 +250,7 @@ export function MonitoringPanel() {
     }
     setActionError("");
     try {
-      await rejectReviewRequestApi(reqId, adminName, adminComment.trim());
+      await rejectReview(reqId, adminName, adminComment.trim());
       await refreshData();
       setSelectedReview(null);
       setAdminComment("");

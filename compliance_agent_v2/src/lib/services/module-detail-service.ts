@@ -55,24 +55,49 @@ export async function loadModuleDetail(
   moduleId: string,
   userEmail: string,
 ) {
+  const courseRows = await sql`
+    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  const isCourse = courseRows.length > 0;
+
   const [moduleRows, batchRows, mcqRows, progressRows] = await Promise.all([
-    sql`SELECT * FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
-    sql`SELECT batch_id FROM module_batches WHERE module_id = ${moduleId}`,
-    sql`
-      SELECT q.id, q.slide_index, q.prompt, q.explanation, q.correct_option_id,
-             o.id AS option_id, o.label AS option_label
-      FROM mcq_questions q
-      LEFT JOIN mcq_options o ON o.question_id = q.id
-      WHERE q.module_id = ${moduleId}
-      ORDER BY q.slide_index, o.id
-    `,
-    userEmail
+    isCourse
+      ? sql`SELECT * FROM course_modules WHERE id = ${moduleId} LIMIT 1`
+      : sql`SELECT * FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
+    isCourse
+      ? sql`SELECT batch_id FROM course_module_batches WHERE module_id = ${moduleId}`
+      : sql`SELECT batch_id FROM module_batches WHERE module_id = ${moduleId}`,
+    isCourse
       ? sql`
-          SELECT status, retake_count, score_percent, completed_at, acknowledgement
-          FROM assessment_progress
-          WHERE user_email = ${userEmail} AND module_id = ${moduleId}
-          LIMIT 1
+          SELECT q.id, q.slide_index, q.prompt, q.explanation, q.correct_option_id,
+                 o.id AS option_id, o.label AS option_label
+          FROM course_mcq_questions q
+          LEFT JOIN course_mcq_options o ON o.question_id = q.id
+          WHERE q.module_id = ${moduleId}
+          ORDER BY q.slide_index, o.id
         `
+      : sql`
+          SELECT q.id, q.slide_index, q.prompt, q.explanation, q.correct_option_id,
+                 o.id AS option_id, o.label AS option_label
+          FROM mcq_questions q
+          LEFT JOIN mcq_options o ON o.question_id = q.id
+          WHERE q.module_id = ${moduleId}
+          ORDER BY q.slide_index, o.id
+        `,
+    userEmail
+      ? isCourse
+        ? sql`
+            SELECT status, retake_count, score_percent, completed_at, acknowledgement
+            FROM course_progress
+            WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+            LIMIT 1
+          `
+        : sql`
+            SELECT status, retake_count, score_percent, completed_at, acknowledgement
+            FROM assessment_progress
+            WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+            LIMIT 1
+          `
       : Promise.resolve([]),
   ]);
 
@@ -148,8 +173,7 @@ export async function loadModuleDetail(
     gateSlides.push(slide);
   }
 
-  const moduleKind = resolveModuleKind(row.module_kind, moduleId);
-  const isCourse = moduleKind === "course";
+  const moduleKind = isCourse ? "course" : resolveModuleKind(row.module_kind, moduleId);
 
   const uniquePool = dedupeMcqsByPrompt(mcqPool);
   const gateTotal = gateCountForSlides(slideCount);

@@ -37,8 +37,12 @@ function fitPageWidth(
   pageAspect: number,
 ): number {
   if (containerWidth <= 0 || containerHeight <= 0 || pageAspect <= 0) return 0;
-  const maxWidthFromHeight = containerHeight * pageAspect;
-  return Math.floor(Math.min(containerWidth, maxWidthFromHeight));
+  const widthFromHeight = containerHeight * pageAspect;
+  const heightFromWidth = containerWidth / pageAspect;
+  if (heightFromWidth <= containerHeight) {
+    return Math.floor(containerWidth);
+  }
+  return Math.floor(widthFromHeight);
 }
 
 export function PdfPageViewer({
@@ -94,7 +98,6 @@ export function PdfPageViewer({
   useEffect(() => {
     if (numPages == null) return;
     setPageRendering(true);
-    setPageAspect(DEFAULT_SLIDE_ASPECT);
   }, [pageNumber, numPages]);
 
   const handleDocLoadSuccess = useCallback(({ numPages: total }: { numPages: number }) => {

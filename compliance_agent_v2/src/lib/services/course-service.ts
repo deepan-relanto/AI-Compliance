@@ -11,7 +11,7 @@ import {
   normalizeCorrectOptionStorage,
   parseCorrectOptionIds,
 } from "@/lib/mcq-multi-select";
-import { copyMcqsFromModule } from "@/lib/services/mcq-copy-service";
+import { copyCourseMcqsFromModule } from "@/lib/services/mcq-copy-service";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -53,9 +53,9 @@ export async function createCourseModuleDb(
   const id = `course-${slugify(params.title)}-${Date.now()}`;
 
   await sql`
-    INSERT INTO training_modules (
+    INSERT INTO course_modules (
       id, title, description, slide_count, duration_minutes,
-      content_type, feedback_required, module_kind, mcq_generation_status
+      content_type, feedback_required, mcq_generation_status
     )
     VALUES (
       ${id},
@@ -65,7 +65,6 @@ export async function createCourseModuleDb(
       ${params.durationMinutes ?? 30},
       'text',
       ${Boolean(params.feedbackRequired)},
-      'course',
       'pending'
     )
   `;
@@ -76,7 +75,7 @@ export async function createCourseModuleDb(
       : params.batchIds;
     for (const batchId of batchIds) {
       await sql`
-        INSERT INTO module_batches (module_id, batch_id)
+        INSERT INTO course_module_batches (module_id, batch_id)
         VALUES (${id}, ${batchId})
         ON CONFLICT DO NOTHING
       `;
@@ -93,19 +92,16 @@ export async function upsertModuleStepDb(
   config: CourseStepConfig,
 ): Promise<void> {
   const rows = await sql`
-    SELECT module_kind FROM training_modules WHERE id = ${moduleId} LIMIT 1
+    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
   if (rows.length === 0) throw new Error("Course module not found.");
-  if (rows[0].module_kind !== "course") {
-    throw new Error("Steps can only be added to course modules.");
-  }
 
   const order = stepOrderFor(stepType);
   const title = COURSE_STEP_LABELS[stepType];
   const configJson = JSON.stringify(config);
 
   await sql`
-    INSERT INTO module_steps (module_id, step_order, step_type, title, config)
+    INSERT INTO course_module_steps (module_id, step_order, step_type, title, config)
     VALUES (${moduleId}, ${order}, ${stepType}, ${title}, ${configJson}::jsonb)
     ON CONFLICT (module_id, step_type) DO UPDATE SET
       step_order = EXCLUDED.step_order,
@@ -123,7 +119,7 @@ export async function upsertModuleStepDb(
 
     if (isHtml) {
       await sql`
-        UPDATE training_modules
+        UPDATE course_modules
         SET slide_count = 1,
             content_type = 'text',
             pdf_url = NULL,
@@ -132,7 +128,7 @@ export async function upsertModuleStepDb(
       `;
     } else if (config.pageCount) {
       await sql`
-        UPDATE training_modules
+        UPDATE course_modules
         SET slide_count = ${config.pageCount},
             content_type = 'pdf',
             pdf_url = ${config.assetUrl ?? null},
@@ -149,7 +145,7 @@ export async function getModuleStepsDb(
 ): Promise<CourseStepRow[]> {
   const rows = await sql`
     SELECT step_type, step_order, title, config
-    FROM module_steps
+    FROM course_module_steps
     WHERE module_id = ${moduleId}
     ORDER BY step_order
   `;
@@ -171,7 +167,7 @@ export async function getModuleStepsMapDb(
 
   const rows = await sql`
     SELECT module_id, step_type, step_order, title, config
-    FROM module_steps
+    FROM course_module_steps
     WHERE module_id = ANY(${moduleIds})
     ORDER BY module_id, step_order
   `;
@@ -197,20 +193,17 @@ export async function importCourseQuestionBankDb(
   questions: CourseQuestionInput[],
 ): Promise<{ imported: number }> {
   const rows = await sql`
-    SELECT id, module_kind FROM training_modules WHERE id = ${moduleId} LIMIT 1
+    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
   if (rows.length === 0) throw new Error("Course module not found.");
-  if (rows[0].module_kind !== "course") {
-    throw new Error("Question bank import is only for course modules.");
-  }
   if (questions.length === 0) {
     throw new Error("At least one question is required.");
   }
 
-  await sql`DELETE FROM mcq_options WHERE question_id IN (
-    SELECT id FROM mcq_questions WHERE module_id = ${moduleId}
+  await sql`DELETE FROM course_mcq_options WHERE question_id IN (
+    SELECT id FROM course_mcq_questions WHERE module_id = ${moduleId}
   )`;
-  await sql`DELETE FROM mcq_questions WHERE module_id = ${moduleId}`;
+  await sql`DELETE FROM course_mcq_questions WHERE module_id = ${moduleId}`;
 
   let imported = 0;
   for (let i = 0; i < questions.length; i++) {
@@ -239,7 +232,7 @@ export async function importCourseQuestionBankDb(
     const slideIndex = 0;
 
     await sql`
-      INSERT INTO mcq_questions (id, module_id, slide_index, prompt, correct_option_id, explanation)
+      INSERT INTO course_mcq_questions (id, module_id, slide_index, prompt, correct_option_id, explanation)
       VALUES (
         ${qId},
         ${moduleId},
@@ -252,7 +245,7 @@ export async function importCourseQuestionBankDb(
 
     for (const opt of q.options) {
       await sql`
-        INSERT INTO mcq_options (id, question_id, label)
+        INSERT INTO course_mcq_options (id, question_id, label)
         VALUES (${opt.id.trim().toLowerCase()}, ${qId}, ${opt.label.trim()})
       `;
     }
@@ -288,7 +281,7 @@ export async function publishCourseModuleDb(
 ): Promise<void> {
   const steps = await getModuleStepsDb(sql, moduleId);
   const countRows = await sql`
-    SELECT COUNT(*)::int AS c FROM mcq_questions WHERE module_id = ${moduleId}
+    SELECT COUNT(*)::int AS c FROM course_mcq_questions WHERE module_id = ${moduleId}
   `;
   const questionCount = Number(countRows[0]?.c ?? 0);
 
@@ -308,21 +301,21 @@ export async function publishCourseModuleDb(
 
   // Clear prior invite history so republish emails go out again
   await sql`
-    DELETE FROM training_notifications
+    DELETE FROM course_notifications
     WHERE module_id = ${moduleId} AND notification_type = 'invited'
   `;
 
-  await sql`DELETE FROM module_batches WHERE module_id = ${moduleId}`;
+  await sql`DELETE FROM course_module_batches WHERE module_id = ${moduleId}`;
   for (const batchId of ids) {
     await sql`
-      INSERT INTO module_batches (module_id, batch_id)
+      INSERT INTO course_module_batches (module_id, batch_id)
       VALUES (${moduleId}, ${batchId})
       ON CONFLICT DO NOTHING
     `;
   }
 
   await sql`
-    UPDATE training_modules
+    UPDATE course_modules
     SET mcq_generation_status = 'completed', updated_at = NOW()
     WHERE id = ${moduleId}
   `;
@@ -337,18 +330,17 @@ export async function listCourseLibraryDb(sql: Sql): Promise<CourseLibraryItem[]
       tm.duration_minutes,
       tm.mcq_generation_status,
       tm.created_at,
-      (SELECT COUNT(*)::int FROM mcq_questions mq WHERE mq.module_id = tm.id) AS mcq_count,
-      (SELECT COUNT(*)::int FROM module_steps ms WHERE ms.module_id = tm.id) AS step_count
-    FROM training_modules tm
-    WHERE tm.module_kind = 'course'
+      (SELECT COUNT(*)::int FROM course_mcq_questions mq WHERE mq.module_id = tm.id) AS mcq_count,
+      (SELECT COUNT(*)::int FROM course_module_steps ms WHERE ms.module_id = tm.id) AS step_count
+    FROM course_modules tm
     ORDER BY tm.created_at DESC
   `;
 
   const batchRows = await sql`
     SELECT mb.module_id, b.id AS batch_id, b.label
-    FROM module_batches mb
+    FROM course_module_batches mb
     JOIN batches b ON b.id = mb.batch_id
-    JOIN training_modules tm ON tm.id = mb.module_id AND tm.module_kind = 'course'
+    JOIN course_modules tm ON tm.id = mb.module_id
   `;
   const batchesByModule: Record<string, { id: string; label: string }[]> = {};
   for (const row of batchRows) {
@@ -394,7 +386,7 @@ export async function reuseCourseModuleDb(
 ): Promise<{ id: string; mcqCount: number }> {
   const sourceSteps = await getModuleStepsDb(sql, params.sourceModuleId);
   const countRows = await sql`
-    SELECT COUNT(*)::int AS c FROM mcq_questions WHERE module_id = ${params.sourceModuleId}
+    SELECT COUNT(*)::int AS c FROM course_mcq_questions WHERE module_id = ${params.sourceModuleId}
   `;
   const questionCount = Number(countRows[0]?.c ?? 0);
   if (!isCourseBundleComplete(sourceSteps, questionCount)) {
@@ -402,8 +394,8 @@ export async function reuseCourseModuleDb(
   }
 
   const source = await sql`
-    SELECT description, duration_minutes FROM training_modules
-    WHERE id = ${params.sourceModuleId} AND module_kind = 'course'
+    SELECT description, duration_minutes FROM course_modules
+    WHERE id = ${params.sourceModuleId}
     LIMIT 1
   `;
   if (source.length === 0) throw new Error("Source course not found.");
@@ -423,10 +415,10 @@ export async function reuseCourseModuleDb(
     await upsertModuleStepDb(sql, id, step.stepType, step.config);
   }
 
-  const mcqCount = await copyMcqsFromModule(sql, params.sourceModuleId, id);
+  const mcqCount = await copyCourseMcqsFromModule(sql, params.sourceModuleId, id);
 
   await sql`
-    UPDATE training_modules
+    UPDATE course_modules
     SET mcq_generation_status = 'completed', updated_at = NOW()
     WHERE id = ${id}
   `;
