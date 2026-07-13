@@ -142,7 +142,7 @@ export function CourseStepContent({
     return (
       <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
         <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
-          <Video className="h-4 w-4 text-violet-400" />
+          <Video className="h-4 w-4 text-[#2e3192]" />
           <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
             Training video
           </p>
@@ -237,14 +237,14 @@ function MindMapPanel({ url, title }: { url: string; title?: string }) {
   return (
     <div className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
       <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
-        <Network className="h-4 w-4 text-violet-400" />
+        <Network className="h-4 w-4 text-[#2e3192]" />
         <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">Mind map</p>
         {title && <span className="truncate text-xs text-zinc-400">{title}</span>}
       </div>
       <div className="min-h-0 flex-1">
         {loading && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
-            <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#f15a24]" />
             Loading mind map…
           </div>
         )}

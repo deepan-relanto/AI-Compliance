@@ -16,6 +16,8 @@ interface ProctorWarningModalProps {
   reason: ProctorViolationReason;
   warningCount: number;
   onContinue: () => void;
+  continueLabel?: string;
+  failMessage?: string;
 }
 
 export function ProctorWarningModal({
@@ -23,6 +25,8 @@ export function ProctorWarningModal({
   reason,
   warningCount,
   onContinue,
+  continueLabel = "Continue assessment",
+  failMessage = "One more violation will automatically fail this assessment attempt.",
 }: ProctorWarningModalProps) {
   if (!open) return null;
 
@@ -80,7 +84,7 @@ export function ProctorWarningModal({
 
           <p className="text-xs leading-relaxed text-zinc-500">
             {remaining <= 1
-              ? "One more violation will automatically fail this assessment attempt."
+              ? failMessage
               : "Return to fullscreen and keep this tab focused to avoid further warnings."}
           </p>
 
@@ -91,7 +95,7 @@ export function ProctorWarningModal({
             className="h-11 w-full cursor-pointer bg-[#2e3192] text-white hover:bg-[#3d42a8]"
             onClick={onContinue}
           >
-            Continue assessment
+            {continueLabel}
           </Button>
         </div>
       </div>

@@ -13,10 +13,11 @@ import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import {
   CourseAcknowledgementPanel,
-  CourseWarningOverlay,
   CourseExitModal,
   CourseProctorFailOverlay,
 } from "@/components/employee/course-player-overlays";
+import { ProctorWarningModal } from "@/components/employee/proctor-warning-modal";
+import { toProctorViolationReason } from "@/hooks/use-proctor-monitor";
 import { isValidSignatureName, normalizeSignatureName } from "@/lib/signature-canvas";
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
@@ -105,21 +106,6 @@ function formatElapsed(ms: number): string {
   const s = totalSec % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function formatWarningReason(reason: string): string {
-  switch (reason) {
-    case "Exited Fullscreen":
-      return "You exited fullscreen mode.";
-    case "Switched Browser Tab":
-      return "You switched browser tabs.";
-    case "Window Lost Focus":
-      return "The course lost window focus.";
-    case "Attempted Navigation":
-      return "You attempted to navigate away.";
-    default:
-      return reason;
-  }
 }
 
 type CoursePhase = "content" | "quiz";
@@ -1149,7 +1135,7 @@ export function CoursePlayer({
       <header className="relative z-[70] flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 text-white">
         <div className="flex items-center gap-3">
           <RelantoLogo size="sm" showTagline={false} />
-          <span className="inline-flex items-center rounded-md border border-violet-800 bg-violet-950 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+          <span className="inline-flex items-center rounded-md border border-[#2e3192]/30 bg-[#2e3192]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#f15a24]">
             Course
           </span>
         </div>
@@ -1238,7 +1224,7 @@ export function CoursePlayer({
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="w-full rounded-lg border border-violet-500/20 bg-gradient-to-r from-violet-950/40 via-zinc-900 to-[#2e3192]/20 px-5 py-4 text-center shadow-[var(--shadow-card)]"
+                    className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/20 via-zinc-900 to-[#f15a24]/15 px-5 py-4 text-center shadow-[var(--shadow-card)]"
                   >
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
                       Quiz-only retake · Round {(retakeCount || 0) + 1}
@@ -1272,7 +1258,7 @@ export function CoursePlayer({
               ) : phase === "quiz" && !mcqOpen ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
                   <div className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/15 via-zinc-900 to-[#f15a24]/10 px-5 py-4 text-center">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-400">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
                       Course assessment
                     </p>
                     <h2 className="mt-1 text-lg font-semibold text-white">Ready for the quiz</h2>
@@ -1283,7 +1269,7 @@ export function CoursePlayer({
                 </div>
               ) : (
                 <div className="mx-auto flex max-w-lg flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-600 bg-zinc-900/50 p-10 text-center">
-                  <GraduationCap className="h-10 w-10 text-violet-400" />
+                  <GraduationCap className="h-10 w-10 text-[#2e3192]" />
                   <p className="text-sm text-zinc-400">No course content is available.</p>
                 </div>
               )}
@@ -1341,7 +1327,7 @@ export function CoursePlayer({
                   className={cn(
                     "h-1 w-5 rounded-md transition-colors",
                     i <= contentStepIndex
-                      ? "bg-gradient-to-r from-[#2e3192] via-violet-600 to-[#f15a24]"
+                      ? "bg-gradient-to-r from-[#2e3192] via-[#3d42a8] to-[#f15a24]"
                       : "bg-zinc-700",
                   )}
                 />
@@ -1420,10 +1406,13 @@ export function CoursePlayer({
         }
       />
 
-      {activeWarningReason && (
-        <CourseWarningOverlay
-          reason={formatWarningReason(activeWarningReason)}
-          count={liveWarningCount}
+      {toProctorViolationReason(activeWarningReason) && (
+        <ProctorWarningModal
+          open
+          reason={toProctorViolationReason(activeWarningReason)!}
+          warningCount={liveWarningCount}
+          continueLabel="Continue course"
+          failMessage="One more violation will automatically fail this course attempt."
           onContinue={() => void handleWarningContinue()}
         />
       )}

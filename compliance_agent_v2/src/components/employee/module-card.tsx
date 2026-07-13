@@ -122,7 +122,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                     module.moduleKind === "course"
-                      ? "bg-violet-50 text-violet-700 ring-1 ring-violet-200/60"
+                      ? "bg-[#f15a24]/8 text-[#f15a24] ring-1 ring-[#f15a24]/20"
                       : "bg-[#2e3192]/8 text-[#2e3192] ring-1 ring-[#2e3192]/15",
                   )}
                 >
