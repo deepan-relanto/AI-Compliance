@@ -3,8 +3,9 @@
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import { resolvePostLoginPath, isTrainingCallback } from "@/lib/auth-routes";
+import { emailsMatch, normalizeEmail } from "@/lib/training-link";
 import { motion } from "framer-motion";
-import { signIn } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -39,9 +40,20 @@ type AuthStatus = {
 
 export function LoginForm() {
   const searchParams = useSearchParams();
+  const { data: session, status: sessionStatus } = useSession();
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+
+  const rawCallback = searchParams.get("callbackUrl");
+  const forEmail = normalizeEmail(searchParams.get("forEmail"));
+  const isTraining = isTrainingCallback(rawCallback);
+  const sessionEmail = session?.user?.email ?? null;
+  const wrongAccount =
+    sessionStatus === "authenticated" &&
+    isTraining &&
+    !!forEmail &&
+    !emailsMatch(sessionEmail, forEmail);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,14 +111,24 @@ export function LoginForm() {
   const handleMicrosoftSignIn = useCallback(async () => {
     if (!authConfigured) return;
     setLoading(true);
-    const rawCallback = searchParams.get("callbackUrl");
-    const postLogin = resolvePostLoginPath(rawCallback, undefined);
-    await signIn("microsoft-entra-id", {
-      callbackUrl: postLogin,
-      redirect: true,
-    });
-    setLoading(false);
-  }, [authConfigured, searchParams]);
+    try {
+      if (wrongAccount) {
+        await signOut({ redirect: false });
+      }
+      const postLogin = resolvePostLoginPath(rawCallback, undefined);
+      const authParams = isTraining ? { prompt: "select_account" as const } : undefined;
+      await signIn(
+        "microsoft-entra-id",
+        {
+          callbackUrl: postLogin,
+          redirect: true,
+        },
+        authParams,
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [authConfigured, rawCallback, isTraining, wrongAccount]);
 
   return (
     <motion.div
@@ -133,8 +155,16 @@ export function LoginForm() {
             Compliance Agent
           </h1>
           <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-zinc-500">
-            {isTrainingCallback(searchParams.get("callbackUrl"))
-              ? "Sign in with Microsoft to begin your proctored assessment."
+            {isTraining
+              ? forEmail
+                ? (
+                  <>
+                    Sign in as{" "}
+                    <span className="font-semibold text-[#2e3192]">{forEmail}</span>{" "}
+                    to begin your proctored assessment.
+                  </>
+                )
+                : "Sign in with Microsoft to begin your proctored assessment."
               : (
                 <>
                   Sign in with your{" "}
@@ -147,6 +177,16 @@ export function LoginForm() {
 
         {statusLoading && (
           <p className="mt-6 text-center text-sm text-zinc-400">Checking sign-in…</p>
+        )}
+
+        {wrongAccount && !statusLoading && (
+          <div className="mt-6 rounded-lg border border-amber-200/90 bg-amber-50 px-3.5 py-3 text-center text-sm leading-relaxed text-amber-950">
+            You are signed in as{" "}
+            <span className="font-semibold">{sessionEmail}</span>, but this training
+            link was sent to{" "}
+            <span className="font-semibold">{forEmail}</span>. Choose the correct
+            Microsoft account below.
+          </div>
         )}
 
         {error && !statusLoading && (
@@ -177,7 +217,9 @@ export function LoginForm() {
               ? "Redirecting…"
               : statusLoading
                 ? "Please wait…"
-                : "Continue with Microsoft"}
+                : wrongAccount
+                  ? "Switch Microsoft account"
+                  : "Continue with Microsoft"}
           </Button>
         </div>
 

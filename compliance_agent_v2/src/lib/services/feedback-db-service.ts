@@ -1,4 +1,3 @@
-import type { ModuleKind } from "@/lib/module-kind";
 import type { getSql } from "@/lib/db";
 
 type Sql = ReturnType<typeof getSql>;
@@ -13,13 +12,9 @@ export interface FeedbackRow {
   createdAt: string;
   batchId: string | null;
   batchLabel: string | null;
-  moduleKind: ModuleKind;
 }
 
-export async function listFeedback(
-  sql: Sql,
-  track?: ModuleKind,
-): Promise<FeedbackRow[]> {
+export async function listFeedback(sql: Sql): Promise<FeedbackRow[]> {
   const rows = await sql`
     SELECT
       fe.id,
@@ -30,16 +25,14 @@ export async function listFeedback(
       fe.feedback_text,
       fe.created_at,
       u.batch_id,
-      b.label AS batch_label,
-      COALESCE(tm.module_kind, 'compliance') AS module_kind
+      b.label AS batch_label
     FROM feedback_entries fe
     LEFT JOIN users u ON LOWER(u.email) = LOWER(fe.user_id)
     LEFT JOIN batches b ON b.id = u.batch_id
-    LEFT JOIN training_modules tm ON tm.id = fe.assessment_id
     ORDER BY fe.created_at DESC
   `;
 
-  const mapped = rows.map((r) => ({
+  return rows.map((r) => ({
     id: r.id as string,
     userId: r.user_id as string,
     userName: r.user_name as string,
@@ -49,13 +42,7 @@ export async function listFeedback(
     createdAt: r.created_at as string,
     batchId: (r.batch_id as string) ?? null,
     batchLabel: (r.batch_label as string) ?? null,
-    moduleKind: (r.module_kind === "course" ? "course" : "compliance") as ModuleKind,
   }));
-
-  if (track) {
-    return mapped.filter((r) => r.moduleKind === track);
-  }
-  return mapped;
 }
 
 export async function createFeedback(
@@ -91,12 +78,10 @@ export async function createFeedback(
       fe.feedback_text,
       fe.created_at,
       u.batch_id,
-      b.label AS batch_label,
-      COALESCE(tm.module_kind, 'compliance') AS module_kind
+      b.label AS batch_label
     FROM feedback_entries fe
     LEFT JOIN users u ON LOWER(u.email) = LOWER(fe.user_id)
     LEFT JOIN batches b ON b.id = u.batch_id
-    LEFT JOIN training_modules tm ON tm.id = fe.assessment_id
     WHERE fe.id = ${params.id}
     LIMIT 1
   `;
@@ -112,7 +97,6 @@ export async function createFeedback(
     createdAt: r.created_at as string,
     batchId: (r.batch_id as string) ?? null,
     batchLabel: (r.batch_label as string) ?? null,
-    moduleKind: (r.module_kind === "course" ? "course" : "compliance") as ModuleKind,
   };
 }
 

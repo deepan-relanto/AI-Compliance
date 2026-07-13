@@ -1,442 +1,432 @@
 Employee Number,Name,Work Email,Date Of Birth,Gender,Location,Department,Sub Department,Job Title,Reporting To,Date Joined,Worker Type,Primary Skills (IN),Secondary Skills (IN),Certifications (IN)
-1001,Vincent T P,vincent@relanto.ai,16-May-1967,Male,"Bengaluru, KA, IN",Relanto,,Chief Technology Officer,Vincent T P,01-Feb-2021,Permanent,Not Available,Not Available,Not Available
-1003,Rashmi Hegde,rashmi@relanto.ai,26-Dec-1981,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Delivery Director,Vivek Kashyap,06-Apr-2021,Permanent,Anaplan ,"TM1, Cognous Planning, BI Reporing, ETL, ","Anaplan Certified Model Builder, 
-Master Anaplanner, Certified Anaplan Solution Architect.
-ISTQB Foundation Level 
-IBM Certified Solution Designer - Cognos 8 Planning
-IBM Certified Developer - Cognos TM1 
-IBM Certified Specialist - Cognos TM1 Data Analysis
-IBM Certified Specialist - Cognos 8 BI
-Developing Enterprise Applications & web services using J2EE 
-IBM Cognos Report Studio, IBM Cognos Framework Manager
-IBM Cognos Metric Studio, Metric Designer
-Vertica Introduction Training, Level 100"
-1009,Suraj NiharRanjan Majumdar,suraj@relanto.ai,06-Jun-1993,Male,"Bengaluru, KA, IN",Marketing,,Manager - Marketing,Pooja Pura,20-Sep-2021,Permanent,Not Available,Not Available,Not Available
-1014,Sushant Jayant Wable,sushant@relanto.ai,08-Jan-1981,Male,"Pune, MH, IN",Enterprise Business Planning,,Delivery Director,Vincent T P,01-Nov-2021,Permanent,Varicent,"SPM, Caliders , Anaplan, OIC , OTM",Not Available
-1020,Adhvi P M,adhvi.panata@relanto.ai,21-Mar-1994,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,07-Feb-2022,Permanent,Anaplan ,"Tablue , SQL",Not Available
-1021,Thejasvi N,thejasvi.n@relanto.ai,04-Feb-1991,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Lohith K A,01-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1028,Ganapathi Ramakrishnan K,ganapathi.r@relanto.ai,17-May-1994,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Principal Consultant,Rashmi Hegde,02-May-2022,Permanent,Anaplan ,NA,Not Available
-1033,Tincy Thomas,tincy.thomas@relanto.ai,05-May-1994,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Adhvi P M,08-Jun-2022,Permanent,Anaplan ,LMS ,"Anaplan L1,L2,L3, Anaplan Way
-Basics  of SQL
-Advanced Excel
-Workforce planning
-Manual Testing
-Generative AI "
-1035,Geya Chowdary Chukkapalli,geya.chowdary@relanto.ai,25-Mar-1998,Female,"Hyderabad, TG, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,20-Jun-2022,Permanent,Anaplan,"Excel,Pigment","Anaplan L-1,L-2,L-3,Pigment,Pigment Pro"
-1039,Gourav Rao K R,gourav.rao@relanto.ai,22-Apr-1998,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sorna Raja Prabhu Sivasekaran,20-Jun-2022,Permanent,Anaplan ,NA,"Anaplan, Excel"
-1040,Shashank R,shashank.r@relanto.ai,10-Dec-1997,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Ganapathi Ramakrishnan K,20-Jun-2022,Permanent,Anaplan ,NA,Not Available
-1042,Mutturaj M Chittaragi,mutturaj.chittaragi@relanto.ai,14-Jun-1999,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Ganapathi Ramakrishnan K,20-Jun-2022,Permanent,Anaplan ,NA,"Anaplan lvl 3, Pigment Fundamentals"
-1043,Vinay Kumar,vinay.kumar@relanto.ai,17-Nov-1998,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Manikanda Murugan A,20-Jun-2022,Permanent,Anaplan ,NA,Not Available
-1048,Swati Muralidhar Iyer,swati.iyer@relanto.ai,16-Aug-1996,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Lohith K A,16-Aug-2022,Permanent,"Linux, Anaplan, Azure, Python, Windows Administration",NA,"Anaplan Model Builder Level 3 
-Finance for Non-Finance
-The Complete Finance Manager
-Ui Path Learning"
-1053,Revathi Chennupalli,revathi@relanto.ai,17-Aug-1992,Female,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Sonali Thapa,04-Oct-2022,Permanent,"End to End Recruitment, Sourcing, Team Management, Social Media Hiring, Niche Skills Hiring","Hire-Train Deploy [HTD] Program, Vendor Management","•	Hirist.com – Technical Recruiter Certification
-•	Hirist.com – Employer Branding Certification Program
-•	Linkedin – Excel Quick Tips"
-1065,Shaik Mahammad Jilani,mahammad.jilani@relanto.ai,01-May-1992,Male,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,04-Oct-2022,Permanent,"Recruitment, Onboarding, Team Management, Employee engagement, Data Management,","Sourcing, Screening, Coordinating.","Vyond Animation,
-Content writing."
-1068,Pradeep Kiran Kattimanda,pradeepkiran@relanto.ai,15-Jul-1989,Male,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Mohammed Nazeer Ahmed,04-Oct-2022,Permanent,Not Available,Not Available,Not Available
-1072,Mohammed Nazeer Ahmed,nazeer@relanto.ai,05-Feb-1988,Male,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Vignesh Dharmaraj,04-Oct-2022,Permanent,Talent Acquisition Group - United States,"Canada,Mexico",GenAI -  Project Management
-1073,Sami Abdul Mohammed,abdul.s@relanto.ai,05-May-1986,Male,"Hyderabad, TG, IN",Talent Acquisition,,Team Lead,Mohammed Nazeer Ahmed,04-Oct-2022,Permanent,Digital Transformation,Generative AI,Generative AI for Beginners
-1082,Bhavani Chitukula Reddy,bhavani.reddy@relanto.ai,04-Dec-1998,Male,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,10-Oct-2022,Permanent,"Talent Acquisition and IT Recruitment, Handling end to end recruitment",Understanding the client's requirement,"1. Done with Gen AI for Beginners
-2. Received ""Certification of Achievement"" for being a Consistent Performer in closing positions."
-1086,Manoj Hosamani,manoj.hosamani@relanto.ai,22-Jul-1999,Male,"Bengaluru, KA, IN",Marketing,,Senior Graphic Designer,Suraj NiharRanjan Majumdar,29-Nov-2022,Permanent,Not Available,Not Available,Not Available
-1088,Sadhu Sravani,sadhu.sravani@relanto.ai,17-Jul-1995,Female,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Specialist,Vignesh Dharmaraj,01-Dec-2022,Permanent,Generative AI,AI,Generative AI For Beginners
-1089,Jharana Das,jharana.das@relanto.ai,22-Aug-1995,Female,"Bengaluru, KA, IN",Presales,,Lead Business Analyst,Vincent T P,19-Dec-2022,Permanent,Presales,Presales,Gen AI Certificate 
-1094,Usha K,usha.k@relanto.ai,30-Dec-1979,Female,"Bengaluru, KA, IN",Finance,,Finance Manager,Venu Venkateswaran,02-Jan-2023,Permanent,Not Available,Not Available,Not Available
-1113,Akhil Emmanual,akhil.emmanual@relanto.ai,18-Dec-1998,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sriram Singupuram,01-Mar-2023,Permanent,Anaplan,NA,Anaplan Certified Solution Architect
-1114,Hrutuja Sudhakar Dalvi,hrutuja.dalvi@relanto.ai,24-Apr-2000,Female,"Pune, MH, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,01-Mar-2023,Permanent,"Anaplan, Tableau, RPA, Generative AI, Adv Excel and Java",Adv Excel and Java,"Anaplan Level 3, Anaplan, Tableau, RPA, Generative AI and Adv Excel"
-1119,Darshan A,darshan.a@relanto.ai,29-Jan-2001,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Adhvi P M,06-Mar-2023,Permanent,"C, C++, Python, HTML, CSS, PHP, MySQL, Vertica",NA,"Anapaln, Sql, Excel"
-1152,Vijayanand Babu Pantagani,vijayanandbabu.pantagani@relanto.ai,24-Jul-1973,Male,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Sr. Architect - Enterprise Applications,Sridhar Pokuri,05-Apr-2023,Permanent,"JAVA, Python","HPUX, Linux, Solaris, Mac OS and Windows",Not Available
-1161,Giribabu Saggurthi,giribabu.saggurthi@relanto.ai,12-Apr-1974,Male,"Hyderabad, TG, IN",Integration,,Sr. Architect – Enterprise Application,Ravishankar Siddan,13-Apr-2023,Permanent,"Mulesoft, Java, SQL, PL/SQL,SPRING","Oracle, MSSQL, Mongo DB, JavaScript, HTML, CSS, JSP, XML, XSL, Angular JS, Node.js","MCIA,MCPA,MCD,JCP"
-1199,Praveen Rajan,praveen.rajan@relanto.ai,09-Jul-1979,Male,"Bengaluru, KA, IN",Operations - PMO,,Director- Operations,Vincent T P,15-May-2023,Permanent,Not Available,Not Available,Not Available
-1202,Velamuri Leela Manohar Reddy,velamuri.reddy@relanto.ai,13-Jul-1993,Male,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Software Engineer,Madduri Lakshmi Ambica,15-May-2023,Permanent,"Apex, Visual Force / Components, SOQL, SOSL ","AJAX, HTML, CSS, DHTML, JQuery, JavaScript, Json ","Salesforce Administrator
-Salesforce Platform APP Builder"
-1223,Banavath Kranti Kumar Naik,krantikumar.naik@relanto.ai,18-Aug-1996,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Salesforce Consultant,Madduri Lakshmi Ambica,12-Jun-2023,Permanent,"Salesforce CRM, Apex, Apex Triggers, SOQL, SOSL, Apex Classes/Controllers, Visualforce Pages/ Lightning Components, Apex Web Services, Workflow & Approvals, Case Management, Custom Objects, Dashboards",NA,"Salesforce Admin
-Salesforce Service Cloud
-Salesforce Marketing Cloud Consultant"
-1228,Sheik Salman Khan,salmankhan.sheik@relanto.ai,23-May-1991,Male,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Mohammed Nazeer Ahmed,14-Jun-2023,Permanent,"Recruitment Expertise,Technical Knowledge,","Problem-Solving Skills,Data Management",Salesforce Certified Associate
-1239,Manisha Nair,manisha.nair@relanto.ai,12-Oct-1975,Female,"Bengaluru, KA, IN",Academy,,Manager - Academy,Vincent T P,03-Jul-2023,Permanent,NVC Certified Trainer,NA,Gen AI
-1244,Subhrajit Bhattacharya,subhrajit.bhattacharya@relanto.ai,05-May-1995,Male,"Bengaluru, KA, IN",Sales,,"Manager, Sales Development",Praneet Mudholkar,03-Jul-2023,Permanent,Not Available,Not Available,Not Available
-1248,Theepireddy Divya,divya.theepireddy@relanto.ai,23-Jul-1991,Female,"Hyderabad, TG, IN",Digital Transformation,,Senior QA Engineer,Megha D,03-Jul-2023,Permanent,"Salesforce CRM, Apex, Apex Triggers, SOQL, SOSL, Apex Classes/Controllers, Visualforce Pages/ Lightning Components, Apex Web Services, Workflow & Approvals, Case Management, Custom Objects, Dashboards","E commerce & Public Sector, Telecom, Field Service Lightning ,CPQ",Not Available
-1300,Megha D,megha.devraj@relanto.ai,01-Mar-1996,Female,"Bengaluru, KA, IN",Digital Transformation,,Senior PMO Executive,Sridhar Pokuri,01-Aug-2023,Permanent,PMO,Scrum,None
-1327,Riga Singh,riga.singh@relanto.ai,30-Dec-1984,Female,"Pune, MH, IN",Revenue and Sales,Delivery Management,Project Manager,Anoop Chhabra,01-Aug-2023,Permanent,Project Manager/Scrum Master,"UNIX,  PL/SQL",SAFe 6.0 agilist
-1333,Mekala Mamatha,mamatha.mekala@relanto.ai,10-Aug-1992,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,BI & Analytics,Senior BI Developer,Prasanna R S,01-Aug-2023,Permanent,Tableau,SQL,NA
-1355,Madduri Lakshmi Ambica,ambica.madduri@relanto.ai,12-Feb-1986,Female,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Lead Software Engineer,KEERTI SREEDHAR,01-Aug-2023,Permanent,Tableau CRM (Einstien Analytics),Salesforce Admin,"1. Tableau CRM and Einstein Discovery Consultant
-2. Salesforce Admin Certificaiton"
-1387,C Pradeep,pradeep.c@relanto.ai,01-Oct-1984,Male,"Bengaluru, KA, IN",Human Resource,,Senior Manager HR,Vincent T P,04-Aug-2023,Permanent,Not Available,Not Available,Not Available
-1394,Prasanna R S,prasanna.rs@relanto.ai,06-Aug-1986,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Director - Data,Vivek Kashyap,17-Aug-2023,Permanent,"Snowflake,Oracle PL SQL",NA,Gen AI for Beginners
-1396,Vallurupalli Naga Venkata Harshitha,harshitha.vallurupalli@relanto.ai,06-Nov-2001,Female,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,17-Aug-2023,Permanent,"Java, Python, DBMS",NA,Not Available
-1399,Nilesh Maruti Gutte,nileshmaruti.gutte@relanto.ai,17-Jan-1998,Male,"Bengaluru, KA, IN",Digital Transformation,,QA Engineer,Megha D,21-Aug-2023,Permanent,"Functional Testing, Regression Testing, Retesting, UI Testing of salesforce Applications","Dataloder.io, Workbench, JIRA",Not Available
-1400,V Vamshi Krishna,vangipuramvamshi.krishna@relanto.ai,10-Jun-1992,Male,"Hyderabad, TG, IN",Digital Transformation,,QA Engineer,Megha D,21-Aug-2023,Permanent,"Software Testing, Salesforce Administration and Business Process Execution","Jira, Test rail, HP Quality Centre, Salesforce.SQL",NA
-1411,Krishnappa .,krishnappa.k@relanto.ai,20-Jul-1967,Male,"Bengaluru, KA, IN",Operations - Admin,,Office Assistant,Praveen Rajan,01-Sep-2023,Permanent,Not Available,Not Available,Not Available
-1414,Lakshmikanth K,lakshmikanth.k@relanto.ai,07-Aug-1991,Male,"Bengaluru, KA, IN",Operations - Admin,,Operations Assistant,Praveen Rajan,01-Sep-2023,Permanent,Facility Management,Admin,GenAI Certificate
-1416,Anmol Rajesh Kanojiya,anmol.kanojiya@relanto.ai,16-Dec-1994,Male,"Pune, MH, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,04-Sep-2023,Permanent,Anaplan,NA,"Anaplan Level 1, 2, 3 Certified"
-1425,Selvaraj N,selvaraj.n@relanto.ai,10-May-1986,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior OIC Consultant,Sushant Jayant Wable,11-Sep-2023,Permanent,"Oracle Application (E-Business Suite), T-SQL, Manual Testing",Varicent,"Oracle Purchasing,
-Anaplan"
-1430,Nirmal Kumar Dommaraju,nirmal.dommaraju@relanto.ai,08-Dec-1990,Male,"Bengaluru, KA, IN",Human Resource,,Assistant Manager HR,C Pradeep,13-Sep-2023,Permanent,Human Resources Employee Life cycle management,"TA,Statutory",NA
-1437,Tanda Madhusudhan,tanda.madhusudhan@relanto.ai,24-Jan-1994,Male,"Hyderabad, TG, IN",Digital Transformation,,Lead QA Engineer,Megha D,19-Sep-2023,Permanent,"Functional Tester, DataBase Tester, Salesforce functional Tester and API manual tester using PostMan",NA,GenerativeAI
-1447,Athmika N D,athmika.nd@relanto.ai,09-Oct-2000,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,04-Oct-2023,Permanent,"SQL, Database Management, Basic C , HTML , CSS",NA,"Anaplan L1, L2, L3, Excel , SQL"
-1448,Shreyas P S,shreyas.ps@relanto.ai,20-Mar-2001,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sriram Singupuram,04-Oct-2023,Permanent,Anaplan,NA,Anaplan
-1449,Mani Gowda,mani.gowda@relanto.ai,09-May-2001,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Sorna Raja Prabhu Sivasekaran,04-Oct-2023,Permanent,Anaplan,NA,Not Available
-1450,Shashank K,shashank.k@relanto.ai,01-Dec-2000,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Gaurav Kumar Chaudhary,04-Oct-2023,Permanent,Anaplan,NA,"Anaplan L1, L2,L3,SQL,Excel"
-1451,Shashank K C,shashank.kc@relanto.ai,28-May-2001,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Lohith K A,04-Oct-2023,Permanent,Anaplan,NA,"Anaplan L1,L2 & L3 Certifications
-Excel, Sql"
-1452,Divya N S,divya.ns@relanto.ai,10-Dec-1986,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Ganapathi Ramakrishnan K,04-Oct-2023,Permanent,Anaplan,"SQL, MS excel","Anaplan Level 1, Anaplan Level 2, Anaplan Level 3, SQL, MS excel"
-1458,Vidyadhar Ganapati Hegde,vidyadhar.hegde@relanto.ai,21-Apr-1977,Male,"Bengaluru, KA, IN",Finance,,Senior Finance Manager,Venu Venkateswaran,09-Oct-2023,Permanent,"Management, accounts & finance",Tax Compliance,CA-Inter
-1467,Somesh Ravindra Mamidwar,someshravindra.mamidwar@relanto.ai,11-Jan-1995,Male,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Software Engineer,Madduri Lakshmi Ambica,26-Oct-2023,Permanent,"Salesforce Lightning, Salesforce Admin, Salesforce Development","Apex, Triggers, Lightning, Process Builder, Flows, Digital Experience, LWC","Admin,PD1,PD2,App Builder, Experience Cloud"
-1481,Pramath Bhavananishankar Naik,pramath.naik@relanto.ai,25-Jun-2001,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Prasanna R S,06-Nov-2023,Permanent,"Python-(Django ,Django REST Framework, Flask),Java-(Andorid API 33),HTML, CSS, Javascript, React.js,Git,Cloud-AWS,Azure(Kubernetes ,EC2 ,RDS ,S3 ,LightSail)",Database,Snowflake SnowPro core
-1484,Sharmila R,sharmila.r@relanto.ai,12-Aug-1995,Female,"Bengaluru, KA, IN",Academy,,Executive- L&D Coordinator,Manisha Nair,16-Nov-2023,Permanent,"Corporate Communication, Interpersonal Skills, Active Listening, Problem Solving, Conflict resolution.","HR Operations, Learning and development, Data Analysis, HR Software's, Interpersonal communication.",Microsoft Excel
-1495,Vignesh Dharmaraj,vignesh.dharmaraj@relanto.ai,29-Aug-1990,Male,"Bengaluru, KA, IN",Talent Acquisition,,Senior Manager - Talent Acquisition,Vincent T P,01-Dec-2023,Permanent,Recruitment,Operations,Multiple Udemy certificaitons
-1523,Kurremula Anil Kumar,anilkumar.k@relanto.ai,04-Jun-1990,Male,"Hyderabad, TG, IN",Finance,,US Accounts Executive,Venu Venkateswaran,02-Jan-2024,Permanent,Not Available,Not Available,Not Available
-1524,Gajanan Vinod Govekar,gajanan.govekar@relanto.ai,24-Oct-1987,Male,"Pune, MH, IN",Revenue and Sales,Delivery Management,Senior Scrum Master,Anoop Chhabra,22-Jan-2024,Permanent,Project Management,NA,"PMI - Agile Certified Practioner
-Certified Scrum Master, Professional Scrum Master, SAP Activate Cloud Specialist Project manager"
-1535,Pramod Jagannatham,pramod.jagannatham@relanto.ai,20-Jul-1998,Male,"Hyderabad, TG, IN",Human Resource,,HR Executive,Mahima Kulkarni,26-Feb-2024,Permanent,"Onboarding, Offboarding, Timesheets, PMS, Employee Relations, Vendor Management","MS-Office, Tally ERP 9.0",Lean Six-Sigma Yellow Belt
-1538,Gaurav Kumar Chaudhary,gaurav.chaudhary@relanto.ai,13-Oct-1998,Male,"Pune, MH, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,13-Mar-2024,Permanent,Anaplan,NA,Anaplan Solution Architect
-1543,Raamanathan Gururajan,raamanathan.gururajan@relanto.ai,29-Apr-1979,Male,"Bengaluru, KA, IN",AI-First Lab,,Associate Vice President - Technology,Vincent T P,20-Mar-2024,Permanent,AI & Machine Learning,Quantitative Risk Management,"1. IIT Kharagpur, AI & Machine Learning
-2. Certificate in Quant Finance (London)
-3. Advanced Risk Portfolio Certificate (US)"
-1548,Ashok Kumar P,ashok.kumar@relanto.ai,11-Dec-1991,Male,"Bengaluru, KA, IN",AI-First Lab,,Principal Architect,Raamanathan Gururajan,10-Apr-2024,Permanent,Not Available,Not Available,Not Available
-1555,Parag Bhardwaj,parag.bhardwaj@relanto.ai,09-Oct-1999,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,25-Apr-2024,Permanent,"Data Science, Machine Learning, AI, NLP",Software Development,"DeepLearning,ai AI Specialization,
-Machine Learning Stanford By Andrew Ng"
-1558,Garima Chaubey,garima.chaubey@relanto.ai,11-Jun-1995,Female,"Bengaluru, KA, IN",Presales,,Lead Consultant-Technology Strategy,Vincent T P,29-Apr-2024,Permanent,"Consulting, Product Management",Product Ownership,"Product Management, Business Analyst"
-1563,Manikanda Murugan A,manikanda.murugan@relanto.ai,31-Mar-1999,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,22-May-2024,Permanent,Anaplan,"Python Programming, MySQL, Data Structures","Level 3 certified Anaplan Model Builder
-Codechef - Data Structures and Algorithm
-Udemy - Python 3
-Udemy - HTML 5"
-1569,Imon Roy,imon.roy@relanto.ai,13-Apr-1997,Female,"Bengaluru, KA, IN",Marketing,,Senior Content Writer,Pooja Pura,03-Jun-2024,Permanent,Not Available,Not Available,Not Available
-1575,Shubham Kumar Shaw,shubham.shaw@relanto.ai,08-Jan-1999,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Data Scientist,Pooja Pura,10-Jun-2024,Permanent,"Python, Machine Learning, Gen-AI, NLP, Deep learning","MongoDB, SQL, AWS, Azure, GCP",None
-1578,Priyanka Raghav,priyanka.raghav@relanto.ai,06-Sep-2000,Female,"Bengaluru, KA, IN",Sales,,Sales Associate,Praneet Mudholkar,14-Jun-2024,Permanent,Sales ,IT,Generative AI
-1584,Manjunath Bhat,manjunath.bhat@relanto.ai,31-Dec-1993,Male,"Bengaluru, KA, IN",Finance,,Finance Executive,Venu Venkateswaran,18-Jun-2024,Permanent,Not Available,Not Available,Not Available
-1588,Sriram Singupuram,sriram.singupuram@relanto.ai,15-Mar-1998,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Rashmi Hegde,01-Jul-2024,Permanent,Anaplan,Java,Anaplan Level 3
-1593,Gowra Meenakshi,meenakshi.gowra@relanto.ai,11-Dec-1996,Female,"Bengaluru, KA, IN",AI-First Lab,,Senior Devops Engineer,Raamanathan Gururajan,17-Jul-2024,Permanent,DevOps,Terraform,aws certified solution architect-assosciate
-1595,Dinesh Vanthram,dinesh.vanthram@relanto.ai,01-Nov-1998,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Devops Engineer,Pooja Pura,24-Jul-2024,Permanent,Not Available,Not Available,Not Available
-1599,Zarina Shadaf Inamdar,zarina.inamdar@relanto.ai,29-Aug-1991,Female,"Pune, MH, IN",Enterprise Business Planning,Varicent,Consultant,Sushant Jayant Wable,01-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1600,Shankar Bodi,shankar.bodi@relanto.ai,28-Nov-1998,Male,"Hyderabad, TG, IN",Talent Acquisition,,Senior US IT Recruiter,Mohammed Nazeer Ahmed,01-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1602,Alekhya Vadnala,alekhya.vadnala@relanto.ai,15-May-1999,Female,"Bengaluru, KA, IN",Human Resource,,Lead Human Resources,C Pradeep,08-Aug-2024,Permanent,-,-,-
-1604,Avinash BNV,avinash.bnv@relanto.ai,27-May-1988,Male,"Bengaluru, KA, IN",Sales,,Vice President - Customer Success,Vincent T P,19-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1605,Hema Vashya,hema.vashya@relanto.ai,22-May-1996,Female,"Bengaluru, KA, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,19-Aug-2024,Permanent,Talent Acquisition,Technical Recruitment,HR Analytics from UCI
-1609,Victor Swamy,victor.swamy@relanto.ai,30-Oct-1992,Male,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Project Manager,Riga Singh,22-Aug-2024,Permanent,Project Management,Implementation,"SQL, PMP"
-1610,Monica Tiwari,monica.tiwari@relanto.ai,27-Jan-1997,Female,"Pune, MH, IN",Enterprise Business Planning,,Consultant,Sushant Jayant Wable,23-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1611,Shama Parveen F,shama.parveen@relanto.ai,19-Oct-1996,Female,"Bengaluru, KA, IN",Operations - Admin,,Senior Operations Executive,Praveen Rajan,26-Aug-2024,Permanent,Not Available,Not Available,Not Available
-1615,Vagadeeshwar G,vagadeeshwar.g@relanto.ai,19-Jul-2001,Male,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,02-Sep-2024,Permanent,"GenAI, Python Backend (FastAPI), SQL/Snowflake, Cloud & DevOps (AWS, Docker, Kubernetes)","JavaScript, Java, C/C++, Shell Scripting, Pandas, scikit-learn, Elasticsearch",AWS CCP
-1616,Thotakura Rohit Sai Naren,rohit.sainaren@relanto.ai,01-Sep-2003,Male,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,02-Sep-2024,Permanent,"NextJS, React, Angular, NodeJS Spring Boot, MySQL","Python, Machine Learning, Django, Computer Networks",NA
-1619,Sameer Ali Khan,sameer.alikhan@relanto.ai,19-Jun-2002,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,02-Sep-2024,Permanent,"Generative AI, LLMs, RAG, AI/ML Engineering, Python, Machine Learning, Deep Learning","FastAPI, Kafka, NLP, MLOps, LangChain, LangGraph, Vector Databases, MongoDB, MySQL, Azure, GCP, Docker","• Microsoft Certified: Azure Data Scientist Associate
-• Azure Data Fundamentals – Microsoft
-• Generative AI for Beginners – Udemy
-• Programming in Python – Udemy
-• Machine Learning Onramp – MathWorks
-• Image Processing for Engineering and Science – Coursera"
-1620,Rajat Dharmendra Anchan,rajat.anchan@relanto.ai,26-Jun-2002,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1621,Krishna Chaitanya Reddy Kothakapu,krishna.chaitanya@relanto.ai,03-Nov-2002,Male,"Hyderabad, TG, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1624,Jai Selvash Segar,jaiselvash.segar@relanto.ai,14-Jul-2003,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Adhvi P M,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1625,Ishita Sharma,ishita.sharma@relanto.ai,01-Dec-2002,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1626,Gaurav K Murdeshwar,gaurav.murdeshwar@relanto.ai,09-Jul-2001,Male,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1628,Chandana M N,chandana.mn@relanto.ai,05-Jun-2002,Female,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1630,Pranav Srivastava,pranav.srivastava@relanto.ai,31-Oct-2000,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1632,Tarun S,tarun.s@relanto.ai,25-Dec-2000,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sorna Raja Prabhu Sivasekaran,02-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1636,Chhaya Kumari,chhaya.kumari@relanto.ai,03-Jan-1993,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Director - AI,Prasanna R S,11-Sep-2024,Permanent,Not Available,Not Available,Not Available
-1637,Sneha Siddhesh Mohite,sneha.mohite@relanto.ai,22-Jul-1984,Female,"Pune, MH, IN",Digital Transformation,,Principal Consultant,Sridhar Pokuri,13-Sep-2024,Permanent,"Test & Defect Management, Data Analysis and Modeling, Automation, Performance and API testing, Quality Assurance, Business System Analyst, Scrum Lead, ","Prompt Engineering ? Test Methodologies: Agile, Waterfall ? Business Analysis ? Team Management ? Stakeholder Management ? Experience in client liaison","ISTQB Foundational Certificate
-Performance Testing Foundation
-Agile Delivery Foundation 
-"
-1639,PRANAV CHANDRAN,pranav.c@relanto.ai,22-May-2002,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,01-Oct-2024,Permanent,Not Available,Not Available,Not Available
-1641,Subhadeep Biswal,subhadeep.biswal@relanto.ai,18-Jan-2002,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,01-Oct-2024,Permanent,Not Available,Not Available,Not Available
-1644,PRANSHULA PRASHANTH,pranshula.prashanth@relanto.ai,26-Oct-2001,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Manikanda Murugan A,01-Oct-2024,Permanent,Not Available,Not Available,Not Available
-1645,Chethan M,chethan.m@relanto.ai,19-May-2001,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sorna Raja Prabhu Sivasekaran,01-Oct-2024,Permanent,Not Available,Not Available,Not Available
-1647,Manjunatha A,manjunatha.a@relanto.ai,13-Nov-1996,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Data Scientist,Pooja Pura,07-Oct-2024,Permanent,"Gen AI, NLP, CV","Machine Learning, Deep Learning",NPTEL
-1652,Gaurav Kumar,gaurav.kumar@relanto.ai,19-Oct-1990,Male,"Hyderabad, TG, IN",Digital Transformation,Integration,Product Owner - Mulesoft,Sridhar Pokuri,17-Oct-2024,Permanent,Product Owner,Mulesoft,CSPO
-1653,Bharath JPV,bharath.jpv@relanto.ai,14-Nov-1996,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,18-Oct-2024,Permanent,Statics,Python,Python
-1659,Manoj Upadhyay,manoj.upadhyay@relanto.ai,10-Dec-1997,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Lohith K A,29-Oct-2024,Permanent,"Anaplan,Leadership,Team Mangement","SQL, Azure Logic App","Anaplan L1,L2,L3
-Anaplan TAW
-Anaplan Solution Architect
-Generative AI Essential"
-1663,Monisha MS,monisha.ms@relanto.ai,05-May-1998,Female,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Gangeya Babu Velaga,04-Nov-2024,Permanent,Not Available,Not Available,Not Available
-1664,Malini Arumugam,malini.arumugam@relanto.ai,18-Mar-2000,Female,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Megha D,04-Nov-2024,Permanent,Angular,React JS,Udemy certification
-1667,Srinivasulu Nallabothula,srinivasulu.nallabothula@relanto.ai,26-Apr-1978,Male,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Senior Project Manager,Anoop Chhabra,11-Nov-2024,Permanent,Salesforce Release Management,Technical Project Management,PMP certification  Preparation – In Progress
-1669,Ketki Pramod Randhir,ketki.pramod@relanto.ai,11-Jun-1994,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Prasanna R S,18-Nov-2024,Permanent,Not Available,Not Available,Not Available
-1670,Janani Prabhu,janani.prabhu@relanto.ai,09-Dec-1987,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,18-Nov-2024,Permanent,Anaplan,Java,Certified Model Builder
-1674,Jeevan Pandianda Joyappa,jeevan.joyappa@relanto.ai,24-Mar-1987,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Data Architect,Prasanna R S,25-Nov-2024,Permanent,Not Available,Not Available,Not Available
-1676,PRIYANKA NAIK,priyanka.naik@relanto.ai,12-Feb-2001,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Data Engineer,Jeevan Pandianda Joyappa,02-Dec-2024,Permanent,Not Available,Not Available,Not Available
-1677,Lohith K A,lohith.k@relanto.ai,17-Apr-1988,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,02-Dec-2024,Permanent,Not Available,Not Available,Not Available
-1679,Kosuri Sai Prasanth,saiprasanth.kosuri@relanto.ai,18-Nov-1995,Male,"Hyderabad, TG, IN",Enterprise Business Planning,,Lead Consultant,Gaurav Kumar Chaudhary,02-Dec-2024,Permanent,Anaplan,Pigment,Anaplan Solution Architect
-1681,Narasimha Chandi,narasimha.chandi@relanto.ai,17-May-1995,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Nikhil Pandey,09-Dec-2024,Permanent,AI/ML,SAP MM,Google Cloud Certified Professional Machine Learning Engineer 
-1687,Sai Chaitanya Gonugunta Manikanta,chaitanya.gonugunta@relanto.ai,02-Jan-1989,Male,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,23-Dec-2024,Permanent,Not Available,Not Available,Not Available
-1688,Pavan K Kanumoori,pavan.kanumoori@relanto.ai,30-May-1979,Male,"Hyderabad, TG, IN",Digital Transformation,,Technical Manager,Sridhar Pokuri,24-Dec-2024,Permanent,Oracle EBS Technical,Oracle EBS,NA
-1689,Khushi Devidas Helange,khushi.devidas@relanto.ai,22-Jun-2000,Female,"Pune, MH, IN",Data Engineering & Analytics,BI & Analytics,Senior BI Developer,Ketki Pramod Randhir,26-Dec-2024,Permanent,"Looker ,SQL BI Tools",Data analysis,"GCP Professional Data Engineering
-GCP Associate cloud Engineer
-GCP Professional Database Engineering"
-1692,Sujan Anumolu,sujan.anumolu@relanto.ai,07-Oct-1996,Male,"Hyderabad, TG, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,30-Dec-2024,Permanent,Anaplan,SAP BO/SAP BPC/SAP FICO,Anaplan Solution Architect
-1694,Vaishnavi Santoshi Batchu,vaishnavi.santoshi@relanto.ai,28-Feb-2002,Female,"Pune, MH, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Ketki Pramod Randhir,06-Jan-2025,Permanent, ?    Text Extraction  ?    SpaCy (NLP Software)  ?    Data Visualization  ?    OpenCV  ?    Document Processing  ?    Deep Learning  ?    Prompt Engineering ?    Visualization  ?    Tesseract  ?    Python (Programming Language)  ?    Flask (Web Framework)  ?    Machine Learning  ?    AWS   ?    Generative AI  ?    Data Analysis  ?    Optical Character Recognition (OCR)  ?    Cloud Storage  ?    Data Extraction  ?    Google Cloud Platform (GCP)  ?    textract  ?    Machine Learning,"• Flexible to work in a team environment. • Oriented with an analytical blend of mind and a positive attitude. • Effective communicator with a strong analytical, interpersonal, problem-solving nature","Google Cloud Certified Associate Cloud Engineer, Google Cloud Certified Professional Machine Learning Engineer,Google Cloud Certified Professional Data Engineer"
-1701,Bhavesh Chintakayala,chintakayala.bhavesh@relanto.ai,26-Mar-2003,Male,"Hyderabad, TG, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,20-Jan-2025,Permanent,Not Available,Not Available,Not Available
-1702,Praveen C,praveen.chandrasekarn@relanto.ai,27-May-1994,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Ganapathi Ramakrishnan K,20-Jan-2025,Permanent,Anaplan,Anaplan/Power BI,Anaplan Solution Architect
-1704,Ranadeep Raj Sumukam,ranadeep.sumukam@relanto.ai,15-Sep-1994,Male,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Senior Data Engineer,Chiranjeevi Lakkakula,28-Jan-2025,Permanent,Not Available,Not Available,Not Available
-1707,Sai Anil Peddi,anil.peddi@relanto.ai,28-Aug-1999,Male,"Hyderabad, TG, IN",Enterprise Business Planning,,Senior Consultant,Rashmi Hegde,05-Feb-2025,Permanent,Anaplan,"Python, Power BI, Salesforce","Anaplan Solution Architect, Salesforce Platform developer"
-1708,Anil Kumawat,anil.kumawat@relanto.ai,11-Nov-1994,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Software Engineer,Raamanathan Gururajan,03-Feb-2025,Permanent,Not Available,Not Available,Not Available
-1711,Priyadarshini E,priyadarshini.e@relanto.ai,04-Nov-1999,Female,"Bengaluru, KA, IN",Talent Acquisition,,Talent Acquisition Specialist,Vignesh Dharmaraj,17-Feb-2025,Permanent,Not Available,Not Available,Not Available
-1712,Priyanka Jaiswal,priyanka.jaiswal@relanto.ai,30-Sep-1989,Female,"Bengaluru, KA, IN",Operations - PMO,,Process Quality Lead,Praveen Rajan,17-Feb-2025,Permanent,Compliance Audit and certification,Risk Assessment,IS027001 Lead Auditor
-1717,Kajal Kshirsagar,kajal.kshirsagar@relanto.ai,22-Aug-1993,Female,"Pune, MH, IN",Data Engineering & Analytics,BI & Analytics,Senior UX Designer,Prasanna R S,19-Feb-2025,Permanent,"User Research & Analysis (Interviews, Surveys, Usability Testing, Personas) Wireframing & Prototyping (Figma, Axure, Adobe XD, Sketch, Balsamiq) Information Architecture (User Flows, Site Maps, Navigation Design) Interaction Design (IxD) (Microinteractions, Animations, Usability) Design Thinking & Problem-Solving (User-Centered Design, Iterative Process) UI/Visual Design (Typography, Color Theory, Layouts, Design Systems) Usability Testing & Heuristic Evaluation (A/B Testing, Heatmaps, Accessibility) Collaboration & Stakeholder Management (Working with PMs, Developers, Clients)","Frontend Knowledge (HTML, CSS, JavaScript, Bootstrap, Material Design) Data-Driven Design (Google Analytics, Heatmaps, User Behavior Analysis) Agile & Scrum Methodologies (Working in Agile environments, Sprint Planning)  AI & Automation in UX (Chatbots, Voice UI, AI-driven Design Tools)",Diploma in UX and UI Design
-1721,Vinay Kumar P,vinay.pulakurthy@relanto.ai,16-Jun-1996,Male,"Bengaluru, KA, IN",Operations - PMO,,Senior Analyst - PMO,Praveen Rajan,03-Mar-2025,Permanent,Advance Excel,VBA Macros,MS Office
-1722,Vijitha Gudimallam,vijitha.gudimallam@relanto.ai,05-Apr-1995,Female,"Bengaluru, KA, IN",Talent Acquisition,,Senior Talent Acquistion Specialist,Vignesh Dharmaraj,03-Mar-2025,Permanent,"Talent Acquistion, End-to-End recruitment","Campus hiring, Lateral hiring, Stakeholder management",Linkedin Certification
-1737,Grandhi Vijay Kumar Raja,vijay.grandhi@relanto.ai,23-Jun-1974,Male,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Senior Manager,Anoop Chhabra,13-Mar-2025,Permanent,"Scrum Master, Agile Project Management","Microsoft Technologies, SQL/PL SQL",CSM - Certified Scrum Master from Scrum Alliance
-1739,Shreeja Nair,shreeja.nair@relanto.ai,27-Aug-1993,Female,"Bengaluru, KA, IN",Academy,,Senior Executive - L&D,Manisha Nair,17-Mar-2025,Permanent,"Needs Analysis,Facilitation Skills,LMS proficiency, Virtual collaboration tools, Feedback and Evaluation, Coaching and Mentoring","Adaptability and Flexibility, Knowledge Management,","MBTI, CSF, IDP"
-1744,Ganesh Kaushal Sharma,ganesh.sharma@relanto.ai,15-Sep-1994,Male,"Pune, MH, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,26-Mar-2025,Permanent,Snowflake,Databricks,"Snowflake-core,Oracle-Associate SQL"
-1754,Chiranjeevi Lakkakula,chiranjeevi.lakkakula@relanto.ai,19-Oct-1992,Male,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,07-Apr-2025,Permanent,Not Available,Not Available,Not Available
-1756,Ashit Verma,ashit.verma@relanto.ai,18-Feb-1987,Male,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Project Manager,Riga Singh,09-Apr-2025,Permanent,Product Owner,Scrum Master,"CSM, CSPO"
-1782,Pooja S Shashihittal,pooja.shashihittal@relanto.ai,08-Sep-1993,Female,"Bengaluru, KA, IN",Digital Transformation,,Senior QA Engineer,Sridhar Pokuri,28-Apr-2025,Permanent,Testing -QA,"Salesforce CPQ,API",Salesforce Developer Platform 1
-1784,Raviteja P,raviteja@relanto.ai,08-May-1994,Male,"Hyderabad, TG, IN",Finance,,Senior Accounts Executive,Venu Venkateswaran,01-Apr-2025,Permanent,Not Available,Not Available,Not Available
-1785,Vijay Prakash Mutyala,vijay@relanto.ai,20-Oct-1969,Male,"Hyderabad, TG, IN",Operations - PMO,,Assistant Manager – Operations,Santhi Kanumuri,01-Apr-2025,Permanent,Not Available,Not Available,Not Available
-1788,Rakonda Sai Varshith,varshith.rakonda@relanto.ai,05-Jun-1999,Male,"Bengaluru, KA, IN",Sales,,Junior Sales Associate,Praneet Mudholkar,30-Apr-2025,Permanent,Not Available,Not Available,Not Available
-1793,Nikhil Pandey,nikhil.pandey@relanto.ai,02-Feb-1996,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Principal Data Scientist,Prasanna R S,16-May-2025,Permanent,Not Available,Not Available,Not Available
-1797,Venkata Avinash Dantanala,avinash.d@relanto.ai,24-Sep-1994,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,19-May-2025,Permanent,Not Available,Not Available,Not Available
-1798,Satish Venkatrao,satish.venkatrao@relanto.ai,25-Nov-1994,Male,"Hyderabad, TG, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Sunny Ramvilas Kusawa,19-May-2025,Permanent,"Python, Gen AI, Sql,Machine Learning , Deep Learning,MLops,Natural Language Processing","Advanced Excel,Grafana ,PowerBI,Streamlit",Generative AI for Beginners
-1799,Srihari Manchikanti,srihari.manchikanti@relanto.ai,28-Aug-1997,Male,"Bengaluru, KA, IN",AI-First Lab,,Devops Engineer,Raamanathan Gururajan,19-May-2025,Permanent,AWS DEVOPS ,AZURE,NA
-1801,Vikram Jakka,vikram.jakka@relanto.ai,17-Jun-1993,Male,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Consultant,Madduri Lakshmi Ambica,23-May-2025,Permanent,"Salesforce Development, Apex Programming, LWC, Rest API, SOAP API, Platform Events, External APIs, Agentforce Agents","CI/CD Deployments, Python, Shell Scripting","Platform Developer 1, Six Sigma Green Belt"
-1803,Mohan D J,mohan.dj@relanto.ai,06-Apr-1984,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,26-May-2025,Permanent,"Linux, Python, Shell Scripting, SQL","Azure Cloud, Perl Scripting",AZ-900 Azure Cloud Certified
-1804,Rajesh Kumar Kumar Parida,rajesh.parida@relanto.ai,12-Oct-1992,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,26-May-2025,Permanent,"SQL, Linux & Shell Scripting","ITIL Framework, Splunk, Service Now, Tomcat, Oracle",NA
-1806,Nidheesh PS,nidheesh.ps@relanto.ai,22-Jan-1992,Male,"Bengaluru, KA, IN",Operations - Admin,,Senior System Administrator,Praveen Rajan,02-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1811,Subraya Naik S,subraya.naik@relanto.ai,10-Jun-1990,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,04-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1812,Kishore Krishna P,kishore.krishna@relanto.ai,27-Jul-1993,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,05-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1819,Aastha Kanth,aastha.kanth@relanto.ai,09-Nov-2003,Female,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,03-Jun-2025,Permanent,"Python, Machine Learning, AI","FastAPI, SQL, Natural Language Processing (NLP), Generative AI (GenAI), Agentic AI, Computer Vision","AWS Certified Cloud Practitioner,
-Google cloud Transformer models and BERT model"
-1820,Amarendra Kumar Singh,amarendra.kumar@relanto.ai,19-Jun-2003,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Vinaykumar M Suldhal,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1821,Apeksha S Shetty,apeksha.shetty@relanto.ai,29-May-2003,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Chhaya Kumari,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1823,Ashnoor Maan,ashnoor.maan@relanto.ai,17-Jul-2003,Female,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,03-Jun-2025,Permanent,"Python, SQL, Data science, Machine Learning, NLP, Generative AI, LLMs, LangChain, LangGraph, MCP, RAG, FastAPI, MySQL","C++,Streamlit, React (basic), AWS (Basics), Data Analysis, Data Visualization, Tableau, Prompt Engineering, Integration Testing, DSA","SQL on Oracle cloud, Google data analytics, AWS academy machine learning foundations"
-1824,Balamithran S,balamithran.s@relanto.ai,02-Aug-2003,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Associate Data Engineer,Jeevan Pandianda Joyappa,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1826,Harinee M D,harinee.m@relanto.ai,15-Feb-2003,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Associate Data Engineer,Ganesh Kaushal Sharma,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1827,Harshini S,harshini.s@relanto.ai,07-May-2003,Female,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Lohith K A,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1831,Manoj KR,manoj.k@relanto.ai,29-Jan-2002,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,03-Jun-2025,Permanent,Salesforce Development,"Java, sql","Salesforce AI Associate
-Salesforce Agentforce Specialist
-Salesforce Administrator
-Salesforce Platform Developer 1
-Copado Fundamental 1 Source Format Pipeline
-Copado Fundamental 2 Source Format Pipeline"
-1832,MANSI GUPTA,mansi.gupta@relanto.ai,08-Oct-2003,Female,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Vinaykumar M Suldhal,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1835,Nivya Sri S,nivyasri.s@relanto.ai,16-Jul-2004,Female,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Adhvi P M,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1836,Pedaballi Sai Sivani,sivani.pedaballi@relanto.ai,06-Jul-2004,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1837,Prachiti Laxmikant Bhutada,prachiti.bhutada@relanto.ai,27-Jul-2003,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1838,ROHAN J,rohan.j@relanto.ai,28-Sep-2003,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,03-Jun-2025,Permanent,"Salesforce Admin, Apex, Lightning Web Component(LWC), Salesforce Sales Cloud, Salesforce Revenue Cloud, Agentforce, Salesforce Manufacturing Cloud, CRM Analytics, Copado, MySQL, Tableau","Java, C++, React js, Microsoft Excel, Presentation Skills","Salesforce AI Associate
-Salesforce Agentforce Specialist
-Salesforce Administrator
-Salesforce Certified Revenue Cloud Consultant
-Salesforce Certified Platform Developer
-Copado Fundamental 1 Source Format Pipeline
-Copado Fundamental 2 Source Format Pipeline"
-1840,Samyuktha M Rao,samyuktha.rao@relanto.ai,25-Oct-2002,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Ketki Pramod Randhir,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1841,Sanjana Manoj Divakar,sanjana.divakar@relanto.ai,17-Dec-2002,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Nikhil Pandey,03-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1843,Subhashini K S,subhashini.k@relanto.ai,01-Dec-2003,Female,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,03-Jun-2025,Permanent,"Salesforce Admin, Apex, Lightning Web Component(LWC), Salesforce Sales Cloud, Salesforce Revenue Cloud, Agentforce, Salesforce Manufacturing Cloud, CRM Analytics, Copado, MySQL, Tableau, HTML, CSS, Javascript.","Java, C++, React js, Microsoft Excel, Presentation Skills","Salesforce Administrator,
- Salesforce Certified Platform Developer, 
-Salesforce Agentforce Specialist, 
-Salesforce Certified Revenue Cloud Consultant, 
-Copado Fundamentals I Source Format Pipeline, 
-Copado Fundamentals II Source Format Pipeline"
-1844,Thota Hemanth Babu,hemanth.thota@relanto.ai,19-Oct-2003,Male,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,03-Jun-2025,Permanent,"LLM Applications, Retrieval-Augmented Generation (RAG), AI Agents, Deep Learning, Machine Learning, Python, Data Preprocessing, Exploratory Data Analysis (EDA), Data Visualization, SQL.","Java, NLP, Prompt Engineering, API Integration, GCP, Scikit-learn, Pandas, NumPy.","Microsoft Azure AI-900, GCP Cloud Architect."
-1846,Vinothkumar AK,vinothkumar.ak@relanto.ai,08-Aug-1996,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,13-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1848,Vajjala S Samanth Rao,samanth.vajjala@relanto.ai,27-Dec-2001,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,16-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1851,Anoop Chhabra,anoop.chhabra@relanto.ai,27-May-1976,Male,"Bengaluru, KA, IN",Relanto,,Vice President,Vincent T P,17-Jun-2025,Permanent,Not Available,Not Available,Not Available
-1853,Ganesha S,ganesha.s@relanto.ai,29-May-1989,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,18-Jun-2025,Permanent,"Python, Linux Shell. MySQL, PostgreSQL","Java, GIT, Docker",Micorsoft Certified: DevOps Engineer Expert
-1854,Gundala Tharunn Chowdary,tharunn.gundala@relanto.ai,15-Apr-1991,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Megha D,18-Jun-2025,Permanent,"Application Support, Linux, Sql, Service now, ITIL, Control M, WInscp, Dynatrace, ","Catchpoint, Site Scope, APM tool, Venafi Certificate renewl,","Internal Certification done in ITIL, Security"
-1856,Siddhant Kumar,siddhant.kumar@relanto.ai,08-Aug-1993,Male,"Pune, MH, IN",Data Engineering & Analytics,,Senior Data Engineer,Prasanna R S,19-Jun-2025,Permanent,"Snowflake, DBT, Fivetran, SQL, Python","Data warehousing, data modelling",snowflake core
-1864,Sashikanta Mohanty,sashikanta.mohanty@relanto.ai,08-Apr-1981,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,01-Jul-2025,Permanent,"Java, SpringBoot, Microservice, Kafka, AWS, Database","Groovy, Python, ","Java Certification, Gen AI, AWS Professional"
-1865,VIDHYA DHARSHINI - V,vidhya.dharshini@relanto.ai,17-Jul-2001,Female,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,01-Jul-2025,Permanent,"Salesforce Admin, Salesforce CRMA/ Einstein Analytics, Power BI","Python, Six Sigma, SQL, ProjectLibre","Salesforce Admin
-Salesforce CRMA Analytics Einstein Analytics & Tableau CRMA
-Salesforce - AgentForce Specialist
-Copado Certified FUNDAMENTALS I SFP
-Copado Certified FUNDAMENTALS II SFP
-Lean Six Sigma from KPMG
-Data Exploration Using Python"
-1866,Shriya K,shriya.k@relanto.ai,11-Apr-2003,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Ganesh Kaushal Sharma,01-Jul-2025,Permanent,"Snowflake, Databricks, Python, SQL, Apache Airflow, ELT pipeline development","RAG, NL2SQL, Tableau, Informatica, Mulesoft, Kafka, Git, CICD?","Snowflake Snowpro Core
-Snowflake Snowpro Associate"
-1867,Gudimetla Baba Siva Sriram,sriram.gudimetla@relanto.ai,16-Oct-1999,Male,"Bengaluru, KA, IN",Presales,,"Consultant, Business Development",Vincent T P,01-Jul-2025,Permanent,"Communication, Salesforce",Fast Learning and Application,Salesforce Admin
-1868,MEGHAA P V,meghaa.pv@relanto.ai,02-Jan-2002,Female,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,01-Jul-2025,Permanent,"Salesforce Sales Cloud, Salesforce Revenue Cloud, Salesforce Manufacturing Cloud, Salesforce Administration, CRM Analytics, Agentforce, Tableau, Apex, Lightning Web Components, SOQL, Business Analysis, Requirements gathering and documentation, Process Mapping, Gap analysis, Presentation Skills","Microsoft Excel, Microsoft PowerPoint, Draw.io, Microsoft Visio, Power BI, MySQL, Communication Skills, Stakeholder management, R Programming, Python","Salesforce Certified AI Associate
-Salesforce Certified Administrator
-Salesforce Certified Agentforce Specialist
-Copado Certified Fundamentals I SFP
-Copado Certified Fundamentals II SFP
-Salesforce Certified Revenue Cloud Consultant
-"
-1872,DURGAVIHASHINI P,durgavihashini.p@relanto.ai,26-Jul-2004,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Chhaya Kumari,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1873,Arnold Jerome Andrade,arnold.andrade@relanto.ai,07-May-2003,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Pramath Bhavananishankar Naik,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1874,NITHYA SRI R,nithyasri.rajkumar@relanto.ai,06-May-2004,Female,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Sriram Singupuram,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1875,MAILAVARAM SREEMITHA,mailavaram.sreemitha@relanto.ai,10-Nov-2003,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1876,Adhanan Kuthpudeen,adhanan.kuthpudeen@relanto.ai,12-May-2003,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Jeevan Pandianda Joyappa,01-Jul-2025,Permanent,"Snowflake,dbt,SQL, Informatica,Airflow, Generative AI, LangChain, Vector Databases, RAG .","Python,PySpark,Git,AWS(Basics),Kafka","Snowflake SnowPro Core Certification
-DBT Analytics Engineering Certification"
-1877,ANANYA TIWARI,ananya.tiwari@relanto.ai,03-Feb-2003,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1878,Katakam Sai Harshith,katakam.harshith@relanto.ai,26-Apr-2004,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,01-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1879,Monisha Karmakar,monisha.karmakar@relanto.ai,05-May-1995,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,02-Jul-2025,Permanent,Anaplan,Power Bi,Level 3 Anaplan Certificate
-1880,Abhinav M,abhinav.m@relanto.ai,24-Mar-2003,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,02-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1884,Harsukhbhai Jagubhai Vank,harsukhbhai.vank@relanto.ai,23-Oct-1989,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,09-Jul-2025,Permanent,"Android, Java, Kotlin, XML, Jetpack Compose, MVVM, Clean Architecture, Kotlin Coroutines, SQLite, Room ","RxAndroid, Retrofit, Espresso, Hilt, Work Manager, Live Data, RxJava, MVP, Dagger2, GSON, Volley, Unit testing, Junit, Mockito, PowerMockito, Job Scheduler, Picasso, Glide, Robolectric, Firebase, Kotlin Flow",NA
-1885,Ravikumar T,ravikumar.t@relanto.ai,10-Jun-1982,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Manager,Prasanna R S,11-Jul-2025,Permanent,"Snowflake,Azure Data Factory","Talend Data Integration,SQL,AWS S3",NA
-1888,Aman Kumar Upadhyay,aman.upadhyay@relanto.ai,18-Dec-1995,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Rahul Deb,14-Jul-2025,Permanent,Angular,JavaScript,NA
-1892,Hetansh Bhavesh Mehta,hetansh.mehta@relanto.ai,09-May-2000,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Ketki Pramod Randhir,14-Jul-2025,Permanent,Python,"AWS, SQL",AWS Certified Cloud Practitioner
-1893,Palacholla Veera Narasimha Murthy,veeranarasimha.murthy@relanto.ai,16-Apr-2000,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Chhaya Kumari,14-Jul-2025,Permanent,"Gen AI, ML, Deep Learning, Python ","AWS, AZURE, Angular, Springboot",Udemy certifications
-1894,Priyanshu Jain,priyanshu.jain@relanto.ai,02-Aug-1999,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Sunny Ramvilas Kusawa,16-Jul-2025,Permanent,Front end development,Angular,"Angular,TS,JS,Html-CSS,ReactJS,java,spring boot,sql,"
-1895,Biruundha Easwaran,biruundha.easwaran@relanto.ai,30-Aug-1990,Female,"Bengaluru, KA, IN",Sales,,Associate Director - Customer Success,Praneet Mudholkar,18-Jul-2025,Permanent,Client Management,Account Management,Sales
-1896,Praveen Chaudhary,praveen.chaudhary@relanto.ai,16-Jul-1996,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,21-Jul-2025,Permanent,Python,SQL,NA
-1900,Sujitha Rasamsetty,sujitha.rasamsetty@relanto.ai,31-Aug-2001,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Data Scientist,Godavarthi Venkata Sai Chaitanya,21-Jul-2025,Permanent,Python,"Machine Learning, NLP,Gen AI",AWS Architect Associate Certificate
-1901,Santhosh Raaj G,santhosh.raaj@relanto.ai,18-Aug-2000,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Megha D,21-Jul-2025,Permanent,artificial intelligence ,"AI, ML,Deep learning, NLP","IBM AI Engineering, Generative AI"
-1904,Aditya Sandip Mahajan,aditya.mahajan@relanto.ai,16-Mar-1996,Male,"Pune, MH, IN",Data Engineering & Analytics,,Senior Devops Engineer,Sunny Ramvilas Kusawa,29-Jul-2025,Permanent,Not Available,Not Available,Not Available
-1908,Vaishnav Goswami,vaishnav.goswami@relanto.ai,05-Jan-2001,Male,"Pune, MH, IN",Data Engineering & Analytics,,Senior Data Scientist,Sunny Ramvilas Kusawa,04-Aug-2025,Permanent,Not Available,Not Available,Not Available
-1909,Sai Chanakya Puthalapattu,saichanakya.puthalapattu@relanto.ai,20-Jan-2002,Male,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,04-Aug-2025,Permanent,"MERN (MongoDB, Express JS, React JS, NodeJS), Python, MySQL, HTML & CSS, JavaScript, Bootstrap, Redux, AWS  ","Java, Selenium, TestNG, Salesforce LWC & Apex",SmartInternz Salesforce Developer Certificate
-1910,Soundara Baranidaran D,soundara.d@relanto.ai,08-Sep-2001,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,04-Aug-2025,Permanent,"Salesforce Admin, Salesforce Agentforce, CRMA",Business Analysis,"Salesforce Admin, Salesforce Agent, Copado Fundamentals I Source Format Pipeline, Copado Fundamentals II Source Format Pipeline"
-1912,Bhavya Sai Sri Bhavana,bhavya.bhavana@relanto.ai,18-Jun-2000,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Engineer,Ketki Pramod Randhir,11-Aug-2025,Permanent,"Python, SQL,GCP","Azure, Java, NoSQL",GCP Professional Data Engineer certification
-1913,Rahul Deb,rahul.deb@relanto.ai,29-Oct-1986,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Product Owner,Prasanna R S,11-Aug-2025,Permanent,Product Management,Scrum Master,"CSM, API Product Manager, IBM DB2 9 Fundamentals, MongoDB Basics, Microsoft Gen AI,"
-1916,Prafulla BN,prafulla.bn@relanto.ai,23-Jul-1996,Female,"Bengaluru, KA, IN",Finance,,Senior Accounts Executive,Vidyadhar Ganapati Hegde,18-Aug-2025,Permanent,Finance & Accounting,"Handling End to End & day to day accounting, Accounts Receivable, Accounts Payable, GST, TDS , PT , Payroll Processing Etc. ",NA
-1918,KEERTI SREEDHAR,keerti.sreedhar@relanto.ai,13-Jun-1983,Female,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Project Manager,Vivek Kashyap,18-Aug-2025,Permanent,"Salesforce, project Management ",Scrum master ,"PMP, Sales cloud, Admin"
-1922,Pranay Dilip Paipare,pranay.dilip@relanto.ai,26-Feb-2001,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Nikhil Pandey,01-Sep-2025,Permanent,Not Available,Not Available,Not Available
-1925,Mohammed Faizal,mohammed.faizal@relanto.ai,29-Apr-2000,Male,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,11-Sep-2025,Permanent,Not Available,Not Available,Not Available
-1926,Febin Chacko,febin.chacko@relanto.ai,13-Feb-1994,Male,"Bengaluru, KA, IN",Marketing,,Senior Software Engineer,Suraj NiharRanjan Majumdar,15-Sep-2025,Permanent,Webflow,Web Design,"Webflow Expert,
-Mobile UX, UX/UI - Design Thinking"
-1927,Sunny Ramvilas Kusawa,sunny.ramvilas@relanto.ai,03-Feb-1991,Male,"Pune, MH, IN",Data Engineering & Analytics,,AI/ML Architect,Prasanna R S,18-Sep-2025,Permanent,"AI Architecture, AI Agent, Agentic RAG, AI Assistant, Team building, Python, Angular, System Design","AI Strategy, Planning, Risk Assessment and mitigation, Execution, Delivery",NA
-1929,Hemani Nainesh Shah,hemani.shah@relanto.ai,21-Jan-2000,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Sunny Ramvilas Kusawa,22-Sep-2025,Permanent,"OCR, LLM workflows, Langchain, Python, FastAPI, Finetuning LLMs","Agents, Langgraph, Flask","Master ML & AI - Univ.AI
-Google Data Analytics Specialization"
-1933,Ashirbad Jena,ashirbad.jena@relanto.ai,09-Mar-1990,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,29-Sep-2025,Permanent,Not Available,Not Available,Not Available
-1937,Tarundeep Soni,tarundeep.soni@relanto.ai,30-Jun-2001,Male,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Data Scientist,Pooja Pura,01-Oct-2025,Permanent,Not Available,Not Available,Not Available
-1938,Venkatesh R Kamath,venkatesh.kamath@relanto.ai,19-Sep-2003,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Chhaya Kumari,06-Oct-2025,Permanent,Not Available,Not Available,Not Available
-1941,Laxmi Parashuram Bagewadi,laxmi.bagewadi@relanto.ai,16-Nov-1998,Female,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,06-Oct-2025,Permanent,Not Available,Not Available,Not Available
-1951,Pradeep Kumar,pradeep.kumar@relanto.ai,06-May-1997,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,21-Oct-2025,Permanent,Not Available,Not Available,Not Available
-1955,Pallavi Arun Bachchhav,pallavi.bachchhav@relanto.ai,01-Jun-2001,Female,"Bengaluru, KA, IN",Talent Acquisition,,Talent Acquisition Executive,Vignesh Dharmaraj,03-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1956,Md Waliullah,mohammad.waliullah@relanto.ai,04-Jan-2000,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Prasanna R S,03-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1957,Sridhar Pokuri,sridhar.pokuri@relanto.ai,26-Aug-1973,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Director,Vivek Kashyap,03-Nov-2025,Permanent,Delivery Managment,Program Management,"PRINCE, ITIL, Scrum Certification"
-1959,Guru Pavan Kalyan Bandaru,pavankalyan.bandaru@relanto.ai,06-Jul-1999,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,10-Nov-2025,Permanent,"Python, Machine Learning, Deep Learning, NLP, Generative AI, Computer Vision, Data Processing, AWS, FastAPI, LangChain, OpenAI API, TensorFlow, PyTorch, Scikit-learn, OpenCV, Vector Databases (FAISS, Chroma), and Model Deployment.","Git, CI/CD, Data Visualization, Feature Engineering, API Development, Cloud Automation, Streamlit, Flask, and Agile Methodology.","
-AWS Machine Learning Specialty - AWS MLS-C01"
-1962,Vinaykumar M Suldhal,vinaykumar.suldhal@relanto.ai,10-Feb-1990,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,14-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1963,Sudershan Kumar M,sudershan.kumar@relanto.ai,24-Mar-1988,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,13-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1964,Poorav Ranwa,poorav.ranwa@relanto.ai,21-Sep-1998,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sushant Jayant Wable,17-Nov-2025,Permanent,Varicent,Varicent,Varicnet
-1965,Rajeev Kumar Gupta,rajeev.kumar@relanto.ai,25-Mar-1998,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,19-Nov-2025,Permanent,"Node.Js, Javascript",AWS Serverless,Java Certification Course
-1966,Kamal Jain,kamal.jain@relanto.ai,03-Jul-1998,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,21-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1967,Jeevan Gowda H R,jeevan.gowda@relanto.ai,11-Mar-1995,Male,"Bengaluru, KA, IN",Presales,,Senior Graphic Designer,Vincent T P,24-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1968,Himanshu Gautam,himanshu.gautam@relanto.ai,16-Nov-1982,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Lead Consultant,KEERTI SREEDHAR,27-Nov-2025,Permanent,Not Available,Not Available,Not Available
-1969,Venkataramana Vikas Namana,vikas.namana@relanto.ai,14-Nov-1990,Male,"Bengaluru, KA, IN",Sales,,Senior Manager Business Development,Praneet Mudholkar,01-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1970,Seema Khanum,seema.khanum@relanto.ai,21-Oct-1998,Female,"Bengaluru, KA, IN",Operations - PMO,,Senior Process Quality Executive,Praveen Rajan,01-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1971,Padala Mahalakshmi Keerthana,keerthana.padala@relanto.ai,10-Jul-2002,Female,"Hyderabad, TG, IN",Data Engineering & Analytics,,Senior Data Analyst,Chiranjeevi Lakkakula,03-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1972,Khirod Parida,khirod.parida@relanto.ai,06-Jan-1993,Male,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,03-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1974,Naveed Altaf A,naveed.altaf@relanto.ai,26-Nov-1991,Male,"Bengaluru, KA, IN",Sales,,Senior Manager Business Development,Praneet Mudholkar,08-Dec-2025,Permanent,Sales,Programming,Management Consulting
-1975,Ankur Pahariya,ankur.pahariya@relanto.ai,13-Aug-1983,Male,"Bengaluru, KA, IN",Marketing,,Senior Manager - Marketing,Vincent T P,11-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1976,Jairama Eranna,jairama.eranna@relanto.ai,24-Jul-1987,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,12-Dec-2025,Permanent,Not Available,Not Available,Not Available
-1977,Kalkeeshwar R,kalkeeshwar.r@relanto.ai,11-Feb-1996,Male,"Hyderabad, TG, IN",Operations - Admin,,Senior IT Admin Executive,Praveen Rajan,15-Dec-2025,Permanent,"Intune, MECM (Miscosoft endpoint configuration Manager), O365, Identity and access management, Teams admin, Troubleshooting, windows administration",networking ,"CCNA (Cisco Certified Network Associate Routing and Switching)
-
-ITIL® Foundation Certificate in IT Service Management."
-1979,Mohamed Uvais,mohamed.uvais@relanto.ai,17-Jun-1985,Male,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Lohith K A,08-Jan-2026,Permanent,"Anaplan, Business Analysts, Functional Consultant, Stakeholder Management, Change Management, Team Management, Finance and Accounts, GST","Oracle 11i, SAP(HCM), Monday.com, Service Now","Professional Anaplan Solution Architect,
-Professional Anaplan Model Builder,
-Certified Anaplan Technical Presales
-Certified Anaplan Data Orchestrator"
-1981,Shaik Alfaaz,shaik.alfaaz@relanto.ai,08-Jan-2001,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,19-Jan-2026,Permanent,Not Available,Not Available,Not Available
-1982,Karthick Govindaraj,karthick.govindaraj@relanto.ai,05-Nov-1998,Male,"Bengaluru, KA, IN",Marketing,,Graphic Designer,Suraj NiharRanjan Majumdar,19-Jan-2026,Permanent,Not Available,Not Available,Not Available
-1983,Harshit Raj,harshit.raj@relanto.ai,20-Jun-1999,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Software Engineer,Raamanathan Gururajan,02-Feb-2026,Permanent,"React js, Javascript","React Native, Node js Python, MongoDB, SQL,AI/ML",Udemy
-1984,Avnish Kumar,avnish.kumar@relanto.ai,26-Jul-1982,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Principal Architect,Prasanna R S,09-Feb-2026,Permanent,Not Available,Not Available,Not Available
-1985,Mallika Sinha,mallika.sinha@relanto.ai,10-Feb-1994,Female,"Bengaluru, KA, IN",Data Engineering & Analytics,,Project Manager,Prasanna R S,20-Feb-2026,Permanent,"Program Management, Project Management, Agile and Scrum","Python, SQL, People Management, Jira/Asana",Lean Six Sigma Black Belt
-1986,Keshav Mantri,keshav.mantri@relanto.ai,18-Dec-1994,Male,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Consultant,Riga Singh,23-Feb-2026,Permanent,CLM,Legal,Ironclad and Agiloft certifcations
-1987,Suruthy P,suruthy.p@relanto.ai,18-May-2002,Female,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Ganapathi Ramakrishnan K,02-Mar-2026,Permanent,"Power Bi, SQL, Python, Java, Linux, Database Administration","Business Intelligence Tools, C Programming, Power query, DAX Measures , ETL","Microsoft Certified - Power BI Data Analyst Associate (PL-300), Python Programming (Coursera), Object oriented programming in Java (Coursera)"
-1988,Anup Kumar Dey,anupkumar.dey@relanto.ai,21-Jul-2000,Male,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,02-Mar-2026,Permanent," Agentic AI including Google ADK, Crewai and langgraph framework. Genai tools with LLM, SLM and VLM model leveraging, AI product developments with python as backend","Classical Machine learning and Deep Learning, Computer vision tools for object detection, segmentation and recognition",Analytics vidya Agentic and Genai certifications
-1989,Pabba Advik,advik.pabba@relanto.ai,10-Jun-2003,Male,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,02-Mar-2026,Permanent,"MERN Stack (MongoDB, Express.js, React.js, Node.js) Frontend Development (React.js, Redux, HTML5, CSS3, Tailwind CSS) Backend Development (Node.js, Express.js) Databases (MongoDB, Mongoose, MySQL) Authentication & Security (JWT, OAuth 2.0, bcrypt, CORS) Cloud & Deployment (AWS EC2/S3, Vercel, Netlify) Version Control & Collaboration (Git, GitHub, Postman)","Python (backend/data tasks) WebSockets (real-time communication) MongoDB Atlas (cloud monitoring) Excel, Jira, Salesforce, Slack (project tools)",NA
-1990,Sumit Kumar,sumit.kumar@relanto.ai,09-Mar-1991,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,12-Mar-2026,Permanent,Not Available,Not Available,Not Available
-1991,Sandeep Patwal,sandeep.patwal@relanto.ai,06-Dec-1989,Male,"Bengaluru, KA, IN",Digital Transformation,,Lead Analyst,Sridhar Pokuri,18-Mar-2026,Permanent,Not Available,Not Available,Not Available
-1992,Koppula Satya Narayana Reddy,satya.narayana@relanto.ai,30-Oct-1980,Male,"Hyderabad, TG, IN",Digital Transformation,,Manager - Testing,Sridhar Pokuri,25-Mar-2026,Permanent,"Oracle EBS Techno Functional, SCM and Financials","Oracle SQL PLSQL, XML Publisher Reports",NA
-1993,Vadrev Aditya Sai Ram,aditya.sairam@relanto.ai,11-May-1994,Male,"Hyderabad, TG, IN",Digital Transformation,,Senior Project Manager,Sridhar Pokuri,31-Mar-2026,Permanent,PROJECT MANAGEMENT,DIGITAL TRANSFORMATION,ACP
-1994,Nikitha M,nikitha.m@relanto.ai,16-Oct-1997,Female,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,14-Apr-2026,Permanent,Java,Springboot,"Advanced Java Certification.
-Infosys Certified Java SE8 Developer."
-1995,Shipra Kumari,shipra.kumari@relanto.ai,13-Nov-2000,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,06-Apr-2026,Permanent,"AI/ML, Python, Data Science, RAG Systems","React.js, JavaScript, FastAPI, AWS (S3), Docker, Streamlit, Git, FAISS/ChromaDB,  Data Preprocessing",Building with the Claude API
-1996,Achuth Balan,achuth.balan@relanto.ai,19-Aug-1996,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,24-Apr-2026,Permanent,Not Available,Not Available,Not Available
-1997,Apoorva Nayak B,apoorva.nayakb@relanto.ai,21-Sep-2003,Female,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Software Engineer,Pooja Pura,28-Apr-2026,Permanent,Not Available,Not Available,Not Available
-1998,Yuvaraj Molaka,yuvaraj.molaka@relanto.ai,09-Jun-1987,Male,"Bengaluru, KA, IN",Digital Transformation,,Lead Software Engineer,Sridhar Pokuri,29-Apr-2026,Permanent,Java Backend,"CI/CD, Docker, Kubernetes",SAFE Agile
-1999,Shivani Khosla,shivani.khosla@relanto.ai,13-Mar-1989,Female,"Pune, MH, IN",Digital Transformation,,Senior Lead QA Engineer,Sridhar Pokuri,29-Apr-2026,Permanent,"Salesforce, Oracle fusion, Manual and API testing","UiPath, selenium , core Java, cucumber framework",ISTQB
-2000,Sonali Das,sonali.das@relanto.ai,28-Nov-1991,Female,"Bengaluru, KA, IN",Digital Transformation,,Lead Software Engineer,Sridhar Pokuri,06-May-2026,Permanent,Not Available,Not Available,Not Available
-2001,Veena Kambali,veena.kambali@relanto.ai,25-Oct-1989,Female,"Bengaluru, KA, IN",Digital Transformation,,Lead QA Engineer,Sridhar Pokuri,12-May-2026,Permanent,"ETL Testing,Tableau BI Report Testing,Manual Testing","API Testing,AWS Testing,",ISTQB
-C-0016,Mohammad Hanif,mohammad.hanif@relanto.ai,18-Feb-1994,Male,"Bengaluru, KA, IN",Digital Transformation,,Senior Consultant,Sridhar Pokuri,01-Sep-2023,Contract,Not Available,Not Available,Not Available
-C-0020,Priyanshu Sahu,priyanshu.sahu@relanto.ai,10-May-1989,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Salesforce Developer,Vinaykumar M Suldhal,14-Nov-2023,Contract,Not Available,Not Available,Not Available
-C-0040,Atkuri Balaji,atkuri.balaji@relanto.ai,08-Oct-1981,Male,"Hyderabad, TG, IN",Data Engineering & Analytics,,Consultant,Prasanna R S,14-Jun-2024,Contract,Not Available,Not Available,Not Available
-C-0053,Hitendra Sabhadiya,sabhadiya.hitendra@relanto.ai,12-Jun-1994,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Vinaykumar M Suldhal,12-May-2025,Contract,Not Available,Not Available,Not Available
-C-0055,Shaik Abdul Rasheedh,abdul.rasheed@relanto.ai,15-Jun-1997,Male,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,04-Jun-2025,Contract,Not Available,Not Available,Not Available
-C-0057,Surendranath Tirumala Venkata Reddy,surendranath.reddy@relanto.ai,20-Jun-1982,Male,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Ashirbad Jena,23-Jun-2025,Contract,Not Available,Not Available,Not Available
-C-0062,Renuka Chalawadi,c0062@relanto.ai,17-Oct-1986,Female,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Sridhar Pokuri,05-Aug-2024,Contract,Not Available,Not Available,Not Available
-C-0067,Salapu Josna Madhuri,josna.madhuri@relanto.ai,25-Nov-1985,Female,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Sridhar Pokuri,19-Aug-2025,Contract,Not Available,Not Available,Not Available
-C-0070,Wasim Ahmed,wasim.ahmed@relanto.ai,15-Aug-1989,Male,"Bengaluru, KA, IN",Data Engineering & Analytics,,Consultant,Prasanna R S,25-Nov-2025,Contract,Not Available,Not Available,Not Available
-TT0120,Daniya Faatimah,daniya.faatimah@relanto.ai,03-May-2004,Female,"Bengaluru, KA, IN",AI-First Lab,,Technical Trainee,Raamanathan Gururajan,07-Jul-2025,Intern,"Machine Learning, Generative AI & LLMs, Data Science & Data Analysis, Python, Deep Learning, NLP, Full-Stack Development, Autonomous AI Agents","TensorFlow , Scikit-Learn , Pandas , NumPy , Matplotlib , Seaborn, Hugging Face, RAG, Image Processing, REST API, Java , C, Internet of Things (IoT), Data Structures & Algorithms",-
-TT0121,Rentachintala Yashwanth Sharma,yashwanth.sharma@relanto.ai,28-Aug-2001,Male,"Bengaluru, KA, IN",Digital Transformation,,Technical Trainee,Megha D,14-Jul-2025,Intern,ServiceNow ITSM ,Power BI,NA
-TT0125,Drishti Garg,drishti.garg@relanto.ai,15-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Feb-2026,Intern,Not Available,Not Available,Not Available
-TT0126,Harshit Maroo,harshit.maroo@relanto.ai,09-Oct-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Feb-2026,Intern,Not Available,Not Available,Not Available
-TT0127,Tanmay Kalla,tanmay.kalla@relanto.ai,13-Feb-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Feb-2026,Intern,Not Available,Not Available,Not Available
-TT0128,A Lokesh Reddy,alokesh.reddy@relanto.ai,13-Jan-2003,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, Java, C++,SQL","AWS,ML",AWS CERTIFIED CLOUD PRACTITIONER
-TT0129,Aakriti Jauhari,aakriti.jauhari@relanto.ai,30-Mar-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"C, C++ , Python, Java , OS, DBMS, ML, OOP","Communication, logical and critical thinking","Git and Github
-introduction to AI"
-TT0130,Aarushi Gupta,aarushi.gupta@relanto.ai,22-May-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"SQL, Python, Machine Learning","Java, C, Deep Learning",Professional certificate in machine learning by IBM
-TT0131,Aashutosh Kumar Mishra,aashutosh.mishra@relanto.ai,20-Nov-2001,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0132,Aditi M Tavade,aditi.mtavade@relanto.ai,13-Aug-2003,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java , HTML , CSS , SQL ,React , Node , Firebase , Python ","Communication , Team work , Quick Learner ","1)COINCENT internship -web development 
-2)UDEMY - mastering data structure and algorithm 
-"
-TT0133,Anagha Tantry,anagha.tantry@relanto.ai,28-Nov-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0134,Ayushi Tawari,ayushi.tawari@relanto.ai,03-Jul-2003,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, Pandas, AI-ML","MySQL, Communication, Leadership",Introduction to AI-IBM
-TT0135,Banda Ananya,banda.ananya@relanto.ai,08-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"AI, ML , LLM's, Python ","Leadership, communication","Google AI Essentials- Coursera
-Data Fundamentals - IBM
-Buisness Analytics Using Power BI"
-TT0136,Bowrampet Manish Reddy,manish.bowrampet@relanto.ai,24-Mar-2005,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, AI(ML, DL, NLP, CV), Java(Baisc),DSA,OOPS","Mentorship, Leadership, Public Speaking","NVDIA fundamentals of Deep Learning, Scaler Unsupervised ML, Data Camp ML"
-TT0137,Dara Lakshmi Prasanna,lakshmi.dara@relanto.ai,25-Nov-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0138,Deepan S,deepan.s@relanto.ai,04-Aug-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Generative AI, Deep Learning, Machine Learning, Python, Data Structures and Algorithms","Soft Skills, Leadership, Communication, Docker","Introduction To AI - Udemy
-Communication Skills = Udemy"
-TT0139,Gandhe Vineesha,gandhe.vineesha@relanto.ai,25-Nov-2003,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0140,Gaurav Bhatt,gaurav.bhatt@relanto.ai,25-Sep-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java, Android Development, SQL, DSA","Git, OOPs, Problem Solving","Connect and Protect: Networks and Network Security
-
-Play It Safe: Manage Security Risks"
-TT0141,Gaury Jithesh,gaury.jithesh@relanto.ai,10-Jul-2003,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0142,Godreign Elgin Y,godreign.y@relanto.ai,23-Aug-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0143,Vennela Gudivaka,gudivaka.vennela@relanto.ai,11-Aug-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0144,Hridyalakshmi Santhosh,hridyalakshmi.santhosh@relanto.ai,30-Jun-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0145,Harika Reddy S N,harika.sn@relanto.ai,01-Apr-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0146,Sujeevan Jeyashanker,sujeevan.j@relanto.ai,19-Jan-2005,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python , Machine Learning ,  Node.js","SQL, MongoDB , Soft skills","1.Resposive Web Design - FreeCodeCamp
-2.ML onRamp - MATLAB
-3.DL onRamp- MATLAB"
-TT0147,K P Bhoomika Rai,bhoomika.kp@relanto.ai,08-May-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0148,Anumeha R,anumeha.r@relanto.ai,08-May-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"C++, Python, Matlab, Tableau, MySQL, Version control, Machine Learning, Fundamentals of Data Science","Software Methodologies, Team Collaboration, Competitive Programming"," Affective computing - NPTEL
-Cyber Security - NPTEL
-Data Analytics using Python - NPTEL
-"
-TT0149,Linojose Arulpandiyan,linojose.arulpandiyan@relanto.ai,05-Mar-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0150,Hari Priya M,haripriya.m@relanto.ai,27-Aug-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0151,Shivani M,shivani.m@relanto.ai,23-May-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0152,Manasha Arunachalam,manasha.arunachalam@relanto.ai,12-Feb-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, ML, DL, NLP, CV, SQL, LangChain, Java, JS, TS, NextJS, Flutter, Flask","Team work, Leadersip","Oracle GenAI cloud Professional 2025
-Google study Jams - 2024, 2025"
-TT0153,Harshavardhan Munnuri,munnuri.harshavardhan@relanto.ai,05-Sep-2005,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0154,Neelisetty Sandhya Rani,sandhya.ranie@relanto.ai,20-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0155,Nirupam Arun Naragund,arun.naragund@relanto.ai,27-Apr-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0156,Pallavi M,pallavi.m@relanto.ai,25-Jun-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, SQL, AI,Machine Learning,Data Analysis, RAG,Workflow","n8n,Communication Skills, Team Collaboration, Adaptability","Data Science(Nptel and NASSCO) ,Introduction to cybersecurity CISCO, Coursera- AWS S3,POWER BI,SQL"
-TT0157,Pankaj Singh Patwal,pankaj.patwal@relanto.ai,16-Oct-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"JAVA , JAVASCRIPT , HTML, CSS","NODEJS , SQL , OOPS , DBMS","JAVASCRIPT , CLOUD"
-TT0158,Pooja Tiwari,pooja.tiwari@relanto.ai,17-Jul-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Coding with C, C++ and Java , OOPS , SQL",Teaching,"AWS Cloud Practitioner Essentials, AWS Cloud Quest - Cloud Practitioner , IBM AI Engineering"
-TT0159,Prashant Joshi,prashant.joshi@relanto.ai,09-Nov-2003,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0160,Pravallika Singamreddy,pravallika.singamreddy@relanto.ai,05-Feb-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"C, C++, Core Java, Html, CSS, JavaScript, React js, Express js, Node js, MongoDB, SQL, Bootstrap",Student Volunteer in National Service Scheme,"Hacker Rank Problem Solving 
-MongoDB Associative Developer"
-TT0161,Rashi Badiya,rashi.badiya@relanto.ai,09-Nov-2003,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0162,Rohit Kumar,rohit.kumar@relanto.ai,12-May-2002,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java, Python, JavaScript, SQL, NoSQL, Machine Learning, Node JS","Version Control, Problem Solving","Postman API Fundamentals,
-SQL basics to Advanced,
-Python HackerRank"
-TT0163,Sashwaat Fomra,sashwaat.fomra@relanto.ai,19-Mar-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0164,Sheni Prashanth,sheni.prashanth@relanto.ai,28-Dec-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java, HTML , CSS, JavaScript , DevOps , SQL, Neo4j","Communication , Leadership",NPTEL (Java programming)
-TT0165,Shreyas Shankar,shreyas.shankar@relanto.ai,13-Jul-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0166,Sneha Agarwal,sneha.agarwal@relanto.ai,01-Oct-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"C,C++,Java,Python ,Javascript,HTML,CSS,React.js,Node.js,OOPS,OS,DBMS,ML,DL,AI","Git,VS Code,Jupyter Notebook,Anaconda,Critical and Logical Thinking","Communication Skills,Intro to AI,Basics of SQL,Python"
-TT0167,Srinithi V,srinithi.v@relanto.ai,18-Dec-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, Machine Learning, NLP, Data Analytics, Java, React   ","Data Visualization, Git Hub, Testing, MS Office",NPTEL- Joy of computing with python
-TT0168,Srusti T D,srusti.td@relanto.ai,17-Dec-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java, HTML, CSS, JavaScript, MySQL, MongoDB, DSA, OOPS, DBMS ","Git, Web Development, SQL, NoSQL, Communication, Time Management, Team Collaboration, Problem Solving, Creativity",.
-TT0169,Sthuthi LNU,sthuthi@relanto.ai,11-Aug-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0170,Praneetha Surampally,surampally.praneetha@relanto.ai,10-Jun-2005,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"python,java,c,dbms,sql,daa","soft skills, good communication, team, collaboration ","full stack development-java,Simplelearn skillup
-networking devices& initial configuration, cisco
-cyber security fundamentals,IBM
-Python essentials, cisco
-introduction to software testing,simplelearn "
-TT0171,Suyash Singh Bhadouria,suyash.bhadouria@relanto.ai,16-Oct-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, Java, SQL, Kotlin, XML, C++, Android development, Cloud Computing, Vibe Coding, Machine Learning, Deep Learning ","C, HTML, GCP, Appwrite, Firebase, AWS",Oracle Certified - Generative AI Professional
-TT0172,Thota Abhilash,thota.abhilash@relanto.ai,24-May-2005,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, Java, JavaScript, SQL, C++","Communication skills, Problem Solving, Critical thinking, Agile methodology, Teamwork.",AWS using AI.
-TT0173,Tummalapalli Sanjit Teja,sanjit.tummalapalli@relanto.ai,21-Sep-2005,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, C, Java, Machine Learning, Deep Learning, Generative AI, NLP, Pandas, Numpy","Active Listening, Effective Communication, Leadership qualities, Group Management",100 days python bootcamp certificate - UDEMY ; Nvidia DLI engineer certificate - NVIDIA
-TT0174,Yash Rohan,yash.rohan@relanto.ai,03-Mar-2003,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0175,Yashika Thapliyal,yashika.thapliyal@relanto.ai,01-Jul-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Problem Solving, C, C++, Python, Machine Learning Basics","Communication, Database Management","AWS CLI Basics
-AWS Skills Centers: Becoming a Cloud Practitioner
-Image Processing Using Python
-"
-TT0176,Lakhi A Shetty,lakhi.ashetty@relanto.ai,20-Apr-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Java, SQL, Html,CSS","Public Speaking, Communication","Microsoft azure learning, Microsoft Applied AI learning, Microsoft AI learning"
-TT0177,Meghna LNU,meghna@relanto.ai,29-Apr-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python , C , Java , HTML , MongoDB , SQL ","Communication , Team work , Critical Thinking , Time Management , Problem solving ","Learn SQL with Microsoft SQL server(Infosys) , Hands on guide to Java (Infosys) , Software defined networking , Applied AI Learning(Microsoft) , Microsoft AI learning , Microsoft Azure learning(Microsoft)"
-TT0178,Nihaar Rai V,nihaarrai.v@relanto.ai,03-Jun-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0179,Padmaja Ramakrishnan,padmaja.ramakrishnan@relanto.ai,23-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python, HTML, CSS, SQL, MongoDB, Vue.js, AI-Langchain and Langgraph, ML","Communication, Presentation, Public speaking, Teamwork, Managing people",Internet of Things (IoT)
-TT0180,Pratiksha Vijay Phadtare,pratiksha.phadtare@relanto.ai,20-Sep-2003,Female,"Pune, MH, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0181,Raghav Satyadeep Sadh,raghav.sadh@relanto.ai,10-Mar-2004,Male,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,Not Available,Not Available,Not Available
-TT0182,Sanjana Shetty,sanjana.shetty@relanto.ai,12-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"C, Python, Excel","Problem Solving, Communication, Time management, Leadership",Nptel - C programming and assembly language
-TT0183,Shruti Chandrasekar,shruti.chandrasekar@relanto.ai,07-Sep-2004,Female,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,02-Mar-2026,Intern,"Python,Data visualization, TensorFlow, Keras, PyTorch,OpenCV, Android studio,CV,DL,NLP,ML,IOT,AI","Leadership,Communication,Presentation,Team work","Applied Linear Algebra for Signal processing,Data analytics and ML
-Optical wireless Communication for Beyond 5G Networks and IOT"
-,,,,,,,,,,,,,,
+10001,Rajan Gaur,rajan@relanto.ai,,,"Issaquah, WA, USA",Leadership,,Chief Executive Officer,Rajan Gaur,2021-01-04,,,,
+10002,Yeshwant Nayak,ynayak@relanto.ai,,,"Fremont, CA, USA",Leadership,,Chief Operating Officer,Yeshwant Nayak,2021-01-01,,,,
+10003,Nadia Aziz Dessouki,nadia@relanto.ai,,,"Fremont, CA, USA",Sales,,Chief Sales Officer,Rajan Gaur,2021-12-13,,,,
+10004,Shankar Chowhan,schowhan@relanto.ai,,,"Fremont, CA, USA",Leadership,,President,Shankar Chowhan,2024-02-26,,,,
+10005,Venkatesh Kodangal,venkatesh@relanto.ai,,,"Fremont, CA, USA",Leadership,,Chief Strategy Officer,Venkatesh Kodangal,2024-02-26,,,,
+10006,Vivek Kashyap,vivek.kashyap@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,"Senior Vice President, Delivery & Solutions Engineering",Rajan Gaur,2022-02-01,,,,
+10007,Prakash Hariharan,prakash@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Chief Planning Officer,Rajan Gaur,2022-02-21,,,,
+10008,SOUMYA ASHOK HEGDE,soumya.hegde@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Project Manager,MADHU KUMAR CHINNA REDDY,2022-04-14,,,,
+10009,Sangeetha Chowhan,sangeetha@relanto.ai,,,"Fremont, CA, USA",Leadership,,Vice President,,2022-07-01,,,,
+1001,Vincent T P,vincent@relanto.ai,,,"Bengaluru, KA, IN",Relanto,,Chief Technology Officer,Vincent T P,2021-02-01,,,,
+10010,Kalpana Kodangal,kalpana@relanto.ai,,,"Fremont, CA, USA",Leadership,,Vice President,,2022-07-01,,,,
+10011,Meenakshi Srivastava,meenakshi@relanto.ai,,,"Fremont, CA, USA",Sales,,Account Manager,Nadia Aziz Dessouki,2023-01-01,,,,
+10012,Imtiaz Ahmed,imy.ahmed@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,AVP-Delivery,MADHU KUMAR CHINNA REDDY,2023-02-13,,,,
+10013,Courtney Kimi Koyama,courtney.koyama@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Anaplan Model Builder,MADHU KUMAR CHINNA REDDY,2023-03-08,,,,
+10014,Thomas David Dsilva,david@relanto.ai,,,"Fremont, CA, USA",Operations - PMO,,Operations Manager,Santhi Kanumuri,2023-07-24,,,,
+10015,Harika Nomula,hnomula@relanto.ai,,,"Fremont, CA, USA",Immigration,,Immigration Manager,Shankar Chowhan,2023-07-24,,,,
+10016,Anuja Bhattarai,anuja.bhattarai@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,QA Engineer,Vivek Kashyap,2023-08-01,,,,
+10017,Santhi Kanumuri,santhi@relanto.ai,,,"Fremont, CA, USA",Operations - PMO,,VP Global Operations,Venkatesh Kodangal,2023-09-01,,,,
+10018,Venu Venkateswaran,venu.venkateswaran@relanto.ai,,,"Fremont, CA, USA",Finance,,Senior Finance Manager,Rajan Gaur,2023-08-17,,,,
+10019,Meenakshi Manocha,meenakshim@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,IT Architect,MADHU KUMAR CHINNA REDDY,2023-08-25,,,,
+10020,Geethika Kunakuntla,geethika.kunakuntla@relanto.ai,,,"Issaquah, WA, USA",Operations - PMO,,Operation Assistant,Santhi Kanumuri,2023-09-19,,,,
+10021,YOGI REDDY YERUVA,yogi.yeruva@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Software Developer,Vivek Kashyap,2024-01-16,,,,
+10022,Pushpalatha Gangalagunte Viswa,pushpalatha.viswa@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,IT Business System Analyst,MADHU KUMAR CHINNA REDDY,2024-03-01,,,,
+10023,Ravindrakumar Prajapati,ravindrakumar.prajapati@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Solution Architect,MADHU KUMAR CHINNA REDDY,2024-03-07,,,,
+10024,Jessica Ly,jessica.ly@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Systems Analyst/QA,Vivek Kashyap,2024-03-25,,,,
+10025,Anurag Khandelwal,anurag.khandelwal@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Vice President,Gujjadi Yeshwant Nayak,2024-05-13,,,,
+10026,Prabhakar Ramaswami,prabhakar.ramaswami@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Sr Director Delivery and Business Development,Pooja Virupakshaiah Pura,2024-05-20,,,,
+10028,Thangapandi Murugan,thangapandi.murugan@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Software Engineer,Vivek Kashyap,2024-07-01,,,,
+10029,Chelsea Olivia Fernandes,chelsea.fernandes@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Software Engineer,Vivek Kashyap,2024-10-01,,,,
+1003,Rashmi Hegde,rashmi@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Delivery Director,Vivek Kashyap,2021-04-06,,,,
+10030,Goutam Sahoo,goutam.sahoo@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Software Engineer,Pooja Virupakshaiah Pura,2024-10-01,,,,
+10031,Nagar Sunil Nayak,sunil.nayak@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,IT Business Analyst,Vivek Kashyap,2024-10-01,,,,
+10032,Dinesh Venigalla,dinesh.venigalla@relanto.ai,,,"Issaquah, WA, USA",Digital Transformation,,Software Developer,Vivek Kashyap,2024-10-01,,,,
+10033,PUNEETH Kumar Honnali Palakshachari,puneeth@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Software Engineer,MADHU KUMAR CHINNA REDDY,2024-10-01,,,,
+10034,Bhuvaneshwaran Shanmugasundaram,bhuvaneshwaran.sh@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Software Developer,Vivek Kashyap,2024-10-01,,,,
+10035,Pooja Pura,pooja.pura@relanto.ai,,,"Fremont, CA, USA",AI-First Lab,IP & Solutions,"Vice President, Marketing, IP & Solutions",Yeshwant Nayak,2023-05-16,,,,
+10036,Kaup Raghavendra Nayak,raghavendra.nayak@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Director Data and Analytics,Pooja Virupakshaiah Pura,2024-11-16,,,,
+10037,Amitava Maiti,amitava@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Senior Technical Solution Architect,MADHU KUMAR CHINNA REDDY,2024-11-16,,,,
+10038,Prahlad Nayak,prahlad.nayak@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Software Developer,Pooja Virupakshaiah Pura,2024-11-25,,,,
+10039,NAVEEN GUPTA,naveen.gupta@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineer,Pooja Virupakshaiah Pura,2024-11-26,,,,
+10040,Snehitha Anpur,snehitha.anpur@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,IT Data Analyst,Pooja Virupakshaiah Pura,2024-12-01,,,,
+10041,VINITHA RAMAKRISHNAN,vinitha.ramakrishnan@relanto.ai,,,"Issaquah, WA, USA",Enterprise Business Planning,,Anaplan Solution Architect,MADHU KUMAR CHINNA REDDY,2025-01-06,,,,
+10042,Divyansh Sharma,divyansh.sharma@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Project Manager - Intern,Vivek Kashyap,2025-01-10,,,,
+10043,MADHU KUMAR CHINNA REDDY,madhu@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Information Technology Project Manager,Vivek Kashyap,2025-01-10,,,,
+10044,DHIVAKAR CHANDRAREDDY,dhivakar.c@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Lead Consultant,MADHU KUMAR CHINNA REDDY,2025-01-31,,,,
+10045,Radhika Naidu Thota,radhika.narla@relanto.ai,,,"Fremont, CA, USA",Finance,,Payroll Manager,Shankar Chowhan,2025-02-01,,,,
+10047,Rakesh Kamath,rakesh.kamath@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Program Manager,Vivek Kashyap,2025-04-16,,,,
+10048,Sahith Bandi,sahith.bandi@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Software Engineer - Intern,Pooja Virupakshaiah Pura,2025-05-12,,,,
+10049,Adam Simpson,adam.simpson@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Program Manager,Vivek Kashyap,2025-05-28,,,,
+10050,Akash Katir,akash.katir@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Associate AI Engineer - trainee,Pooja Virupakshaiah Pura,2025-06-02,,,,
+10051,Tanya Jain,tanya.jain@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Associate AI Engineer - trainee,Pooja Virupakshaiah Pura,2025-06-16,,,,
+10052,Rasik Wadhawan,rasik.wadhawan@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Business Analyst,MADHU KUMAR CHINNA REDDY,2025-06-16,,,,
+10053,Riya Ranjan,riya.ranjan@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Associate AI Engineer,Pooja Virupakshaiah Pura,2025-06-16,,,,
+10054,Sandeep Kumar Nagaraj,sandeep.nagaraj@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Java Developer,Vivek Kashyap,2025-07-03,,,,
+10055,Jennifer Fleck,jennifer.fleck@relanto.ai,,,"Fremont, CA, USA",Relanto,,General Manager - EMEA,Nadia Aziz Dessouki,2025-08-01,,,,
+10056,Himmat Verma,himmat.verma@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Senior Software Designer,Vivek Kashyap,2025-08-01,,,,
+10057,SRIGIRI GORLE,srigiri.gorle@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Senior Zuora Developer,Vivek Kashyap,2025-08-12,,,,
+10058,Mahima Kulkarni,mahima.kulkarni@relanto.ai,,,"Fremont, CA, USA",Human Resource,,HR Manager,Venkatesh Kodangal,2025-09-04,,,,
+10059,Shubratha Shankar Narayan Bhat,shubratha.bhat@relanto.ai,,,"Fremont, CA, USA",Relanto,,"Director, Business Development",Nadia Aziz Dessouki,2025-09-04,,,,
+10060,Pavithra Rajkumar,pavithra.rajkumar@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Product Manager (AI/ML),Pooja Virupakshaiah Pura,2025-09-30,,,,
+10061,HARIKRISHNA PATHIPATI,harikrishna.pathipati@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Anaplan Solution Architect,MADHU KUMAR CHINNA REDDY,2025-10-16,,,,
+10062,Nikhil Tarigonda,nikhil.tarigonda@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Analyst,Pooja Virupakshaiah Pura,2025-10-16,,,,
+10063,Harshitha Telkala,harshitha.t@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineer,Pooja Virupakshaiah Pura,2025-10-20,,,,
+10064,Kavya Kaluvakolan,kavya.kaluvakolan@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Sr Software Engineer,Vivek Kashyap,2025-10-30,,,,
+10065,Ishita Majumdar,ishita.majumdar@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Chief Data & AI Officer,Rajan Gaur,2025-11-04,,,,
+10066,Michael Scott Shore,mik.shore@relanto.ai,,,"Issaquah, WA, USA",Data Engineering & Analytics,,Product Strategist,Pooja Virupakshaiah Pura,2025-11-17,,,,
+10067,Sayali Uday Chitale,sayali.uday@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,QA Tester (PTC - FlexPLM),Vivek Kashyap,2025-12-22,,,,
+10068,Ajaykumar Srungavarapu,ajaykumar.s@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,CRMA Architect,Vivek Kashyap,2026-01-02,,,,
+10069,Navya Vasa,navya.vasa@relanto.ai,,,"Fremont, CA, USA",Enterprise Business Planning,,Lead Consultant,MADHU KUMAR CHINNA REDDY,2026-01-02,,,,
+10070,Brenden Louis Stephen Pragasam,brenden.pragasam@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,UX Designer,Vivek Kashyap,2026-01-05,,,,
+10071,Nikhil Reddy Vemireddy,nikhil.vemireddy@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineer,Pooja Virupakshaiah Pura,2026-01-14,,,,
+10072,Sankeerth Sridhar Narayan,sankeerth.narayan@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineering Intern,Pooja Virupakshaiah Pura,2026-01-16,,,,
+10074,Deepa Lakshmi Hari Krishnan,deepa.lakshmi@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Software Engineer,Vivek Kashyap,2026-05-18,,,,
+10075,Chandrika Meghana Jonnalagadda,chandrika.jonnalagadda@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineer,Pooja Virupakshaiah Pura,2026-06-03,,,,
+10076,Rindhem Randhawa,rindhem.randhawa@relanto.ai,,,"Toronto, ON, CN",Sales,,Account and Operations Manager,Nadia Aziz Dessouki,2022-11-14,,,,
+10077,Manu Agarwal,manu.agarwal@relanto.ai,,,"Toronto, ON, CN",Enterprise Business Planning,,Information Technology Consultant,MADHU KUMAR CHINNA REDDY,2025-08-01,,,,
+10078,Sai Chandra Shanigaram,sai.shanigaram@relanto.ai,,,"Toronto, ON, CN",Enterprise Business Planning,,Business Analyst,MADHU KUMAR CHINNA REDDY,2025-11-24,,,,
+10079,Zaheer Nasirkhan Pathan,zaheer.pathan@relanto.ai,,,"Toronto, ON, CN",Enterprise Business Planning,,Varicent Consultant,MADHU KUMAR CHINNA REDDY,2026-01-01,,,,
+10080,Pavithra Sathyanarayan,pavithra.sathyanarayan@relanto.ai,,,"Toronto, ON, CN",Digital Transformation,,Technical Program Manager,Vivek Kashyap,2026-05-27,,,,
+10081,Varun Kandukuri,varun.kandukuri@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Technical Program Manager,Vivek Kashyap,2026-06-03,,,,
+1009,Suraj NiharRanjan Majumdar,suraj@relanto.ai,,,"Bengaluru, KA, IN",Marketing,,Manager - Marketing,Pooja Pura,2021-09-20,,,,
+1014,Sushant Jayant Wable,sushant@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,,Delivery Director,Vincent T P,2021-11-01,,,,
+1020,Adhvi P M,adhvi.panata@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,2022-02-07,,,,
+1021,Thejasvi N,thejasvi.n@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Lohith K A,2024-08-01,,,,
+1028,Ganapathi Ramakrishnan K,ganapathi.r@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Principal Consultant,Rashmi Hegde,2022-05-02,,,,
+1033,Tincy Thomas,tincy.thomas@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Adhvi P M,2022-06-08,,,,
+1035,Geya Chowdary Chukkapalli,geya.chowdary@relanto.ai,,,"Hyderabad, TG, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,2022-06-20,,,,
+1039,Gourav Rao K R,gourav.rao@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sorna Raja Prabhu Sivasekaran,2022-06-20,,,,
+1040,Shashank R,shashank.r@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Ganapathi Ramakrishnan K,2022-06-20,,,,
+1042,Mutturaj M Chittaragi,mutturaj.chittaragi@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Ganapathi Ramakrishnan K,2022-06-20,,,,
+1043,Vinay Kumar,vinay.kumar@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Manikanda Murugan A,2022-06-20,,,,
+1048,Swati Muralidhar Iyer,swati.iyer@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Lohith K A,2022-08-16,,,,
+1053,Revathi Chennupalli,revathi@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Vignesh Dharmaraj,2022-10-04,,,,
+1065,Shaik Mahammad Jilani,mahammad.jilani@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,2022-10-04,,,,
+1068,Pradeep Kiran Kattimanda,pradeepkiran@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Mohammed Nazeer Ahmed,2022-10-04,,,,
+1072,Mohammed Nazeer Ahmed,nazeer@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Manager,Vignesh Dharmaraj,2022-10-04,,,,
+1073,Sami Abdul Mohammed,abdul.s@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Team Lead,Mohammed Nazeer Ahmed,2022-10-04,,,,
+1082,Bhavani Chitukula Reddy,bhavani.reddy@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,2022-10-10,,,,
+1086,Manoj Hosamani,manoj.hosamani@relanto.ai,,,"Bengaluru, KA, IN",Marketing,,Senior Graphic Designer,Suraj NiharRanjan Majumdar,2022-11-29,,,,
+1088,Sadhu Sravani,sadhu.sravani@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Talent Acquisition Specialist,Vignesh Dharmaraj,2022-12-01,,,,
+1089,Jharana Das,jharana.das@relanto.ai,,,"Bengaluru, KA, IN",Presales,,Lead Business Analyst,Vincent T P,2022-12-19,,,,
+1094,Usha K,usha.k@relanto.ai,,,"Bengaluru, KA, IN",Finance,,Finance Manager,Venu Venkateswaran,2023-01-02,,,,
+1113,Akhil Emmanual,akhil.emmanual@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sriram Singupuram,2023-03-01,,,,
+1114,Hrutuja Sudhakar Dalvi,hrutuja.dalvi@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,2023-03-01,,,,
+1119,Darshan A,darshan.a@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Adhvi P M,2023-03-06,,,,
+1152,Vijayanand Babu Pantagani,vijayanandbabu.pantagani@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Sr. Architect - Enterprise Applications,Sridhar Pokuri,2023-04-05,,,,
+1161,Giribabu Saggurthi,giribabu.saggurthi@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Sr. Architect â€“ Enterprise Application,Ravishankar Siddan,2023-04-13,,,,
+1199,Praveen Rajan,praveen.rajan@relanto.ai,,,"Bengaluru, KA, IN",Operations - PMO,,Director- Operations,Vincent T P,2023-05-15,,,,
+1202,Velamuri Leela Manohar Reddy,velamuri.reddy@relanto.ai,,,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Software Engineer,Madduri Lakshmi Ambica,2023-05-15,,,,
+1223,Banavath Kranti Kumar Naik,krantikumar.naik@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Salesforce Consultant,Madduri Lakshmi Ambica,2023-06-12,,,,
+1228,Sheik Salman Khan,salmankhan.sheik@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Lead Talent Acquisition,Mohammed Nazeer Ahmed,2023-06-14,,,,
+1239,Manisha Nair,manisha.nair@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Manager - Academy,Vincent T P,2023-07-03,,,,
+1244,Subhrajit Bhattacharya,subhrajit.bhattacharya@relanto.ai,,,"Bengaluru, KA, IN",Sales,,"Manager, Sales Development",Praneet Mudholkar,2023-07-03,,,,
+1248,Theepireddy Divya,divya.theepireddy@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Senior QA Engineer,Megha D,2023-07-03,,,,
+1300,Megha D,megha.devraj@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior PMO Executive,Sridhar Pokuri,2023-08-01,,,,
+1327,Riga Singh,riga.singh@relanto.ai,,,"Pune, MH, IN",Revenue and Sales,Delivery Management,Project Manager,Anoop Chhabra,2023-08-01,,,,
+1333,Mekala Mamatha,mamatha.mekala@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,BI & Analytics,Senior BI Developer,Prasanna R S,2023-08-01,,,,
+1355,Madduri Lakshmi Ambica,ambica.madduri@relanto.ai,,,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Lead Software Engineer,KEERTI SREEDHAR,2023-08-01,,,,
+1387,C Pradeep,pradeep.c@relanto.ai,,,"Bengaluru, KA, IN",Human Resource,,Senior Manager HR,Vincent T P,2023-08-04,,,,
+1394,Prasanna R S,prasanna.rs@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Director - Data,Vivek Kashyap,2023-08-17,,,,
+1396,Vallurupalli Naga Venkata Harshitha,harshitha.vallurupalli@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,2023-08-17,,,,
+1399,Nilesh Maruti Gutte,nileshmaruti.gutte@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,QA Engineer,Megha D,2023-08-21,,,,
+1400,V Vamshi Krishna,vangipuramvamshi.krishna@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,QA Engineer,Megha D,2023-08-21,,,,
+1411,Krishnappa .,krishnappa.k@relanto.ai,,,"Bengaluru, KA, IN",Operations - Admin,,Office Assistant,Praveen Rajan,2023-09-01,,,,
+1414,Lakshmikanth K,lakshmikanth.k@relanto.ai,,,"Bengaluru, KA, IN",Operations - Admin,,Operations Assistant,Praveen Rajan,2023-09-01,,,,
+1416,Anmol Rajesh Kanojiya,anmol.kanojiya@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,2023-09-04,,,,
+1425,Selvaraj N,selvaraj.n@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior OIC Consultant,Sushant Jayant Wable,2023-09-11,,,,
+1430,Nirmal Kumar Dommaraju,nirmal.dommaraju@relanto.ai,,,"Bengaluru, KA, IN",Human Resource,,Assistant Manager HR,C Pradeep,2023-09-13,,,,
+1437,Tanda Madhusudhan,tanda.madhusudhan@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Lead QA Engineer,Megha D,2023-09-19,,,,
+1447,Athmika N D,athmika.nd@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,2023-10-04,,,,
+1448,Shreyas P S,shreyas.ps@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sriram Singupuram,2023-10-04,,,,
+1449,Mani Gowda,mani.gowda@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Sorna Raja Prabhu Sivasekaran,2023-10-04,,,,
+1450,Shashank K,shashank.k@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Gaurav Kumar Chaudhary,2023-10-04,,,,
+1451,Shashank K C,shashank.kc@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Lohith K A,2023-10-04,,,,
+1452,Divya N S,divya.ns@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Ganapathi Ramakrishnan K,2023-10-04,,,,
+1458,Vidyadhar Ganapati Hegde,vidyadhar.hegde@relanto.ai,,,"Bengaluru, KA, IN",Finance,,Senior Finance Manager,Venu Venkateswaran,2023-10-09,,,,
+1467,Somesh Ravindra Mamidwar,someshravindra.mamidwar@relanto.ai,,,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Software Engineer,Madduri Lakshmi Ambica,2023-10-26,,,,
+1481,Pramath Bhavananishankar Naik,pramath.naik@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Prasanna R S,2023-11-06,,,,
+1484,Sharmila R,sharmila.r@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Executive- L&D Coordinator,Manisha Nair,2023-11-16,,,,
+1495,Vignesh Dharmaraj,vignesh.dharmaraj@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Senior Manager - Talent Acquisition,Vincent T P,2023-12-01,,,,
+1523,Kurremula Anil Kumar,anilkumar.k@relanto.ai,,,"Hyderabad, TG, IN",Finance,,US Accounts Executive,Venu Venkateswaran,2024-01-02,,,,
+1524,Gajanan Vinod Govekar,gajanan.govekar@relanto.ai,,,"Pune, MH, IN",Revenue and Sales,Delivery Management,Senior Scrum Master,Anoop Chhabra,2024-01-22,,,,
+1535,Pramod Jagannatham,pramod.jagannatham@relanto.ai,,,"Hyderabad, TG, IN",Human Resource,,HR Executive,Mahima Kulkarni,2024-02-26,,,,
+1538,Gaurav Kumar Chaudhary,gaurav.chaudhary@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,2024-03-13,,,,
+1543,Raamanathan Gururajan,raamanathan.gururajan@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Vice President - Technology,Vincent T P,2024-03-20,,,,
+1548,Ashok Kumar P,ashok.kumar@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Principal Architect,Raamanathan Gururajan,2024-04-10,,,,
+1555,Parag Bhardwaj,parag.bhardwaj@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,2024-04-25,,,,
+1558,Garima Chaubey,garima.chaubey@relanto.ai,,,"Bengaluru, KA, IN",Presales,,Lead Consultant-Technology Strategy,Vincent T P,2024-04-29,,,,
+1563,Manikanda Murugan A,manikanda.murugan@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,2024-05-22,,,,
+1569,Imon Roy,imon.roy@relanto.ai,,,"Bengaluru, KA, IN",Marketing,,Senior Content Writer,Pooja Pura,2024-06-03,,,,
+1575,Shubham Kumar Shaw,shubham.shaw@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Data Scientist,Pooja Pura,2024-06-10,,,,
+1578,Priyanka Raghav,priyanka.raghav@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Sales Associate,Praneet Mudholkar,2024-06-14,,,,
+1584,Manjunath Bhat,manjunath.bhat@relanto.ai,,,"Bengaluru, KA, IN",Finance,,Finance Executive,Venu Venkateswaran,2024-06-18,,,,
+1588,Sriram Singupuram,sriram.singupuram@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Rashmi Hegde,2024-07-01,,,,
+1593,Gowra Meenakshi,meenakshi.gowra@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Devops Engineer,Raamanathan Gururajan,2024-07-17,,,,
+1595,Dinesh Vanthram,dinesh.vanthram@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Devops Engineer,Pooja Pura,2024-07-24,,,,
+1599,Zarina Shadaf Inamdar,zarina.inamdar@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,Varicent,Consultant,Sushant Jayant Wable,2024-08-01,,,,
+1600,Shankar Bodi,shankar.bodi@relanto.ai,,,"Hyderabad, TG, IN",Talent Acquisition,,Senior US IT Recruiter,Mohammed Nazeer Ahmed,2024-08-01,,,,
+1602,Alekhya Vadnala,alekhya.vadnala@relanto.ai,,,"Bengaluru, KA, IN",Human Resource,,Lead Human Resources,C Pradeep,2024-08-08,,,,
+1605,Hema Vashya,hema.vashya@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Lead Talent Acquisition,Vignesh Dharmaraj,2024-08-19,,,,
+1609,Victor Swamy,victor.swamy@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Project Manager,Riga Singh,2024-08-22,,,,
+1610,Monica Tiwari,monica.tiwari@relanto.ai,,,"Pune, MH, IN",Enterprise Business Planning,,Consultant,Sushant Jayant Wable,2024-08-23,,,,
+1611,Shama Parveen F,shama.parveen@relanto.ai,,,"Bengaluru, KA, IN",Operations - Admin,,Manager Operations,Praveen Rajan,2024-08-26,,,,
+1615,Vagadeeshwar G,vagadeeshwar.g@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2024-09-02,,,,
+1616,Thotakura Rohit Sai Naren,rohit.sainaren@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,2024-09-02,,,,
+1619,Sameer Ali Khan,sameer.alikhan@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2024-09-02,,,,
+1620,Rajat Dharmendra Anchan,rajat.anchan@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,2024-09-02,,,,
+1621,Krishna Chaitanya Reddy Kothakapu,krishna.chaitanya@relanto.ai,,,"Hyderabad, TG, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,2024-09-02,,,,
+1624,Jai Selvash Segar,jaiselvash.segar@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Adhvi P M,2024-09-02,,,,
+1625,Ishita Sharma,ishita.sharma@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2024-09-02,,,,
+1626,Gaurav K Murdeshwar,gaurav.murdeshwar@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2024-09-02,,,,
+1628,Chandana M N,chandana.mn@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2024-09-02,,,,
+1630,Pranav Srivastava,pranav.srivastava@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2024-09-02,,,,
+1632,Tarun S,tarun.s@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sorna Raja Prabhu Sivasekaran,2024-09-02,,,,
+1636,Chhaya Kumari,chhaya.kumari@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Director - AI,Prasanna R S,2024-09-11,,,,
+1637,Sneha Siddhesh Mohite,sneha.mohite@relanto.ai,,,"Pune, MH, IN",Digital Transformation,,Principal Consultant,Sridhar Pokuri,2024-09-13,,,,
+1639,PRANAV CHANDRAN,pranav.c@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sriram Singupuram,2024-10-01,,,,
+1641,Subhadeep Biswal,subhadeep.biswal@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2024-10-01,,,,
+1644,PRANSHULA PRASHANTH,pranshula.prashanth@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Manikanda Murugan A,2024-10-01,,,,
+1645,Chethan M,chethan.m@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Sorna Raja Prabhu Sivasekaran,2024-10-01,,,,
+1647,Manjunatha A,manjunatha.a@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Senior Data Scientist,Pooja Pura,2024-10-07,,,,
+1652,Gaurav Kumar,gaurav.kumar@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,Integration,Product Owner - Mulesoft,Sridhar Pokuri,2024-10-17,,,,
+1653,Bharath JPV,bharath.jpv@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,2024-10-18,,,,
+1659,Manoj Upadhyay,manoj.upadhyay@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Lohith K A,2024-10-29,,,,
+1663,Monisha MS,monisha.ms@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Gangeya Babu Velaga,2024-11-04,,,,
+1664,Malini Arumugam,malini.arumugam@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Megha D,2024-11-04,,,,
+1667,Srinivasulu Nallabothula,srinivasulu.nallabothula@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Senior Project Manager,Anoop Chhabra,2024-11-11,,,,
+1669,Ketki Pramod Randhir,ketki.pramod@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Prasanna R S,2024-11-18,,,,
+1670,Janani Prabhu,janani.prabhu@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Consultant,Manikanda Murugan A,2024-11-18,,,,
+1674,Jeevan Pandianda Joyappa,jeevan.joyappa@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Data Architect,Prasanna R S,2024-11-25,,,,
+1676,PRIYANKA NAIK,priyanka.naik@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Data Engineer,Jeevan Pandianda Joyappa,2024-12-02,,,,
+1677,Lohith K A,lohith.k@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,2024-12-02,,,,
+1679,Kosuri Sai Prasanth,saiprasanth.kosuri@relanto.ai,,,"Hyderabad, TG, IN",Enterprise Business Planning,,Lead Consultant,Gaurav Kumar Chaudhary,2024-12-02,,,,
+1681,Narasimha Chandi,narasimha.chandi@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Nikhil Pandey,2024-12-09,,,,
+1687,Sai Chaitanya Gonugunta Manikanta,chaitanya.gonugunta@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,2024-12-23,,,,
+1688,Pavan K Kanumoori,pavan.kanumoori@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Technical Manager,Sridhar Pokuri,2024-12-24,,,,
+1689,Khushi Devidas Helange,khushi.devidas@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,BI & Analytics,Senior BI Developer,Ketki Pramod Randhir,2024-12-26,,,,
+1692,Sujan Anumolu,sujan.anumolu@relanto.ai,,,"Hyderabad, TG, IN",Enterprise Business Planning,,Lead Consultant,Rashmi Hegde,2024-12-30,,,,
+1694,Vaishnavi Santoshi Batchu,vaishnavi.santoshi@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Ketki Pramod Randhir,2025-01-06,,,,
+1701,Bhavesh Chintakayala,chintakayala.bhavesh@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2025-01-20,,,,
+1702,Praveen C,praveen.chandrasekarn@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Lead Consultant,Ganapathi Ramakrishnan K,2025-01-20,,,,
+1704,Ranadeep Raj Sumukam,ranadeep.sumukam@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Senior Data Engineer,Chiranjeevi Lakkakula,2025-01-28,,,,
+1707,Sai Anil Peddi,anil.peddi@relanto.ai,,,"Hyderabad, TG, IN",Enterprise Business Planning,,Senior Consultant,Rashmi Hegde,2025-02-05,,,,
+1708,Anil Kumawat,anil.kumawat@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Software Engineer,Raamanathan Gururajan,2025-02-03,,,,
+1711,Priyadarshini E,priyadarshini.e@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Talent Acquisition Specialist,Vignesh Dharmaraj,2025-02-17,,,,
+1717,Kajal Kshirsagar,kajal.kshirsagar@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,BI & Analytics,Senior UX Designer,Prasanna R S,2025-02-19,,,,
+1722,Vijitha Gudimallam,vijitha.gudimallam@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Senior Talent Acquistion Specialist,Vignesh Dharmaraj,2025-03-03,,,,
+1737,Grandhi Vijay Kumar Raja,vijay.grandhi@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Senior Manager,Anoop Chhabra,2025-03-13,,,,
+1744,Ganesh Kaushal Sharma,ganesh.sharma@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,2025-03-26,,,,
+1754,Chiranjeevi Lakkakula,chiranjeevi.lakkakula@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,Data Engineering,Lead Data Engineer,Prasanna R S,2025-04-07,,,,
+1756,Ashit Verma,ashit.verma@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Delivery Management,Project Manager,Riga Singh,2025-04-09,,,,
+1782,Pooja S Shashihittal,pooja.shashihittal@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior QA Engineer,Sridhar Pokuri,2025-04-28,,,,
+1784,Raviteja P,raviteja@relanto.ai,,,"Hyderabad, TG, IN",Finance,,Senior Accounts Executive,Venu Venkateswaran,2025-04-01,,,,
+1785,Vijay Prakash Mutyala,vijay@relanto.ai,,,"Hyderabad, TG, IN",Operations - PMO,,Assistant Manager â€“ Operations,Santhi Kanumuri,2025-04-01,,,,
+1788,Rakonda Sai Varshith,varshith.rakonda@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Junior Sales Associate,Praneet Mudholkar,2025-04-30,,,,
+1797,Venkata Avinash Dantanala,avinash.d@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-05-19,,,,
+1798,Satish Venkatrao,satish.venkatrao@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,AI Services,Senior Data Scientist,Sunny Ramvilas Kusawa,2025-05-19,,,,
+1799,Srihari Manchikanti,srihari.manchikanti@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Devops Engineer,Raamanathan Gururajan,2025-05-19,,,,
+1801,Vikram Jakka,vikram.jakka@relanto.ai,,,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Consultant,Madduri Lakshmi Ambica,2025-05-23,,,,
+1803,Mohan D J,mohan.dj@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-05-26,,,,
+1804,Rajesh Kumar Kumar Parida,rajesh.parida@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-05-26,,,,
+1806,Nidheesh PS,nidheesh.ps@relanto.ai,,,"Bengaluru, KA, IN",Operations - Admin,,Senior System Administrator,Praveen Rajan,2025-06-02,,,,
+1811,Subraya Naik S,subraya.naik@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-06-04,,,,
+1812,Kishore Krishna P,kishore.krishna@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-06-05,,,,
+1819,Aastha Kanth,aastha.kanth@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2025-06-03,,,,
+1820,Amarendra Kumar Singh,amarendra.kumar@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Vinaykumar M Suldhal,2025-06-03,,,,
+1821,Apeksha S Shetty,apeksha.shetty@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Chhaya Kumari,2025-06-03,,,,
+1823,Ashnoor Maan,ashnoor.maan@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2025-06-03,,,,
+1824,Balamithran S,balamithran.s@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Associate Data Engineer,Jeevan Pandianda Joyappa,2025-06-03,,,,
+1826,Harinee M D,harinee.m@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,Data Engineering,Associate Data Engineer,Ganesh Kaushal Sharma,2025-06-03,,,,
+1827,Harshini S,harshini.s@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Lohith K A,2025-06-03,,,,
+1831,Manoj KR,manoj.k@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,2025-06-03,,,,
+1832,MANSI GUPTA,mansi.gupta@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Vinaykumar M Suldhal,2025-06-03,,,,
+1835,Nivya Sri S,nivyasri.s@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Adhvi P M,2025-06-03,,,,
+1836,Pedaballi Sai Sivani,sivani.pedaballi@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2025-06-03,,,,
+1837,Prachiti Laxmikant Bhutada,prachiti.bhutada@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2025-06-03,,,,
+1838,ROHAN J,rohan.j@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,2025-06-03,,,,
+1840,Samyuktha M Rao,samyuktha.rao@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Ketki Pramod Randhir,2025-06-03,,,,
+1841,Sanjana Manoj Divakar,sanjana.divakar@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Nikhil Pandey,2025-06-03,,,,
+1843,Subhashini K S,subhashini.k@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Associate Software Engineer,Jairama Eranna,2025-06-03,,,,
+1844,Thota Hemanth Babu,hemanth.thota@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Associate Data Scientist,Raamanathan Gururajan,2025-06-03,,,,
+1846,Vinothkumar AK,vinothkumar.ak@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-06-13,,,,
+1848,Vajjala S Samanth Rao,samanth.vajjala@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2025-06-16,,,,
+1851,Anoop Chhabra,anoop.chhabra@relanto.ai,,,"Bengaluru, KA, IN",Relanto,,Vice President,Vincent T P,2025-06-17,,,,
+1853,Ganesha S,ganesha.s@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-06-18,,,,
+1854,Gundala Tharunn Chowdary,tharunn.gundala@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Megha D,2025-06-18,,,,
+1856,Siddhant Kumar,siddhant.kumar@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,,Senior Data Engineer,Prasanna R S,2025-06-19,,,,
+1864,Sashikanta Mohanty,sashikanta.mohanty@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-07-01,,,,
+1865,VIDHYA DHARSHINI - V,vidhya.dharshini@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,2025-07-01,,,,
+1866,Shriya K,shriya.k@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Ganesh Kaushal Sharma,2025-07-01,,,,
+1867,Gudimetla Baba Siva Sriram,sriram.gudimetla@relanto.ai,,,"Bengaluru, KA, IN",Presales,,"Consultant, Business Development",Vincent T P,2025-07-01,,,,
+1868,MEGHAA P V,meghaa.pv@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,2025-07-01,,,,
+1872,DURGAVIHASHINI P,durgavihashini.p@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Chhaya Kumari,2025-07-01,,,,
+1873,Arnold Jerome Andrade,arnold.andrade@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Scientist,Pramath Bhavananishankar Naik,2025-07-01,,,,
+1874,NITHYA SRI R,nithyasri.rajkumar@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,Anaplan,Associate Consultant,Sriram Singupuram,2025-07-01,,,,
+1875,MAILAVARAM SREEMITHA,mailavaram.sreemitha@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2025-07-01,,,,
+1876,Adhanan Kuthpudeen,adhanan.kuthpudeen@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Jeevan Pandianda Joyappa,2025-07-01,,,,
+1877,ANANYA TIWARI,ananya.tiwari@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2025-07-01,,,,
+1878,Katakam Sai Harshith,katakam.harshith@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2025-07-01,,,,
+1879,Monisha Karmakar,monisha.karmakar@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Gaurav Kumar Chaudhary,2025-07-02,,,,
+1880,Abhinav M,abhinav.m@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2025-07-02,,,,
+1884,Harsukhbhai Jagubhai Vank,harsukhbhai.vank@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-07-09,,,,
+1885,Ravikumar T,ravikumar.t@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Manager,Prasanna R S,2025-07-11,,,,
+1888,Aman Kumar Upadhyay,aman.upadhyay@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Rahul Deb,2025-07-14,,,,
+1892,Hetansh Bhavesh Mehta,hetansh.mehta@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Ketki Pramod Randhir,2025-07-14,,,,
+1893,Palacholla Veera Narasimha Murthy,veeranarasimha.murthy@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Chhaya Kumari,2025-07-14,,,,
+1894,Priyanshu Jain,priyanshu.jain@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Sunny Ramvilas Kusawa,2025-07-16,,,,
+1895,Biruundha Easwaran,biruundha.easwaran@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Associate Director - Customer Success,Praneet Mudholkar,2025-07-18,,,,
+1896,Praveen Chaudhary,praveen.chaudhary@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-07-21,,,,
+1900,Sujitha Rasamsetty,sujitha.rasamsetty@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Data Scientist,Godavarthi Venkata Sai Chaitanya,2025-07-21,,,,
+1901,Santhosh Raaj G,santhosh.raaj@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,AI Services,Associate Software Engineer,Prasanna R S,2025-07-21,,,,
+1904,Aditya Sandip Mahajan,aditya.mahajan@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,,Senior Devops Engineer,Sunny Ramvilas Kusawa,2025-07-29,,,,
+1908,Vaishnav Goswami,vaishnav.goswami@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,,Senior Data Scientist,Sunny Ramvilas Kusawa,2025-08-04,,,,
+1909,Sai Chanakya Puthalapattu,saichanakya.puthalapattu@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,2025-08-04,,,,
+1910,Soundara Baranidaran D,soundara.d@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,2025-08-04,,,,
+1912,Bhavya Sai Sri Bhavana,bhavya.bhavana@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Engineer,Ketki Pramod Randhir,2025-08-11,,,,
+1913,Rahul Deb,rahul.deb@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Product Owner,Prasanna R S,2025-08-11,,,,
+1916,Prafulla BN,prafulla.bn@relanto.ai,,,"Bengaluru, KA, IN",Finance,,Senior Accounts Executive,Vidyadhar Ganapati Hegde,2025-08-18,,,,
+1918,KEERTI SREEDHAR,keerti.sreedhar@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Project Manager,Vivek Kashyap,2025-08-18,,,,
+1922,Pranay Dilip Paipare,pranay.dilip@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Nikhil Pandey,2025-09-01,,,,
+1925,Mohammed Faizal,mohammed.faizal@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,2025-09-11,,,,
+1926,Febin Chacko,febin.chacko@relanto.ai,,,"Bengaluru, KA, IN",Marketing,,Senior Software Engineer,Suraj NiharRanjan Majumdar,2025-09-15,,,,
+1927,Sunny Ramvilas Kusawa,sunny.ramvilas@relanto.ai,,,"Pune, MH, IN",Data Engineering & Analytics,,AI/ML Architect,Prasanna R S,2025-09-18,,,,
+1929,Hemani Nainesh Shah,hemani.shah@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Data Scientist,Sunny Ramvilas Kusawa,2025-09-22,,,,
+1933,Ashirbad Jena,ashirbad.jena@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,2025-09-29,,,,
+1937,Tarundeep Soni,tarundeep.soni@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Data Scientist,Pooja Pura,2025-10-01,,,,
+1938,Venkatesh R Kamath,venkatesh.kamath@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Associate Data Engineer,Chhaya Kumari,2025-10-06,,,,
+1941,Laxmi Parashuram Bagewadi,laxmi.bagewadi@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2025-10-06,,,,
+1951,Pradeep Kumar,pradeep.kumar@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,2025-10-21,,,,
+1955,Pallavi Arun Bachchhav,pallavi.bachchhav@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Talent Acquisition Executive,Vignesh Dharmaraj,2025-11-03,,,,
+1956,Md Waliullah,mohammad.waliullah@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Senior Software Engineer,Prasanna R S,2025-11-03,,,,
+1957,Sridhar Pokuri,sridhar.pokuri@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Director,Vivek Kashyap,2025-11-03,,,,
+1959,Guru Pavan Kalyan Bandaru,pavankalyan.bandaru@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,2025-11-10,,,,
+1962,Vinaykumar M Suldhal,vinaykumar.suldhal@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,2025-11-14,,,,
+1963,Sudershan Kumar M,sudershan.kumar@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Support Engineer,Sridhar Pokuri,2025-11-13,,,,
+1964,Poorav Ranwa,poorav.ranwa@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Sushant Jayant Wable,2025-11-17,,,,
+1965,Rajeev Kumar Gupta,rajeev.kumar@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-11-19,,,,
+1966,Kamal Jain,kamal.jain@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2025-11-21,,,,
+1967,Jeevan Gowda H R,jeevan.gowda@relanto.ai,,,"Bengaluru, KA, IN",Presales,,Senior Graphic Designer,Vincent T P,2025-11-24,,,,
+1968,Himanshu Gautam,himanshu.gautam@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Lead Consultant,KEERTI SREEDHAR,2025-11-27,,,,
+1969,Venkataramana Vikas Namana,vikas.namana@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Senior Manager Business Development,Praneet Mudholkar,2025-12-01,,,,
+1970,Seema Khanum,seema.khanum@relanto.ai,,,"Bengaluru, KA, IN",Operations - PMO,,Senior Process Quality Executive,Praveen Rajan,2025-12-01,,,,
+1971,Padala Mahalakshmi Keerthana,keerthana.padala@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,,Senior Data Analyst,Chiranjeevi Lakkakula,2025-12-03,,,,
+1972,Khirod Parida,khirod.parida@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Software Engineer,Sridhar Pokuri,2025-12-03,,,,
+1974,Naveed Altaf A,naveed.altaf@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Senior Manager Business Development,Praneet Mudholkar,2025-12-08,,,,
+1976,Jairama Eranna,jairama.eranna@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Senior Lead Software Engineer,KEERTI SREEDHAR,2025-12-12,,,,
+1977,Kalkeeshwar R,kalkeeshwar.r@relanto.ai,,,"Hyderabad, TG, IN",Operations - Admin,,Senior IT Admin Executive,Praveen Rajan,2025-12-15,,,,
+1979,Mohamed Uvais,mohamed.uvais@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Senior Consultant,Lohith K A,2026-01-08,,,,
+1981,Shaik Alfaaz,shaik.alfaaz@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,2026-01-19,,,,
+1982,Karthick Govindaraj,karthick.govindaraj@relanto.ai,,,"Bengaluru, KA, IN",Marketing,,Graphic Designer,Suraj NiharRanjan Majumdar,2026-01-19,,,,
+1983,Harshit Raj,harshit.raj@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Software Engineer,Raamanathan Gururajan,2026-02-02,,,,
+1984,Avnish Kumar,avnish.kumar@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Principal Architect,Prasanna R S,2026-02-09,,,,
+1985,Mallika Sinha,mallika.sinha@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Project Manager,Prasanna R S,2026-02-20,,,,
+1986,Keshav Mantri,keshav.mantri@relanto.ai,,,"Hyderabad, TG, IN",Revenue and Sales,Salesforce,Senior Consultant,Riga Singh,2026-02-23,,,,
+1987,Suruthy P,suruthy.p@relanto.ai,,,"Bengaluru, KA, IN",Enterprise Business Planning,,Associate Consultant,Ganapathi Ramakrishnan K,2026-03-02,,,,
+1988,Anup Kumar Dey,anupkumar.dey@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Senior Data Scientist,Raamanathan Gururajan,2026-03-02,,,,
+1989,Pabba Advik,advik.pabba@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Associate Software Engineer,Sridhar Pokuri,2026-03-02,,,,
+1990,Sumit Kumar,sumit.kumar@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,2026-03-12,,,,
+1991,Sandeep Patwal,sandeep.patwal@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Lead Analyst,Sridhar Pokuri,2026-03-18,,,,
+1992,Koppula Satya Narayana Reddy,satya.narayana@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Manager - Testing,Sridhar Pokuri,2026-03-25,,,,
+1993,Vadrev Aditya Sai Ram,aditya.sairam@relanto.ai,,,"Hyderabad, TG, IN",Digital Transformation,,Senior Project Manager,Sridhar Pokuri,2026-03-31,,,,
+1994,Nikitha M,nikitha.m@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Software Engineer,Sridhar Pokuri,2026-04-14,,,,
+1995,Shipra Kumari,shipra.kumari@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Associate Data Scientist,Pooja Pura,2026-04-06,,,,
+1996,Achuth Balan,achuth.balan@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,2026-04-24,,,,
+1997,Apoorva Nayak B,apoorva.nayakb@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Software Engineer,Pooja Pura,2026-04-28,,,,
+1998,Yuvaraj Molaka,yuvaraj.molaka@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Lead Software Engineer,Sridhar Pokuri,2026-04-29,,,,
+1999,Shivani Khosla,shivani.khosla@relanto.ai,,,"Pune, MH, IN",Digital Transformation,,Senior Lead QA Engineer,Sridhar Pokuri,2026-04-29,,,,
+2001,Veena Kambali,veena.kambali@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Lead QA Engineer,Sridhar Pokuri,2026-05-12,,,,
+2002,Abhishek Singh,abhishek.singh@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Lead Software Engineer,Sridhar Pokuri,2026-05-14,,,,
+2003,Bella Amarnath,bella.amarnath@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,,Lead Data Engineer,Prasanna R S,2026-05-18,,,,
+2004,Sharon Subash Sadasivam,sharon.sadasivam@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Scrum Master,Sridhar Pokuri,2026-05-18,,,,
+2005,Pournami Nair,pournami.nair@relanto.ai,,,"Bengaluru, KA, IN",Presales,,Senior Consultant - Technology Strategy,Vincent T P,2026-05-25,,,,
+2006,Nimmakayala Mohammad Ashraf,nimmakayala.ashraf@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Lead Software Engineer,Sridhar Pokuri,2026-05-27,,,,
+2007,Gehena H Shetty,gehena.shetty@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,IP & Solutions,Software Engineer,Pooja Pura,2026-06-01,,,,
+2008,Archana K V,archana.kv@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior QA Engineer,Sridhar Pokuri,2026-06-01,,,,
+2009,Amol Sharma,amol.sharma@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Data Engineer,Prasanna R S,2026-06-02,,,,
+2010,Piyush Kumar,piyush.kumar@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior QA Engineer,Sridhar Pokuri,2026-06-08,,,,
+C-00001,NaveenKumar Reddy Yarramada,naveenkumar.reddy@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Integration Developer,Pooja Virupakshaiah Pura,2022-03-14,,,,
+C-00002,Sharif Khan,sharif.khan@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Oracle EBS Developer,Pooja Virupakshaiah Pura,2023-07-05,,,,
+C-00003,Srujana Katkam,srujana.katkam@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Tableau Developer,Pooja Virupakshaiah Pura,2024-03-04,,,,
+C-00004,Sarah Yoo Alias JUNG,sarah.alias@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Software Engineer,Vivek Kashyap,2024-05-01,,,,
+C-00005,Amruta Suhas Raikwar,amruta.suhas@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Data Engineer,Pooja Virupakshaiah Pura,2025-02-10,,,,
+C-00006,Surya Srujan Patneedi,surya.srujan@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Data Engineer,Vivek Kashyap,2025-05-01,,,,
+C-00007,Sunil Pillai-somashekaran,sunil.somashekaran@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Software Engineer,Pooja Virupakshaiah Pura,2025-05-13,,,,
+C-00008,Ambika Pukazhenthi,ambika.pukazhenthi@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Quality Assurance Engineer (Oracle EBS),Vivek Kashyap,2025-06-16,,,,
+C-00009,Anupama Ramesh,anupama.ramesh@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Product Manager,Vivek Kashyap,2025-07-07,,,,
+C-00010,Kai Wong,kai.wong@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Business System Analyst,Vivek Kashyap,2025-08-18,,,,
+C-00011,Arun Gadde,arun.gadde@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Senior Software Developer (PTC FlexPLM),Vivek Kashyap,2025-11-18,,,,
+C-00012,Sri Krishna Chaitanya Chivatam,krishna.chivatam@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Software Engineer,Pooja Virupakshaiah Pura,2025-12-30,,,,
+C-00013,Rajeev Penubolu,rajeev.penubolu@relanto.ai,,,"Fremont, CA, USA",Revenue and Sales,,Senior Business Analyst,Vivek Kashyap,2026-01-26,,,,
+C-00014,Navin Kumar Chhibber,navin.chhibber@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,Technical Product Manager,Pooja Virupakshaiah Pura,2026-03-02,,,,
+C-00015,Swathi Kilaru,swathi.kilaru@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Architect,Vivek Kashyap,2026-04-27,,,,
+C-00016,Harshitha Gokarakonda Venkata Naga Sai,10369@gmail.com,,,"Fremont, CA, USA",Digital Transformation,,Software Engineer,Vivek Kashyap,2026-05-12,,,,
+C-00017,Bijoy Menon,bijoy.menon@relanto.ai,,,"Toronto, ON, CN",Sales,,Software Developer,Nadia Aziz Dessouki,2023-05-31,,,,
+C-00018,Mohammed Noman Hussain,mohammed.hussain@relanto.ai,,,"Toronto, ON, CN",Revenue and Sales,,Salesforce DevOps Engineer,Vivek Kashyap,2026-03-16,,,,
+C-0016,Mohammad Hanif,mohammad.hanif@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Senior Consultant,Sridhar Pokuri,2023-09-01,,,,
+C-0020,Priyanshu Sahu,priyanshu.sahu@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Salesforce Developer,Vinaykumar M Suldhal,2023-11-14,,,,
+C-0040,Atkuri Balaji,atkuri.balaji@relanto.ai,,,"Hyderabad, TG, IN",Data Engineering & Analytics,,Consultant,Prasanna R S,2024-06-14,,,,
+C-0053,Hitendra Sabhadiya,sabhadiya.hitendra@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Vinaykumar M Suldhal,2025-05-12,,,,
+C-0055,Shaik Abdul Rasheedh,abdul.rasheed@relanto.ai,,,"Bengaluru, KA, IN",Revenue and Sales,Salesforce,Consultant,Ashirbad Jena,2025-06-04,,,,
+C-0057,Surendranath Tirumala Venkata Reddy,surendranath.reddy@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Ashirbad Jena,2025-06-23,,,,
+C-0062,Renuka Chalawadi,c0062@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Sridhar Pokuri,2024-08-05,,,,
+C-0067,Salapu Josna Madhuri,josna.madhuri@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Consultant,Sridhar Pokuri,2025-08-19,,,,
+C-0070,Wasim Ahmed,wasim.ahmed@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Consultant,Prasanna R S,2025-11-25,,,,
+C-0078,Angel Mathews,angel.mathews@relanto.ai,,,"Bengaluru, KA, IN",Talent Acquisition,,Talent Acquisition Specialist,Vignesh Dharmaraj,2026-06-03,,,,
+CF005,Sangeetha Chowhan,employeecf005@relanto.ai,,,"Fremont, CA, USA",Leadership,,Vice President,Shankar Chowhan,2022-07-01,,,,
+TA005,Praneet Mudholkar,praneet@relanto.ai,,,"Bengaluru, KA, IN",Sales,,Senior Director,Vincent T P,2022-06-01,,,,
+TT00001,Ritisha Byri,ritisha.byri@relanto.ai,,,"Fremont, CA, USA",Digital Transformation,,Financial Planning and Analysis-Intern,Vivek Kashyap,2024-07-22,,,,
+TT00002,Sneha Narayanan,sneha.narayanan@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,AI Engineer - Intern,Pooja Virupakshaiah Pura,2026-05-04,,,,
+TT00003,FNU Saloni,saloni.fnu@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,AI Engineer - Intern,Pooja Virupakshaiah Pura,2026-05-04,,,,
+TT00004,Jatin Puri,jatin.puri@relanto.ai,,,"Fremont, CA, USA",Data Engineering & Analytics,,AI Engineer - Intern,Pooja Virupakshaiah Pura,2026-05-04,,,,
+TT0120,Daniya Faatimah,daniya.faatimah@relanto.ai,,,"Bengaluru, KA, IN",AI-First Lab,,Technical Trainee,Raamanathan Gururajan,2025-07-07,,,,
+TT0121,Rentachintala Yashwanth Sharma,yashwanth.sharma@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Technical Trainee,Megha D,2025-07-14,,,,
+TT0125,Drishti Garg,drishti.garg@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-02-02,,,,
+TT0126,Harshit Maroo,harshit.maroo@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-02-02,,,,
+TT0128,A Lokesh Reddy,alokesh.reddy@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0129,Aakriti Jauhari,aakriti.jauhari@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0130,Aarushi Gupta,aarushi.gupta@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0131,Aashutosh Kumar Mishra,aashutosh.mishra@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0132,Aditi M Tavade,aditi.mtavade@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0133,Anagha Tantry,anagha.tantry@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0134,Ayushi Tawari,ayushi.tawari@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0135,Banda Ananya,banda.ananya@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0136,Bowrampet Manish Reddy,manish.bowrampet@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0137,Dara Lakshmi Prasanna,lakshmi.dara@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0138,Deepan S,deepan.s@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0139,Gandhe Vineesha,gandhe.vineesha@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0140,Gaurav Bhatt,gaurav.bhatt@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0141,Gaury Jithesh,gaury.jithesh@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0142,Godreign Elgin Y,godreign.y@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0143,Vennela Gudivaka,gudivaka.vennela@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0144,Hridyalakshmi Santhosh,hridyalakshmi.santhosh@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0145,Harika Reddy S N,harika.sn@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0146,Sujeevan Jeyashanker,sujeevan.j@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0147,K P Bhoomika Rai,bhoomika.kp@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0148,Anumeha R,anumeha.r@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0149,Linojose Arulpandiyan,linojose.arulpandiyan@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0150,Hari Priya M,haripriya.m@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0151,Shivani M,shivani.m@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0153,Harshavardhan Munnuri,munnuri.harshavardhan@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0154,Neelisetty Sandhya Rani,sandhya.ranie@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0155,Nirupam Arun Naragund,arun.naragund@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0156,Pallavi M,pallavi.m@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0157,Pankaj Singh Patwal,pankaj.patwal@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0158,Pooja Tiwari,pooja.tiwari@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0159,Prashant Joshi,prashant.joshi@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0160,Pravallika Singamreddy,pravallika.singamreddy@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0161,Rashi Badiya,rashi.badiya@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0162,Rohit Kumar,rohit.kumar@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0164,Sheni Prashanth,sheni.prashanth@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0165,Shreyas Shankar,shreyas.shankar@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0166,Sneha Agarwal,sneha.agarwal@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0167,Srinithi V,srinithi.v@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0168,Srusti T D,srusti.td@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0169,Sthuthi LNU,sthuthi@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0170,Praneetha Surampally,surampally.praneetha@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0171,Suyash Singh Bhadouria,suyash.bhadouria@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0172,Thota Abhilash,thota.abhilash@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0173,Tummalapalli Sanjit Teja,sanjit.tummalapalli@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0174,Yash Rohan,yash.rohan@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0175,Yashika Thapliyal,yashika.thapliyal@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0176,Lakhi A Shetty,lakhi.ashetty@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0177,Meghna LNU,meghna@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0178,Nihaar Rai V,nihaarrai.v@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0179,Padmaja Ramakrishnan,padmaja.ramakrishnan@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0180,Pratiksha Vijay Phadtare,pratiksha.phadtare@relanto.ai,,,"Pune, MH, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0181,Raghav Satyadeep Sadh,raghav.sadh@relanto.ai,,,"Pune, MH, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0182,Sanjana Shetty,sanjana.shetty@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0183,Shruti Chandrasekar,shruti.chandrasekar@relanto.ai,,,"Bengaluru, KA, IN",Academy,,Technical Trainee,Manisha Nair,2026-03-02,,,,
+TT0184,Arya Sanjay Chaudhari,arya.chaudhari@relanto.ai,,,"Bengaluru, KA, IN",Data Engineering & Analytics,,Technical Trainee,Prasanna R S,2026-06-01,,,,
+TT0185,Ranish Srivastava,ranish.srivastava@relanto.ai,,,"Bengaluru, KA, IN",Digital Transformation,,Technical Trainee,Sridhar Pokuri,2026-06-05,,,,

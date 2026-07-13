@@ -1,5 +1,4 @@
 import type { getSql } from "@/lib/db";
-import type { ModuleKind } from "@/lib/module-kind";
 import type {
   BatchAssessmentResult,
   BatchLearnerPerformance,
@@ -35,8 +34,8 @@ export function formatLearnerDisplayName(displayName: string | null, email: stri
 export async function getBatchPerformance(
   sql: Sql,
   batchId: string,
-  moduleKind: ModuleKind = "compliance",
 ): Promise<BatchPerformancePayload | null> {
+  // NOTE: reconcile functions removed from read path — run as maintenance job
   const batchRows = await sql`
     SELECT id, label, description, member_count
     FROM batches
@@ -54,7 +53,6 @@ export async function getBatchPerformance(
       INNER JOIN module_batches mb ON mb.module_id = m.id
       WHERE mb.batch_id = ${batchId}
         AND m.mcq_generation_status = 'completed'
-        AND m.module_kind = ${moduleKind}
       ORDER BY m.title
     `,
     sql`
@@ -77,6 +75,8 @@ export async function getBatchPerformance(
         ap.completed_at,
         ap.updated_at,
         ap.last_accessed_at,
+        ap.current_slide,
+        ap.warning_count,
         ap.mcq_answers
       FROM users u
       CROSS JOIN (
@@ -85,7 +85,6 @@ export async function getBatchPerformance(
         INNER JOIN module_batches mb ON mb.module_id = m.id
         WHERE mb.batch_id = ${batchId}
           AND m.mcq_generation_status = 'completed'
-          AND m.module_kind = ${moduleKind}
       ) bm
       LEFT JOIN assessment_progress ap
         ON ap.user_email = u.email
@@ -133,9 +132,7 @@ export async function getBatchPerformance(
       FROM users u
       INNER JOIN module_batches mb ON mb.batch_id = ${batchId}
       INNER JOIN training_modules m
-        ON m.id = mb.module_id
-        AND m.mcq_generation_status = 'completed'
-        AND m.module_kind = ${moduleKind}
+        ON m.id = mb.module_id AND m.mcq_generation_status = 'completed'
       LEFT JOIN assessment_progress ap
         ON ap.user_email = u.email AND ap.module_id = m.id
       WHERE u.batch_id = ${batchId}
@@ -185,6 +182,12 @@ export async function getBatchPerformance(
       rawStatus,
       storedScorePercent,
       completedAt,
+      {
+        lastAccessedAt: (row.last_accessed_at as string) ?? null,
+        currentSlide: Number(row.current_slide ?? 0),
+        answerCount,
+        warningCount: Number(row.warning_count ?? 0),
+      },
     );
     const scorePercent = resolveDisplayScorePercent({
       status: displayStatus,
@@ -213,7 +216,6 @@ export async function getBatchPerformance(
   const memberCount = Number(b.member_count ?? memberRows.length);
 
   return {
-    track: moduleKind,
     batch: {
       id: b.id as string,
       label: b.label as string,

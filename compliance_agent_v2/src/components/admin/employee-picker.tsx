@@ -9,12 +9,16 @@ import {
   emptyEmployeeFilters,
   type EmployeeFiltersState,
 } from "@/components/admin/employee-filter-bar";
+import {
+  EmployeeSelectionList,
+  type SelectedEmployeePreview,
+} from "@/components/admin/employee-selection-list";
 
 function appendAll(params: URLSearchParams, key: string, values: string[]) {
   for (const value of values) params.append(key, value);
 }
 
-function buildQuery(filters: EmployeeFiltersState, page: number) {
+function buildQuery(filters: EmployeeFiltersState, page: number, all = false) {
   const p = new URLSearchParams();
   if (filters.search) p.set("search", filters.search);
   appendAll(p, "departments", filters.departments);
@@ -25,9 +29,29 @@ function buildQuery(filters: EmployeeFiltersState, page: number) {
   if (filters.dateJoinedFrom) p.set("dateJoinedFrom", filters.dateJoinedFrom);
   if (filters.dateJoinedTo) p.set("dateJoinedTo", filters.dateJoinedTo);
   if (filters.unassignedOnly) p.set("unassignedOnly", "1");
-  p.set("page", String(page));
-  p.set("limit", "50");
+  if (all) p.set("all", "1");
+  else {
+    p.set("page", String(page));
+    p.set("limit", "50");
+  }
   return p.toString();
+}
+
+function toPreview(emp: EmployeeRecord): SelectedEmployeePreview {
+  return {
+    workEmail: emp.workEmail,
+    name: emp.name,
+    department: emp.department,
+    location: emp.location,
+  };
+}
+
+function applyExclude(
+  employees: EmployeeRecord[],
+  excludeEmails?: Set<string>,
+): EmployeeRecord[] {
+  if (!excludeEmails?.size) return employees;
+  return employees.filter((e) => !excludeEmails.has(e.workEmail.toLowerCase()));
 }
 
 interface EmployeePickerProps {
@@ -49,6 +73,11 @@ export function EmployeePicker({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [selectedDetails, setSelectedDetails] = useState<Map<string, SelectedEmployeePreview>>(
+    new Map(),
+  );
+  const [filteredEmployees, setFilteredEmployees] = useState<EmployeeRecord[] | null>(null);
 
   useEffect(() => {
     fetch("/api/employees?facets=1")
@@ -79,35 +108,152 @@ export function EmployeePicker({
 
   useEffect(() => {
     setPage(1);
+    setFilteredEmployees(null);
   }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(() => {
+      void (async () => {
+        const res = await fetch(`/api/employees?${buildQuery(filters, 1, true)}`);
+        const data = await res.json();
+        if (!cancelled && data.ok) {
+          setFilteredEmployees((data.employees ?? []) as EmployeeRecord[]);
+        }
+      })();
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [filters]);
+
+  useEffect(() => {
+    setSelectedDetails((prev) => {
+      const next = new Map<string, SelectedEmployeePreview>();
+      for (const [key, value] of prev) {
+        if (selectedEmails.has(key)) next.set(key, value);
+      }
+      return next;
+    });
+  }, [selectedEmails]);
 
   const totalPages = Math.max(1, Math.ceil(total / 50));
   const visible = useMemo(
-    () =>
-      excludeEmails?.size
-        ? employees.filter((e) => !excludeEmails.has(e.workEmail.toLowerCase()))
-        : employees,
+    () => applyExclude(employees, excludeEmails),
     [employees, excludeEmails],
   );
 
-  const toggleOne = (email: string) => {
+  const selectableTotal = useMemo(() => {
+    if (!filteredEmployees) return total;
+    return applyExclude(filteredEmployees, excludeEmails).length;
+  }, [filteredEmployees, excludeEmails, total]);
+
+  const updateSelection = (
+    nextEmails: Set<string>,
+    nextDetails: Map<string, SelectedEmployeePreview>,
+  ) => {
+    setSelectedDetails(nextDetails);
+    onSelectionChange(nextEmails);
+  };
+
+  const toggleOne = (emp: EmployeeRecord) => {
     const next = new Set(selectedEmails);
-    const key = email.toLowerCase();
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    onSelectionChange(next);
+    const nextDetails = new Map(selectedDetails);
+    const key = emp.workEmail.toLowerCase();
+    if (next.has(key)) {
+      next.delete(key);
+      nextDetails.delete(key);
+    } else {
+      next.add(key);
+      nextDetails.set(key, toPreview(emp));
+    }
+    updateSelection(next, nextDetails);
   };
 
   const togglePage = () => {
     const next = new Set(selectedEmails);
+    const nextDetails = new Map(selectedDetails);
     const allSelected = visible.every((e) => next.has(e.workEmail.toLowerCase()));
     for (const e of visible) {
       const key = e.workEmail.toLowerCase();
-      if (allSelected) next.delete(key);
-      else next.add(key);
+      if (allSelected) {
+        next.delete(key);
+        nextDetails.delete(key);
+      } else {
+        next.add(key);
+        nextDetails.set(key, toPreview(e));
+      }
     }
-    onSelectionChange(next);
+    updateSelection(next, nextDetails);
   };
+
+  const fetchFilteredEmployees = useCallback(async () => {
+    if (filteredEmployees) return filteredEmployees;
+    const res = await fetch(`/api/employees?${buildQuery(filters, 1, true)}`);
+    const data = await res.json();
+    if (!data.ok) return [];
+    const rows = (data.employees ?? []) as EmployeeRecord[];
+    setFilteredEmployees(rows);
+    return rows;
+  }, [filteredEmployees, filters]);
+
+  const toggleAllFiltered = async () => {
+    setSelectingAll(true);
+    try {
+      const rows = await fetchFilteredEmployees();
+      const matching = applyExclude(rows, excludeEmails);
+      const allSelected =
+        matching.length > 0 &&
+        matching.every((e) => selectedEmails.has(e.workEmail.toLowerCase()));
+      const next = new Set(selectedEmails);
+      const nextDetails = new Map(selectedDetails);
+      for (const e of matching) {
+        const key = e.workEmail.toLowerCase();
+        if (allSelected) {
+          next.delete(key);
+          nextDetails.delete(key);
+        } else {
+          next.add(key);
+          nextDetails.set(key, toPreview(e));
+        }
+      }
+      updateSelection(next, nextDetails);
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+
+  const removeSelected = (email: string) => {
+    const key = email.toLowerCase();
+    const next = new Set(selectedEmails);
+    const nextDetails = new Map(selectedDetails);
+    next.delete(key);
+    nextDetails.delete(key);
+    updateSelection(next, nextDetails);
+  };
+
+  const clearAllSelected = () => {
+    updateSelection(new Set(), new Map());
+  };
+
+  const allFilteredSelected = useMemo(() => {
+    if (!filteredEmployees?.length) return false;
+    const matching = applyExclude(filteredEmployees, excludeEmails);
+    return (
+      matching.length > 0 &&
+      matching.every((e) => selectedEmails.has(e.workEmail.toLowerCase()))
+    );
+  }, [filteredEmployees, excludeEmails, selectedEmails]);
+
+  const allPageSelected =
+    visible.length > 0 && visible.every((e) => selectedEmails.has(e.workEmail.toLowerCase()));
+
+  const selectedPreview = useMemo(
+    () =>
+      [...selectedDetails.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    [selectedDetails],
+  );
 
   return (
     <div className="space-y-4">
@@ -125,15 +271,28 @@ export function EmployeePicker({
             {total !== 1 ? "es" : ""} ·{" "}
             <span className="font-semibold text-[#2e3192]">{selectedEmails.size}</span> selected
           </p>
-          <button
-            type="button"
-            onClick={togglePage}
-            className="text-xs font-medium text-[#2e3192] hover:underline"
-          >
-            {visible.every((e) => selectedEmails.has(e.workEmail.toLowerCase()))
-              ? "Deselect page"
-              : "Select page"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void toggleAllFiltered()}
+              disabled={selectingAll || total === 0}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2e3192] hover:underline disabled:opacity-40"
+            >
+              {selectingAll && <Loader2 className="h-3 w-3 animate-spin" />}
+              {allFilteredSelected
+                ? `Deselect all filtered (${selectableTotal})`
+                : `Select all filtered (${total})`}
+            </button>
+            <span className="text-zinc-300">·</span>
+            <button
+              type="button"
+              onClick={togglePage}
+              disabled={visible.length === 0}
+              className="text-xs font-medium text-[#2e3192] hover:underline disabled:opacity-40"
+            >
+              {allPageSelected ? "Deselect page" : "Select page"}
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -164,7 +323,7 @@ export function EmployeePicker({
                     <tr
                       key={emp.id}
                       className={cn("cursor-pointer hover:bg-zinc-50/80", checked && "bg-[#2e3192]/5")}
-                      onClick={() => toggleOne(emp.workEmail)}
+                      onClick={() => toggleOne(emp)}
                     >
                       <td className="px-4 py-3">
                         <input
@@ -220,6 +379,13 @@ export function EmployeePicker({
           </button>
         </div>
       </div>
+
+      <EmployeeSelectionList
+        selected={selectedPreview}
+        loading={selectingAll}
+        onRemove={removeSelected}
+        onClearAll={selectedEmails.size > 0 ? clearAllSelected : undefined}
+      />
     </div>
   );
 }

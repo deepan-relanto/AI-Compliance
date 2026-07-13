@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       unassignedOnly: sp.get("unassignedOnly") === "1",
       page: Number(sp.get("page") ?? "1"),
       limit: Number(sp.get("limit") ?? "50"),
+      all: sp.get("all") === "1",
     });
 
     return NextResponse.json({ ok: true, ...result });

@@ -22,9 +22,6 @@
 .DS_Store
 *.pem
 
-# uploaded course media (stored locally, not in git)
-/public/course-assets/
-
 # debug
 npm-debug.log*
 yarn-debug.log*

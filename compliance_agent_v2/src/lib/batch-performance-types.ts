@@ -1,5 +1,3 @@
-import type { ModuleKind } from "@/lib/module-kind";
-
 export interface BatchAssessmentResult {
   moduleId: string;
   moduleTitle: string;
@@ -20,7 +18,6 @@ export interface BatchLearnerPerformance {
 }
 
 export interface BatchPerformancePayload {
-  track: ModuleKind;
   batch: {
     id: string;
     label: string;

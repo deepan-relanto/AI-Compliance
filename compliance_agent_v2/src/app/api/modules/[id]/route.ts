@@ -1,3 +1,4 @@
+import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { loadModuleDetail } from "@/lib/services/module-detail-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,9 +11,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userEmail = req.nextUrl.searchParams.get("userEmail")?.trim() ?? "";
+    const claimedEmail = req.nextUrl.searchParams.get("userEmail");
+    const access = await requireLearnerModuleAccess(id, claimedEmail);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
-    const detail = await loadModuleDetail(sql, id, userEmail);
+    const detail = await loadModuleDetail(sql, id, access.email);
 
     if (!detail) {
       return NextResponse.json({ ok: false, error: "Module not found" }, { status: 404 });

@@ -9,7 +9,7 @@ export default function AdminUploadPage() {
     <RouteGuard allowedRoles={["admin"]}>
       <AdminShell
         title="Content library"
-        subtitle="Compliance assessments (AI-generated quizzes) and mandatory courses (admin question banks). Assign batches from each track."
+        subtitle="Upload PDFs, reuse existing assessments with questions, assign batches, and review learner scores."
       >
         <ContentLibraryHub />
       </AdminShell>

@@ -5,6 +5,7 @@ import {
   deleteBatch,
   removeBatchMembers,
 } from "@/lib/services/batch-management-service";
+import { cacheInvalidate, CACHE_KEYS } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +78,7 @@ export async function PATCH(
         return NextResponse.json({ ok: false, error: "No employees selected." }, { status: 400 });
       }
       const added = await addBatchMembers(sql, batchId, emails);
+      void Promise.resolve().then(() => cacheInvalidate(CACHE_KEYS.batches, CACHE_KEYS.analytics));
       return NextResponse.json({ ok: true, added });
     }
 
@@ -88,6 +90,7 @@ export async function PATCH(
         return NextResponse.json({ ok: false, error: "No members specified." }, { status: 400 });
       }
       const removed = await removeBatchMembers(sql, batchId, emails);
+      void Promise.resolve().then(() => cacheInvalidate(CACHE_KEYS.batches, CACHE_KEYS.analytics));
       return NextResponse.json({ ok: true, removed });
     }
 
@@ -112,6 +115,7 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ ok: false, error: "Batch not found" }, { status: 404 });
     }
+    void Promise.resolve().then(() => cacheInvalidate(CACHE_KEYS.batches, CACHE_KEYS.analytics));
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to delete batch";

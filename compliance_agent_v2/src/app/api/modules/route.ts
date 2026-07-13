@@ -1,8 +1,26 @@
 import { getSql } from "@/lib/db";
-import { mapTrainingModuleRow } from "@/lib/map-training-module";
+import { clientPdfUrl } from "@/lib/pdf-url";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+function mapModule(row: Record<string, unknown>, batchIds: string[]) {
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: row.description as string,
+    slideCount: row.slide_count as number,
+    durationMinutes: row.duration_minutes as number,
+    status: "not_started" as const,
+    batchIds,
+    pdfUrl: clientPdfUrl(row.pdf_url as string),
+    contentType: (row.content_type as "text" | "pdf") || "text",
+    createdAt: row.created_at
+      ? new Date(row.created_at as string).getTime()
+      : undefined,
+    feedbackRequired: Boolean(row.feedback_required),
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,14 +43,11 @@ export async function GET(req: NextRequest) {
       WHERE mb_filter.batch_id = ${batchId}
         AND m.mcq_generation_status = 'completed'
       GROUP BY m.id
-      ORDER BY m.module_kind, m.created_at DESC
+      ORDER BY m.created_at DESC
     `;
 
     const modules = rows.map((row) =>
-      mapTrainingModuleRow(
-        row as Record<string, unknown>,
-        ((row.batch_ids as string[] | null) ?? []).filter(Boolean),
-      ),
+      mapModule(row, ((row.batch_ids as string[] | null) ?? []).filter(Boolean)),
     );
 
     return NextResponse.json({ ok: true, modules });

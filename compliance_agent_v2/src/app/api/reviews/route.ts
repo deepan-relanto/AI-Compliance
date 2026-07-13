@@ -1,3 +1,4 @@
+import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import {
   getLatestReviewDb,
@@ -12,15 +13,18 @@ export async function GET(req: NextRequest) {
   try {
     const username = req.nextUrl.searchParams.get("username");
     const moduleId = req.nextUrl.searchParams.get("moduleId");
-    if (!username || !moduleId) {
+    if (!moduleId) {
       return NextResponse.json(
-        { ok: false, error: "username and moduleId are required." },
+        { ok: false, error: "moduleId is required." },
         { status: 400 },
       );
     }
 
+    const access = await requireLearnerModuleAccess(moduleId, username);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
-    const request = await getLatestReviewDb(sql, username, moduleId);
+    const request = await getLatestReviewDb(sql, access.email, moduleId);
     return NextResponse.json({ ok: true, request });
   } catch (err) {
     const message =
@@ -42,16 +46,19 @@ export async function POST(req: NextRequest) {
       userExplanation,
     } = body;
 
-    if (!username || !moduleId || !moduleTitle || !userExplanation?.trim()) {
+    if (!moduleId || !moduleTitle || !userExplanation?.trim()) {
       return NextResponse.json(
         { ok: false, error: "Missing required fields." },
         { status: 400 },
       );
     }
 
+    const access = await requireLearnerModuleAccess(moduleId, username);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
     const request = await submitReviewRequestDb(sql, {
-      username,
+      username: access.email,
       moduleId,
       moduleTitle,
       warningCount: Number(warningCount ?? 0),

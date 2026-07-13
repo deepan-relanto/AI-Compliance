@@ -7,6 +7,7 @@ import {
   gateCountForSlides,
   normalizeMcqPrompt,
 } from "@/lib/mcq-dedupe";
+import { shuffleAndRemapMcqOptions } from "@/lib/mcq-options-shuffle";
 import {
   buildRelantoScenarioPrompt,
   isAcceptableMcqPrompt,
@@ -491,11 +492,16 @@ export async function generateAndStoreModuleMcqs(
   for (let i = 0; i < pool.length; i++) {
     const mcq = pool[i];
     const qId = `${moduleId}-pool-${i + 1}`;
+    const remapped = shuffleAndRemapMcqOptions(
+      mcq.options,
+      mcq.correctOptionId,
+      `${moduleId}:${qId}`,
+    );
     await sql`
       INSERT INTO mcq_questions (id, module_id, slide_index, prompt, correct_option_id, explanation)
-      VALUES (${qId}, ${moduleId}, ${mcq.slideIndex}, ${mcq.prompt}, ${mcq.correctOptionId}, ${mcq.explanation})
+      VALUES (${qId}, ${moduleId}, ${mcq.slideIndex}, ${mcq.prompt}, ${remapped.correctOptionId}, ${mcq.explanation})
     `;
-    for (const opt of mcq.options) {
+    for (const opt of remapped.options) {
       await sql`
         INSERT INTO mcq_options (id, question_id, label)
         VALUES (${opt.id}, ${qId}, ${opt.label})

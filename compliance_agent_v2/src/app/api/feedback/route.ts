@@ -1,5 +1,4 @@
 import { getSql } from "@/lib/db";
-import type { ModuleKind } from "@/lib/module-kind";
 import {
   createFeedback,
   getUserBatchMap,
@@ -9,18 +8,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET — feedback with optional ?track=compliance|course */
-export async function GET(req: NextRequest) {
+/** GET — all feedback with batch info + user batch map for legacy entries */
+export async function GET() {
   try {
-    const trackParam = req.nextUrl.searchParams.get("track");
-    const track: ModuleKind | undefined =
-      trackParam === "course" ? "course" : trackParam === "compliance" ? "compliance" : undefined;
     const sql = getSql();
     const [entries, userBatches] = await Promise.all([
-      listFeedback(sql, track),
+      listFeedback(sql),
       getUserBatchMap(sql),
     ]);
-    return NextResponse.json({ ok: true, entries, userBatches, track: track ?? "all" });
+    return NextResponse.json({ ok: true, entries, userBatches });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load feedback";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

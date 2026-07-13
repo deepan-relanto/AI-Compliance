@@ -56,7 +56,7 @@ export function EncouragementRetakeNotice({
               <BrandPanelHeader
                 eyebrow={isSecondOrMore ? "Keep going" : "You've got this"}
                 title="It's okay — try again"
-                description="Everyone learns at their own pace. A quiz-only round is ready when you are — same room, just the questions."
+                description="Everyone learns at their own pace. When your score is below the pass mark, you can retry with quiz questions only — slides are skipped until you pass."
                 icon={Heart}
               />
 

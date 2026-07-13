@@ -50,6 +50,7 @@ export interface StatusBreakdown {
 
 export interface HistoricalRecord {
   userEmail: string;
+  moduleId: string;
   moduleTitle: string;
   batchId: string;
   batchLabel: string;
@@ -58,8 +59,15 @@ export interface HistoricalRecord {
   mcqCorrect: number;
   mcqTotal: number;
   retakeCount: number;
+  acknowledged: boolean;
+  acknowledgedAt: string | null;
   completedAt: string | null;
   updatedAt: string;
+}
+
+export interface AnalyticsExportOptions {
+  historyRows: HistoricalRecord[];
+  filterSummary?: string;
 }
 
 export interface AnalyticsPayload {

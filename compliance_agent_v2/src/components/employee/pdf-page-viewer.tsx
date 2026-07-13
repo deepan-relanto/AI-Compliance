@@ -164,7 +164,7 @@ export function PdfPageViewer({
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
+      className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-black"
     >
       {(docLoading || pageRendering) && (
         <div
@@ -195,7 +195,7 @@ export function PdfPageViewer({
               onRenderError={handlePageRenderError}
               renderAnnotationLayer={false}
               renderTextLayer={false}
-              className="shadow-2xl ring-1 ring-black/25"
+              className=""
             />
           )}
         </Document>

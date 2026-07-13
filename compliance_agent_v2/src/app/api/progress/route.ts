@@ -1,3 +1,4 @@
+import { requireLearnerModuleAccess, requireSessionEmail } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import {
   listProgressForUser,
@@ -10,16 +11,12 @@ export const dynamic = "force-dynamic";
 /** GET ?userEmail= — learner progress with scores */
 export async function GET(req: NextRequest) {
   try {
-    const userEmail = req.nextUrl.searchParams.get("userEmail");
-    if (!userEmail) {
-      return NextResponse.json(
-        { ok: false, message: "userEmail is required." },
-        { status: 400 },
-      );
-    }
+    const claimedEmail = req.nextUrl.searchParams.get("userEmail");
+    const access = await requireSessionEmail(claimedEmail);
+    if (!access.ok) return access.response;
 
     const sql = getSql();
-    const progress = await listProgressForUser(sql, userEmail);
+    const progress = await listProgressForUser(sql, access.email);
     return NextResponse.json({ ok: true, progress });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load progress";
@@ -42,19 +39,22 @@ export async function POST(req: NextRequest) {
       freshStart,
     } = body;
 
-    if (!userEmail || !moduleId || !moduleTitle || !batchId) {
+    if (!moduleId || !moduleTitle) {
       return NextResponse.json(
-        { ok: false, message: "userEmail, moduleId, moduleTitle, batchId required." },
+        { ok: false, message: "moduleId and moduleTitle required." },
         { status: 400 },
       );
     }
 
+    const access = await requireLearnerModuleAccess(moduleId, userEmail);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
     const row = await startTrainingSessionDb(sql, {
-      userEmail,
+      userEmail: access.email,
       moduleId,
       moduleTitle,
-      batchId,
+      batchId: batchId || access.batchId,
       totalSlides: totalSlides ?? 1,
       assignedMcqCount:
         typeof assignedMcqCount === "number" && assignedMcqCount > 0
@@ -67,6 +67,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, progress: row });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save progress";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    const blocked =
+      message.includes("failed") || message.includes("administrator");
+    return NextResponse.json(
+      { ok: false, message },
+      { status: blocked ? 409 : 500 },
+    );
   }
 }

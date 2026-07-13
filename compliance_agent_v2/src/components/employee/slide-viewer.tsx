@@ -14,37 +14,48 @@ import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { isValidSignatureName, normalizeSignatureName } from "@/lib/signature-canvas";
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
-import type { McqQuestion, TrainingModule, WarningHistoryEntry, ReviewRequest, ModuleStatus } from "@/lib/types";
+import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { ProctorRulesModal } from "@/components/employee/proctor-rules-modal";
-import { ChevronLeft, ChevronRight, Clock, FileText, Maximize2, Minimize2, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Maximize2, Minimize2, ShieldAlert, ShieldCheck } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuthStore } from "@/lib/auth-store";
 import {
   markInProgress,
   isProctorLocked,
   markCompleted,
   getProgress,
-  addWarning,
   saveAcknowledgement,
   applyScoreResult,
   resetForScoreRetake,
+  resetLocalAttempt,
+  mergeServerProgress,
+  clearLocalModuleProgressIfServerAbsent,
+  clearStaleLocalProgress,
+  clearAllLocalProgressForUser,
+  failAssessmentForAbandonment,
 } from "@/lib/progress-store";
 import {
   syncAcknowledgement,
   syncProgressStart,
   syncProgressComplete,
+  syncAbandonmentFailure,
   finalizeAssessmentScore,
   requestScoreRetake,
+  fetchUserProgress,
+  type ServerProgressEntry,
 } from "@/lib/progress-api";
-import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ } from "@/lib/constants";
+import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ, isPassingScore } from "@/lib/constants";
 import { getAllReviewRequests } from "@/lib/review-store";
 import {
   fetchLatestReviewRequest,
   submitReviewRequestApi,
 } from "@/lib/review-api";
+import { useProctorMonitor, toProctorViolationReason } from "@/hooks/use-proctor-monitor";
+import { ProctorWarningModal } from "@/components/employee/proctor-warning-modal";
 
 // Isolated client-only PDF renderer — dynamically imported so pdfjs-dist is
 // never bundled into the SSR pass (fixes "Object.defineProperty called on
@@ -55,6 +66,7 @@ const PdfPageViewer = dynamic(
 );
 
 const SLIDES_BETWEEN_GATES = 3;
+const SLIDE_READ_SECONDS = 3.5;
 
 const FALLBACK_MCQ: McqQuestion = {
   id: "gate-fallback",
@@ -132,6 +144,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   // useState lazy initializer runs once at mount. Reading localStorage here
   // is safe because SlideViewer is a client-only component (ssr:false import).
   const [slideIndex, setSlideIndex] = useState(0);
+  const [slideReadCountdown, setSlideReadCountdown] = useState(SLIDE_READ_SECONDS);
 
   const [nextClickCount, setNextClickCount] = useState(0);
   const [mcqOpen, setMcqOpen] = useState(false);
@@ -164,29 +177,12 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     isValidSignatureName(normalizeSignatureName(signatureName)) && !!signatureDataUrl;
 
   // ── Integrity Monitoring State ──────────────────────────────────────────
-  const [liveWarningCount, setLiveWarningCount] = useState<number>(() => {
-    if (!user?.username) return 0;
-    const progress = getProgress(user.username, module.id);
-    return progress?.warningCount ?? 0;
-  });
-
-  const [liveWarningHistory, setLiveWarningHistory] = useState<WarningHistoryEntry[]>(() => {
-    if (!user?.username) return [];
-    const progress = getProgress(user.username, module.id);
-    return progress?.warningHistory ?? [];
-  });
-
-  const [isFailed, setIsFailed] = useState<boolean>(() => {
-    if (!user?.username) return false;
-    const progress = getProgress(user.username, module.id);
-    return progress ? isProctorLocked(progress) : false;
-  });
-
-  const [activeWarningReason, setActiveWarningReason] = useState<string | null>(null);
+  const [isFailed, setIsFailed] = useState(false);
 
   // ── Integrity Enhancement States ─────────────────────────────────────────
   const [retakeCount, setRetakeCount] = useState<number>(0);
   const [dbStatus, setDbStatus] = useState<ModuleStatus>("in_progress");
+
   const [reviewRequest, setReviewRequest] = useState<ReviewRequest | null>(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [explanation, setExplanation] = useState("");
@@ -206,6 +202,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     mcqTotal: number;
   } | null>(null);
   const [retakeLoading, setRetakeLoading] = useState(false);
+  const [sessionStartError, setSessionStartError] = useState<string | null>(null);
   const [quizOnlyIndex, setQuizOnlyIndex] = useState(0);
   const [forceQuizOnlyRetake, setForceQuizOnlyRetake] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
@@ -215,19 +212,151 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   const [earnedBadges, setEarnedBadges] = useState<GamificationBadge[]>([]);
   const [badgePopup, setBadgePopup] = useState<GamificationBadge | null>(null);
 
+  const handleProctorLockout = useCallback(() => {
+    setIsFailed(true);
+    setMcqOpen(false);
+  }, []);
+
+  const proctorHook = useProctorMonitor({
+    enabled:
+      sessionStarted &&
+      !reviewOnlyMode &&
+      !showAcknowledgement &&
+      !showFinalQa &&
+      !showScoreResult &&
+      !showExitModal &&
+      !isFailed,
+    sessionActive: sessionStarted && !reviewOnlyMode && !isFailed,
+    username: user?.username,
+    moduleId: module.id,
+    moduleTitle: module.title,
+    batchId: user?.batchId ?? "",
+    totalSlides,
+    reviewOnlyMode,
+    onLockout: handleProctorLockout,
+    onStatusChange: (status) => setDbStatus(status),
+  });
+  const liveWarningCount = proctorHook.warningCount;
+  const liveWarningHistory = proctorHook.warningHistory;
+  const activeWarningReason = toProctorViolationReason(proctorHook.activeReason);
+
   const loadIntegrityState = useCallback(async () => {
     if (!user?.username) return;
 
+    let serverEntry: ServerProgressEntry | undefined;
+    let progressFetchOk = false;
+
+    try {
+      const result = await fetchUserProgress(user.username);
+      progressFetchOk = result.ok;
+      const entries = result.progress;
+      serverEntry = entries.find((e) => e.moduleId === module.id);
+
+      if (progressFetchOk) {
+        if (serverEntry) {
+          mergeServerProgress(user.username, [
+            {
+              moduleId: serverEntry.moduleId,
+              moduleTitle: serverEntry.moduleTitle,
+              batchId: serverEntry.batchId,
+              currentSlide: serverEntry.currentSlide,
+              totalSlides: serverEntry.totalSlides,
+              status: serverEntry.status,
+              retakeCount: serverEntry.retakeCount,
+              mcqCorrect: serverEntry.mcqCorrect,
+              mcqTotal: serverEntry.mcqTotal,
+              scorePercent: serverEntry.scorePercent,
+              failedReason: serverEntry.failedReason,
+              completedAt: serverEntry.completedAt,
+              warningCount: serverEntry.warningCount,
+            },
+          ]);
+          if (serverEntry.mcqCorrect > 0) {
+            setCorrectAnswers(serverEntry.mcqCorrect);
+          }
+        } else {
+          clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
+          setIsFailed(false);
+          proctorHook.hydrateFromProgress(null);
+          setRetakeCount(0);
+          setDbStatus("not_started");
+        }
+
+        if (entries.length === 0) {
+          clearAllLocalProgressForUser(user.username);
+        } else {
+          clearStaleLocalProgress(user.username, {
+            serverModuleIds: entries.map((e) => e.moduleId),
+            assignedModuleIds: [module.id],
+          });
+        }
+      }
+    } catch {
+      /* fall back to local snapshot below */
+    }
+
+    const serverFresh =
+      !progressFetchOk ||
+      !serverEntry ||
+      (serverEntry.status === "not_started" &&
+        (serverEntry.warningCount ?? 0) === 0);
+
     const prog = getProgress(user.username, module.id);
-    if (prog) {
+    if (prog && !serverFresh) {
       setRetakeCount(prog.retakeCount ?? 0);
       setDbStatus(prog.status);
       setIsFailed(isProctorLocked(prog));
+      proctorHook.hydrateFromProgress(prog);
+      if (typeof prog.mcqCorrect === "number" && prog.mcqCorrect > 0) {
+        setCorrectAnswers(prog.mcqCorrect);
+      }
+
+      const storedScore = prog.scorePercent;
+      const storedMcqCorrect = prog.mcqCorrect ?? 0;
+      const storedMcqTotal = prog.mcqTotal ?? moduleMcqs.length;
+      const pendingScoreFailure =
+        storedScore != null &&
+        !isPassingScore(storedScore) &&
+        !isProctorLocked(prog) &&
+        !quizOnlyModeFromModule &&
+        !ackPendingMode &&
+        !reviewOnlyMode;
+
+      if (pendingScoreFailure) {
+        const retakes = prog.retakeCount ?? 0;
+        setShowProctorRules(false);
+        setSessionStarted(true);
+        setSessionStartMs((current) => current ?? Date.now());
+        setScoreResult({
+          scorePercent: storedScore,
+          passed: false,
+          canRetake: retakes < 2,
+          mcqCorrect: storedMcqCorrect,
+          mcqTotal: storedMcqTotal,
+        });
+        setShowScoreResult(true);
+      }
+    } else {
+      setRetakeCount(serverEntry?.retakeCount ?? 0);
+      setDbStatus(serverEntry?.status ?? "not_started");
+      setIsFailed(false);
+      proctorHook.hydrateFromProgress(null);
     }
 
     try {
       const latest = await fetchLatestReviewRequest(user.username, module.id);
-      setReviewRequest(latest);
+      if (serverFresh && latest?.status === "Pending") {
+        setReviewRequest(null);
+      } else {
+        setReviewRequest(latest);
+        const serverNotStarted = serverEntry?.status === "not_started";
+        if (latest?.status === "Approved" && serverNotStarted) {
+          setIsFailed(false);
+          proctorHook.hydrateFromProgress(null);
+          setDbStatus("not_started");
+          setRetakeCount(serverEntry?.retakeCount ?? prog?.retakeCount ?? 0);
+        }
+      }
     } catch {
       const requests = getAllReviewRequests();
       const userReqs = requests.filter(
@@ -235,19 +364,19 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       );
       setReviewRequest(userReqs.length > 0 ? userReqs[0] : null);
     }
-  }, [user?.username, module.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.username, module.id, moduleMcqs.length, ackPendingMode, quizOnlyModeFromModule, reviewOnlyMode]);
 
   useEffect(() => {
     loadIntegrityState();
   }, [loadIntegrityState]);
 
-  const isExitingRef = useRef(false);
-  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const proctorGraceUntilRef = useRef(0);
+  const isExitingRef = proctorHook.isExitingRef;
   const earnedBadgeIdsRef = useRef<Set<string>>(new Set());
   const badgeQueueRef = useRef<GamificationBadge[]>([]);
   const badgeShowingRef = useRef(false);
   const answeredQuestionIdsRef = useRef(new Set<string>());
+  const ackFlowCompletedRef = useRef(false);
 
   const isLastSlide = slideIndex === totalSlides - 1;
   const gateIndex = useMemo(
@@ -256,28 +385,21 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   );
   const quizOnlyMode = quizOnlyModeFromModule || forceQuizOnlyRetake;
 
-  /** Proctor tab/focus/fullscreen checks only during active slide/quiz training. */
-  const proctorMonitorsActive = useMemo(
-    () =>
-      sessionStarted &&
-      !reviewOnlyMode &&
-      !quizOnlyMode &&
-      !showAcknowledgement &&
-      !showFinalQa &&
-      !showScoreResult &&
-      !showExitModal &&
-      !isFailed,
-    [
-      sessionStarted,
-      reviewOnlyMode,
-      quizOnlyMode,
-      showAcknowledgement,
-      showFinalQa,
-      showScoreResult,
-      showExitModal,
-      isFailed,
-    ],
-  );
+  useEffect(() => {
+    if (!sessionStarted || quizOnlyMode) {
+      setSlideReadCountdown(SLIDE_READ_SECONDS);
+      return;
+    }
+
+    setSlideReadCountdown(SLIDE_READ_SECONDS);
+    const id = window.setInterval(() => {
+      setSlideReadCountdown((remaining) => Math.max(0, remaining - 0.5));
+    }, 500);
+
+    return () => window.clearInterval(id);
+  }, [slideIndex, sessionStarted, quizOnlyMode]);
+
+  /** Proctor monitors active is now managed by the useProctorMonitor hook. */
 
   const activeQuiz = quizOnlyMode ? moduleMcqs[quizOnlyIndex] : null;
   const totalQuestions = moduleMcqs.length;
@@ -362,6 +484,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     earnedBadgeIdsRef.current = new Set();
     badgeQueueRef.current = [];
     badgeShowingRef.current = false;
+    answeredQuestionIdsRef.current = new Set();
   }, []);
 
   useEffect(() => {
@@ -387,14 +510,14 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   }, []);
 
   useEffect(() => {
-    if (!sessionStarted || reviewOnlyMode || quizOnlyModeFromModule) return;
+    if (!sessionStarted || reviewOnlyMode) return;
     enterFullscreen();
     return () => {
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => undefined);
       }
     };
-  }, [sessionStarted, reviewOnlyMode, quizOnlyModeFromModule, enterFullscreen]);
+  }, [sessionStarted, reviewOnlyMode, enterFullscreen]);
 
   useEffect(() => {
     if (!sessionStarted || sessionStartMs === null) return;
@@ -404,7 +527,50 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     return () => window.clearInterval(id);
   }, [sessionStarted, sessionStartMs]);
 
-  const handleBeginSession = () => {
+  const handleBeginSession = async () => {
+    setSessionStartError(null);
+    const isFullRetake =
+      (getProgress(user?.username ?? "", module.id)?.retakeCount ?? retakeCount) > 0 &&
+      !quizOnlyModeFromModule &&
+      !forceQuizOnlyRetake;
+
+    if (user?.username) {
+      const sync = await syncProgressStart({
+        userEmail: user.username,
+        moduleId: module.id,
+        moduleTitle: module.title,
+        batchId: user.batchId,
+        totalSlides,
+        assignedMcqCount: moduleMcqs.length,
+        freshStart: isFullRetake || freshStart,
+      });
+      if (!sync.ok) {
+        setSessionStartError(
+          sync.message ?? "Could not start session. Request a retake if you have failed.",
+        );
+        return;
+      }
+
+      if (isFullRetake) {
+        resetLocalAttempt(user.username, module.id);
+        setForceQuizOnlyRetake(false);
+        answeredQuestionIdsRef.current.clear();
+        resetGamificationState();
+        setSlideIndex(0);
+        setQuizOnlyIndex(0);
+        setNextClickCount(0);
+        if (reviewRequest?.status === "Approved") {
+          setReviewRequest({ ...reviewRequest, status: "Consumed" });
+        }
+      }
+      markInProgress(
+        user.username,
+        module.id,
+        module.title,
+        user.batchId,
+        totalSlides,
+      );
+    }
     setShowProctorRules(false);
     setSessionStarted(true);
     setSessionStartMs(Date.now());
@@ -419,166 +585,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     if (sessionStartMs === null) {
       setSessionStartMs(Date.now());
     }
-  }, [autoStartSession, sessionStartMs]);
-
-  const handleWarningContinue = useCallback(async () => {
-    proctorGraceUntilRef.current = Date.now() + 2500;
-    setActiveWarningReason(null);
-    if (focusTimeoutRef.current) {
-      clearTimeout(focusTimeoutRef.current);
-      focusTimeoutRef.current = null;
-    }
-
-    const shouldRestoreFullscreen =
-      sessionStarted &&
-      !reviewOnlyMode &&
-      !quizOnlyMode &&
-      !showAcknowledgement &&
-      !showFinalQa &&
-      !showScoreResult;
-
-    if (!shouldRestoreFullscreen) return;
-
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-      setIsFullscreen(true);
-    } catch {
-      setIsFullscreen(false);
-    }
-  }, [
-    sessionStarted,
-    reviewOnlyMode,
-    quizOnlyMode,
-    showAcknowledgement,
-    showFinalQa,
-    showScoreResult,
-  ]);
-
-  const triggerWarning = useCallback((reason: string) => {
-    if (
-      !proctorMonitorsActive ||
-      isExitingRef.current ||
-      !user?.username
-    ) {
-      return;
-    }
-
-    // Check progress status before logging warning
-    const currentProgress = getProgress(user.username, module.id);
-    if (
-      currentProgress &&
-      (currentProgress.status === "completed" || isProctorLocked(currentProgress))
-    ) {
-      return;
-    }
-
-    // Call addWarning in store (includes the 5s cooldown check inside)
-    const updated = addWarning(user.username, module.id, reason);
-
-    setLiveWarningCount(updated.warningCount);
-    setLiveWarningHistory(updated.warningHistory);
-
-    if (isProctorLocked(updated)) {
-      setIsFailed(true);
-      setActiveWarningReason(null);
-      void loadIntegrityState();
-    } else if (updated.warningCount !== liveWarningCount) {
-      // Show warning modal only if warning count was actually incremented (i.e. not on cooldown)
-      setActiveWarningReason(reason);
-    }
-  }, [
-    proctorMonitorsActive,
-    user?.username,
-    module.id,
-    liveWarningCount,
-    loadIntegrityState,
-  ]);
-
-  useEffect(() => {
-    const onFsChange = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (document.fullscreenElement === null) {
-        setIsFullscreen(false);
-        triggerWarning("Exited Fullscreen");
-      } else {
-        setIsFullscreen(true);
-      }
-    };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  // ── Tab Switch / Visibility Monitoring ───────────────────────────────────
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (document.visibilityState === "hidden") {
-        triggerWarning("Switched Browser Tab");
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  // ── Window Focus Defocus Grace Period Monitoring ────────────────────────
-  useEffect(() => {
-    const handleBlur = () => {
-      if (!proctorMonitorsActive || isExitingRef.current || isFailed) return;
-      if (Date.now() < proctorGraceUntilRef.current) return;
-      if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
-      focusTimeoutRef.current = setTimeout(() => {
-        triggerWarning("Window Lost Focus");
-      }, 3000); // 3-second grace period
-    };
-
-    const handleFocus = () => {
-      if (focusTimeoutRef.current) {
-        clearTimeout(focusTimeoutRef.current);
-        focusTimeoutRef.current = null;
-      }
-    };
-
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-    return () => {
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
-      if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
-    };
-  }, [triggerWarning, isFailed, proctorMonitorsActive]);
-
-  // ── Navigation (Refresh / Leave page) Monitoring ─────────────────────────
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (reviewOnlyMode || isExitingRef.current || !user?.username) return;
-      const currentProgress = getProgress(user.username, module.id);
-      if (
-        currentProgress &&
-        (currentProgress.status === "completed" || isProctorLocked(currentProgress))
-      ) {
-        return;
-      }
-
-      // Record warning synchronously in localStorage before exit
-      addWarning(user.username, module.id, "Attempted Navigation");
-
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [reviewOnlyMode, user?.username, module.id]);
-
-  // ── Progress tracking ────────────────────────────────────────────────────
-  // Mark in_progress when the viewer mounts (user opened the assessment).
-  useEffect(() => {
-    if (user?.username) {
+    if (!reviewOnlyMode && user?.username) {
       markInProgress(
         user.username,
         module.id,
@@ -596,12 +603,33 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
         freshStart,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, module.id, moduleMcqs.length, freshStart]);
+  }, [
+    autoStartSession,
+    sessionStartMs,
+    reviewOnlyMode,
+    user?.username,
+    module.id,
+    module.title,
+    user?.batchId,
+    totalSlides,
+    moduleMcqs.length,
+    freshStart,
+  ]);
 
-  // Assessments are one-time: do not persist slide position for resume.
+  const handleWarningContinue = proctorHook.handleWarningContinue;
+
+  // All proctor monitoring (ESC, fullscreen, visibility, blur, beforeunload) is handled
+  // by useProctorMonitor hook. Only fullscreen tracking for the UI toggle:
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(document.fullscreenElement !== null);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
 
   const openGate = useCallback(() => {
+    if (isFailed) return;
     const gateSlot = Math.min(
       Math.max(gateIndex, 0),
       Math.max(moduleMcqs.length - 1, 0),
@@ -612,7 +640,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       FALLBACK_MCQ;
     setGateMcq(mcq);
     setMcqOpen(true);
-  }, [moduleMcqs, slideIndex, gateIndex]);
+  }, [isFailed, moduleMcqs, slideIndex, gateIndex]);
 
   const handleFinishAttempt = useCallback(async () => {
     if (reviewOnlyMode) {
@@ -662,6 +690,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   ]);
 
   const tryAdvance = useCallback(() => {
+    if (isFailed) return;
     if (quizOnlyMode) {
       if (!moduleMcqs.length) {
         void handleFinishAttempt();
@@ -681,12 +710,15 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       setMcqOpen(true);
       return;
     }
+    if (slideReadCountdown > 0) {
+      return;
+    }
     if (isLastSlide) {
       void handleFinishAttempt();
       return;
     }
     const upcoming = nextClickCount + 1;
-    if (!reviewOnlyMode && module.moduleKind !== "course" && upcoming % SLIDES_BETWEEN_GATES === 0) {
+    if (!reviewOnlyMode && upcoming % SLIDES_BETWEEN_GATES === 0) {
       setNextClickCount(upcoming);
       const gateSlot = Math.min(
         Math.max(Math.floor(upcoming / SLIDES_BETWEEN_GATES) - 1, 0),
@@ -706,6 +738,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     setNextClickCount(upcoming);
     setSlideIndex((i) => Math.min(i + 1, totalSlides - 1));
   }, [
+    isFailed,
     quizOnlyMode,
     moduleMcqs,
     activeQuiz,
@@ -717,7 +750,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     totalSlides,
     slideIndex,
     quizOnlyIndex,
-    module.moduleKind,
+    slideReadCountdown,
   ]);
 
   const closeAfterCompletion = useCallback(() => {
@@ -736,26 +769,41 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     }, 300);
   }, []);
 
-  const finishTrainingCompletion = useCallback(() => {
+  const finishTrainingCompletion = useCallback(async () => {
     setShowFinalQa(false);
     setShowAcknowledgement(false);
     setShowScoreResult(false);
     setMcqOpen(false);
+
+    let completionMessage = `Thank you. Your training for “${module.title}” is complete — attestation and feedback are on record.`;
     if (user?.username) {
       markCompleted(user.username, module.id);
-      void syncProgressComplete(user.username, module.id);
+      const result = await syncProgressComplete(user.username, module.id);
+      if (!result.ok) {
+        completionMessage =
+          "Your training is recorded locally, but we could not finalize it on the server. Please refresh your dashboard or contact Relanto Academy if your status looks wrong.";
+      } else if (result.emailSent) {
+        completionMessage += " A confirmation email with your results is on its way.";
+      } else {
+        completionMessage +=
+          " We could not send your confirmation email — please check spam or contact Relanto Academy.";
+      }
     }
+
     setCompletionNotice({
       title: "Assessment submitted successfully",
-      message: `Thank you. Your training for “${module.title}” is complete — attestation and feedback are on record.`,
+      message: completionMessage,
       variant: "success",
-      autoCloseAfterMs: 5000,
+      autoCloseAfterMs: 6000,
       showAcknowledgeButton: false,
       onAcknowledge: closeAfterCompletion,
     });
   }, [user?.username, module.id, module.title, closeAfterCompletion]);
 
   const goToFeedbackStep = useCallback(() => {
+    ackFlowCompletedRef.current = true;
+    setMcqOpen(false);
+    setForceQuizOnlyRetake(false);
     setShowAcknowledgement(false);
     setScoreResult(null);
     setShowFinalQa(true);
@@ -801,7 +849,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     setRetakeLoading(false);
     if (!res.ok) return;
 
-    proctorGraceUntilRef.current = Date.now() + 2500;
+    proctorHook.ignoreNextFullscreenEntryRef.current = true;
     resetForScoreRetake(user.username, module.id);
     loadIntegrityState();
     setShowScoreResult(false);
@@ -815,14 +863,23 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     setShowAcknowledgement(false);
     setForceQuizOnlyRetake(true);
     resetGamificationState();
+    void enterFullscreen();
     if (moduleMcqs.length) {
       setGateMcq(moduleMcqs[0]);
       setMcqOpen(true);
     }
   };
 
-  const handleCheckpointAnswered = useCallback((wasCorrect: boolean) => {
+  const handleCheckpointAnswered = useCallback((
+    wasCorrect: boolean,
+    meta?: { mcqCorrect?: number; mcqTotal?: number },
+  ) => {
     const questionId = gateMcq.id;
+
+    if (typeof meta?.mcqCorrect === "number") {
+      setCorrectAnswers(meta.mcqCorrect);
+    }
+
     if (answeredQuestionIdsRef.current.has(questionId)) return;
     answeredQuestionIdsRef.current.add(questionId);
 
@@ -830,7 +887,9 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     unlockBadge("starter");
 
     if (wasCorrect) {
-      setCorrectAnswers((count) => count + 1);
+      if (typeof meta?.mcqCorrect !== "number") {
+        setCorrectAnswers((count) => count + 1);
+      }
       setCurrentStreak((streak) => {
         const nextStreak = streak + 1;
         setBestStreak((best) => Math.max(best, nextStreak));
@@ -845,6 +904,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   }, [gateMcq.id, unlockBadge]);
 
   const handleMcqContinue = () => {
+    if (isFailed) return;
     setMcqOpen(false);
     scheduleBadgeFlush(420);
     if (quizOnlyMode) {
@@ -861,16 +921,24 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     }
   };
 
-  const checkpointOpen = mcqOpen && !showAcknowledgement && !showFinalQa && !showScoreResult;
+  const checkpointOpen =
+    mcqOpen &&
+    !isFailed &&
+    !activeWarningReason &&
+    !showAcknowledgement &&
+    !showFinalQa &&
+    !showScoreResult &&
+    !ackFlowCompletedRef.current;
   /** Block slide navigation during checkpoint, warning, or result modal */
   const slideNavLocked =
     checkpointOpen || !!activeWarningReason || showScoreResult;
+  const slideReadLocked = !quizOnlyMode && slideReadCountdown > 0;
+  const nextActionLabel =
+    reviewOnlyMode && isLastSlide ? "Done" : isLastSlide ? "Finish" : "Next";
+  const nextButtonLabel = slideReadLocked
+    ? `${nextActionLabel} in ${slideReadCountdown}s`
+    : nextActionLabel;
 
-  useEffect(() => {
-    if (checkpointOpen) {
-      proctorGraceUntilRef.current = 0;
-    }
-  }, [checkpointOpen]);
   const passedPendingAcknowledgement =
     showAcknowledgement && Boolean(scoreResult?.passed);
 
@@ -880,7 +948,6 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       if (quizOnlyMode) return;
       if (checkpointOpen) {
         if (
-          e.key === "Escape" ||
           e.key === "Tab" ||
           e.key.startsWith("Arrow") ||
           e.altKey ||
@@ -932,7 +999,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   ]);
 
   useEffect(() => {
-    if (!sessionStarted || !ackPendingMode) return;
+    if (!sessionStarted || !ackPendingMode || ackFlowCompletedRef.current) return;
     setMcqOpen(false);
     setShowScoreResult(false);
     resetAcknowledgementForm();
@@ -945,20 +1012,252 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   }, [showAcknowledgement]);
 
   useEffect(() => {
-    if (!sessionStarted || !quizOnlyMode || showAcknowledgement || showFinalQa || showScoreResult) {
+    if (
+      !sessionStarted ||
+      !quizOnlyMode ||
+      isFailed ||
+      showAcknowledgement ||
+      showFinalQa ||
+      showScoreResult
+    ) {
       return;
     }
+    if (ackFlowCompletedRef.current) return;
     if (!moduleMcqs.length) return;
     setGateMcq(moduleMcqs[quizOnlyIndex] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
     setMcqOpen(true);
   }, [
     sessionStarted,
     quizOnlyMode,
+    isFailed,
     quizOnlyIndex,
     moduleMcqs,
     showAcknowledgement,
     showFinalQa,
     showScoreResult,
+  ]);
+
+  useEffect(() => {
+    if (!isFailed) return;
+    setMcqOpen(false);
+  }, [isFailed]);
+
+  const renderIntegrityLockout = useCallback(() => {
+    const retakesRemaining = Math.max(0, 2 - retakeCount);
+    const isPendingReview = reviewRequest?.status === "Pending";
+    const isRejectedReview = reviewRequest?.status === "Rejected";
+    const isPermanentlyFailed =
+      dbStatus === "permanently_failed" || retakeCount >= 2;
+
+    const handleSubmitReview = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!explanation.trim()) {
+        setReviewError("Please provide an explanation.");
+        return;
+      }
+      if (!user?.username) return;
+
+      setReviewSubmitting(true);
+      setReviewError("");
+      try {
+        const request = await submitReviewRequestApi({
+          username: user.username,
+          moduleId: module.id,
+          moduleTitle: module.title,
+          warningCount: liveWarningCount,
+          failureTimestamp: Date.now(),
+          userExplanation: explanation.trim(),
+        });
+        setReviewRequest(request);
+        setShowReviewForm(false);
+        setExplanation("");
+      } catch (err: unknown) {
+        setReviewError(
+          err instanceof Error ? err.message : "Failed to submit request.",
+        );
+      } finally {
+        setReviewSubmitting(false);
+      }
+    };
+
+    return (
+      <div className="training-form-zone pointer-events-auto w-full max-w-md overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)] animate-in fade-in zoom-in-95 duration-300">
+        <BrandPanelHeader
+          eyebrow="Integrity lockout"
+          title={isPermanentlyFailed ? "Assessment Permanently Failed" : "Assessment Failed"}
+          description={
+            isPermanentlyFailed
+              ? "Maximum retake limit reached. This assessment can no longer be retaken."
+              : liveWarningCount >= 3
+                ? "Maximum warning limit reached."
+                : "This attempt was ended before completion."
+          }
+          icon={ShieldAlert}
+          compact
+        />
+
+        <div className="space-y-4 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-center gap-2 text-center">
+            {liveWarningCount > 0 && (
+              <span className="inline-flex items-center rounded-md border border-[#f15a24]/25 bg-[#fff7f3] px-2.5 py-1 text-xs font-semibold text-[#f15a24]">
+                Warnings: {Math.min(liveWarningCount, 3)} / 3
+              </span>
+            )}
+            {!isPermanentlyFailed && !isPendingReview && (
+              <span className="inline-flex items-center rounded-md border border-[#2e3192]/15 bg-[#2e3192]/5 px-2.5 py-1 text-xs font-medium text-[#2e3192]">
+                Retakes remaining: {retakesRemaining}
+              </span>
+            )}
+          </div>
+
+          {liveWarningHistory.length > 0 && (
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-3 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                Warning history
+              </p>
+              <div className="mt-2 max-h-24 space-y-1.5 overflow-y-auto pr-1">
+                {liveWarningHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex justify-between gap-3 border-b border-zinc-100 pb-1 text-[10px] last:border-0"
+                  >
+                    <span className="font-sans text-xs text-zinc-700">{item.reason}</span>
+                    <span className="shrink-0 font-mono tabular-nums text-zinc-500">
+                      {new Date(item.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isPermanentlyFailed && (
+            <div className="rounded-lg border border-[#2e3192]/20 bg-gradient-to-br from-[#2e3192]/8 via-[#2e3192]/5 to-[#f15a24]/8 p-3 text-left">
+              <p className="text-xs font-semibold text-[#2e3192]">Maximum retake limit reached</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+                You have used all allowed retakes. Please contact your compliance administrator.
+              </p>
+            </div>
+          )}
+
+          {isPendingReview && !isPermanentlyFailed && (
+            <div className="rounded-lg border border-[#2e3192]/20 bg-[#2e3192]/5 p-3 text-left">
+              <p className="text-xs font-semibold text-[#2e3192]">
+                A review request is already under review
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+                You have already submitted a review request. The compliance administrator will
+                review it.
+              </p>
+            </div>
+          )}
+
+          {isRejectedReview && !isPendingReview && !isPermanentlyFailed && (
+            <div className="rounded-lg border border-[#f15a24]/25 bg-[#fff7f3] p-3 text-left">
+              <p className="text-xs font-semibold text-[#f15a24]">Review request rejected</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-zinc-700">
+                Admin comment: &ldquo;{reviewRequest?.adminComment || "No comments provided."}&rdquo;
+              </p>
+              <p className="mt-1 text-[10px] text-zinc-500">
+                You may submit another explanation if you have remaining retakes.
+              </p>
+            </div>
+          )}
+
+          {!isPermanentlyFailed && !isPendingReview && (
+            <div className="space-y-3 pt-0.5">
+              {!showReviewForm ? (
+                <Button
+                  type="button"
+                  variant="accent"
+                  className="w-full cursor-pointer text-xs font-semibold"
+                  onClick={() => {
+                    setReviewError("");
+                    setShowReviewForm(true);
+                  }}
+                >
+                  Request Review
+                </Button>
+              ) : (
+                <form onSubmit={handleSubmitReview} className="space-y-3 text-left">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-zinc-700">
+                      Reason for failure
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="training-form-input w-full cursor-text select-text rounded-md border border-zinc-200 p-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-[#2e3192]"
+                      placeholder="Please explain why the assessment integrity rules were violated. Provide any relevant context or explanation."
+                      value={explanation}
+                      onChange={(e) => setExplanation(e.target.value)}
+                      disabled={reviewSubmitting}
+                    />
+                  </div>
+                  {reviewError && (
+                    <p className="text-xs font-medium text-[#f15a24]">{reviewError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => {
+                        setShowReviewForm(false);
+                        setExplanation("");
+                        setReviewError("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="accent"
+                      size="sm"
+                      className="flex-1 cursor-pointer text-xs"
+                      disabled={reviewSubmitting}
+                    >
+                      {reviewSubmitting ? "Submitting…" : "Submit Request"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {!sessionStarted && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-xs"
+              onClick={() => {
+                window.location.href = "/dashboard";
+              }}
+            >
+              Back to dashboard
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }, [
+    dbStatus,
+    explanation,
+    liveWarningCount,
+    liveWarningHistory,
+    module.id,
+    module.title,
+    retakeCount,
+    reviewError,
+    reviewRequest,
+    reviewSubmitting,
+    sessionStarted,
+    showReviewForm,
+    user?.username,
   ]);
 
   const checkpointProps = {
@@ -980,13 +1279,38 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     onContinue: handleMcqContinue,
   };
 
+  const hasPendingApprovedRetake =
+    reviewRequest?.status === "Approved" && dbStatus === "not_started";
+
   if (!sessionStarted) {
+    if (isFailed && dbStatus !== "not_started") {
+      return (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
+          {renderIntegrityLockout()}
+        </div>
+      );
+    }
+
     return (
-      <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100">
+      <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-zinc-100 p-4">
+        {hasPendingApprovedRetake && (
+          <div className="w-full max-w-lg rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-left shadow-sm">
+            <p className="text-sm font-semibold text-emerald-800">Retake approved</p>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+              Your administrator approved a new attempt. Accept the rules below to begin the
+              full training flow.
+            </p>
+          </div>
+        )}
+        {sessionStartError && (
+          <p className="w-full max-w-lg rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {sessionStartError}
+          </p>
+        )}
         <ProctorRulesModal
           open={showProctorRules}
           moduleTitle={module.title}
-          onAccept={handleBeginSession}
+          onAccept={() => void handleBeginSession()}
         />
       </div>
     );
@@ -1061,9 +1385,9 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.2 }}
-              className="relative z-[80] flex flex-1 items-center justify-center p-6 sm:p-10 pointer-events-auto"
+              className="relative z-[80] flex flex-col flex-1 items-center justify-start md:justify-center overflow-y-auto p-4 sm:p-6 pointer-events-auto w-full h-full"
             >
-              <div className="training-form-zone w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)]">
+              <div className="training-form-zone my-auto w-full max-w-lg overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)]">
                 <BrandPanelHeader
                   eyebrow="Step 1 of 2 · Compliance attestation"
                   title="Training acknowledgement"
@@ -1071,12 +1395,12 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
                   icon={ShieldCheck}
                   compact
                 />
-                <div className="space-y-6 p-6 sm:p-8">
-                <div className="rounded-lg border border-zinc-100 bg-zinc-50/90 p-4 space-y-3">
+                <div className="space-y-4 p-5 sm:p-6">
+                <div className="rounded-lg border border-zinc-100 bg-zinc-50/90 p-3.5 space-y-2">
                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.14em]">
                     I acknowledge that:
                   </p>
-                  <ul className="space-y-2.5 text-xs text-zinc-600 leading-relaxed pl-1">
+                  <ul className="space-y-1.5 text-xs text-zinc-600 leading-normal pl-1">
                     <li className="flex items-start gap-2">
                       <span className="text-[#f15a24] font-bold mt-0.5">•</span>
                       <span>I have completed this training material.</span>
@@ -1151,7 +1475,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
               transition={{ duration: 0.2 }}
-              className="flex min-h-0 flex-1 flex-col p-1 sm:p-2"
+              className="flex min-h-0 flex-1 flex-col"
             >
               {quizOnlyMode ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -1161,7 +1485,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
                     className="w-full rounded-lg border border-[#2e3192]/15 bg-gradient-to-r from-[#2e3192]/8 via-white to-[#3d42a8]/8 px-5 py-4 text-center shadow-[var(--shadow-card)]"
                   >
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
-                      Quiz-only retake · Round {(retakeCount || 0) + 1}
+                      Score retake · Round {(retakeCount || 0) + 1}
                     </p>
                     <h2 className="mt-1 text-lg font-semibold text-zinc-900">
                       You&apos;ve got this — checkpoints only
@@ -1184,19 +1508,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
                   )}
                 </div>
               ) : module.contentType === "pdf" && module.pdfUrl ? (
-                <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
-                  <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
-                      Page {slideIndex + 1} of {numPages}
-                    </p>
-                    <div className="flex items-center gap-2 text-zinc-200">
-                      <FileText className="h-3.5 w-3.5 text-[#f15a24]" strokeWidth={1.75} />
-                      <span className="max-w-[min(40vw,320px)] truncate text-xs font-semibold text-white">
-                        {module.title}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="relative min-h-0 flex-1 overflow-hidden bg-zinc-900">
+                <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+                  <div className="relative min-h-0 flex-1 overflow-hidden">
                     <PdfPageViewer
                       pdfUrl={module.pdfUrl!}
                       pageNumber={slideIndex + 1}
@@ -1226,9 +1539,9 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
               key="final"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="relative z-[80] flex flex-1 items-center justify-center p-6 pointer-events-auto"
+              className="relative z-[80] flex flex-col flex-1 items-center justify-start md:justify-center overflow-y-auto p-4 sm:p-6 pointer-events-auto w-full h-full"
             >
-              <div className="training-form-zone w-full max-w-2xl space-y-5 px-2 sm:px-0">
+              <div className="training-form-zone my-auto w-full max-w-2xl space-y-4 px-2 sm:px-0">
                 <div className="overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-card)]">
                   <BrandPanelHeader
                     eyebrow="Step 2 of 2 · Final feedback"
@@ -1247,7 +1560,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
                   messageRequired
                   ratingRequired
                   onSuccess={() => {
-                    finishTrainingCompletion();
+                    void finishTrainingCompletion();
                   }}
                 />
               </div>
@@ -1289,12 +1602,13 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
           </div>
           <Button
             size="sm"
-            disabled={slideNavLocked}
+            disabled={slideNavLocked || slideReadLocked}
             onClick={tryAdvance}
-            className="cursor-pointer bg-[#f15a24] hover:bg-[#d94e1f] text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-w-[7.75rem] cursor-pointer justify-center bg-[#f15a24] hover:bg-[#d94e1f] text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {reviewOnlyMode && isLastSlide ? "Done" : isLastSlide ? "Finish" : "Next"}
-            <ChevronRight className="h-4 w-4" />
+            {slideReadLocked ? <Clock className="h-4 w-4" /> : null}
+            {nextButtonLabel}
+            {!slideReadLocked ? <ChevronRight className="h-4 w-4" /> : null}
           </Button>
         </footer>
       )}
@@ -1314,6 +1628,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
           retakeLoading={retakeLoading}
           onContinuePassed={() => {
             setShowScoreResult(false);
+            setMcqOpen(false);
             resetAcknowledgementForm();
             setShowAcknowledgement(true);
           }}
@@ -1359,49 +1674,13 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       />
 
       {/* ── Warning Notification Modal overlay ────────────────────────────── */}
-      {activeWarningReason && (
-        <div
-          className="fixed inset-0 z-[85] flex items-center justify-center bg-zinc-900/60 backdrop-blur-xs p-4 pointer-events-auto"
-          onKeyDown={(e) => {
-            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void handleWarningContinue();
-            }
-          }}
-        >
-          <div className="pointer-events-auto w-full max-w-sm rounded-lg border border-amber-200 bg-white p-6 shadow-xl text-center space-y-5 animate-in fade-in zoom-in-95 duration-250">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
-              <span className="text-lg font-bold text-amber-600">!</span>
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-zinc-900">Warning {liveWarningCount} of 3</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed text-balance">
-                {activeWarningReason === "Exited Fullscreen" && "You exited fullscreen mode."}
-                {activeWarningReason === "Switched Browser Tab" && "You switched browser tabs."}
-                {activeWarningReason === "Window Lost Focus" && "The assessment lost window focus."}
-                {activeWarningReason === "Attempted Navigation" && "You attempted to navigate away."}
-              </p>
-              <p className="text-xs text-amber-600 font-semibold">
-                Warnings Remaining: {3 - liveWarningCount}
-              </p>
-              <p className="text-xs text-zinc-400 mt-2">
-                If you accumulate 3 warnings, the assessment will automatically fail.
-              </p>
-            </div>
-            <Button
-              type="button"
-              autoFocus
-              className="w-full cursor-pointer bg-[#2e3192] text-white hover:bg-[#3d42a8]"
-              onClick={() => void handleWarningContinue()}
-            >
-              Continue assessment
-            </Button>
-          </div>
-        </div>
+      {activeWarningReason && !isFailed && (
+        <ProctorWarningModal
+          open={true}
+          reason={activeWarningReason}
+          warningCount={liveWarningCount}
+          onContinue={() => void handleWarningContinue()}
+        />
       )}
 
       {/* ── Exit Confirmation Modal overlay ─────────────────────────────── */}
@@ -1413,8 +1692,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
               <p>You are about to leave this assessment.</p>
               <p className="font-semibold text-zinc-600">If you exit now:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>The assessment session will end.</li>
-                <li>If you leave before finishing, you must start again from the beginning.</li>
+                <li>This attempt will be marked as <span className="font-semibold text-red-600">Failed</span>.</li>
+                <li>You will need to start again from the beginning (or request a retake if eligible).</li>
               </ul>
               <p className="mt-2 font-medium">Do you want to proceed?</p>
             </div>
@@ -1432,11 +1711,30 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
                 size="sm"
                 className="cursor-pointer text-xs"
                 onClick={() => {
-                  isExitingRef.current = true;
-                  if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => undefined);
-                  }
-                  window.location.href = "/dashboard";
+                  void (async () => {
+                    isExitingRef.current = true;
+                    if (user?.username && sessionStarted && !reviewOnlyMode) {
+                      const updated = failAssessmentForAbandonment(
+                        user.username,
+                        module.id,
+                        activeWarningReason
+                          ? "Assessment abandoned after exiting fullscreen"
+                          : "Assessment abandoned",
+                      );
+                      if (updated) {
+                        setDbStatus(updated.status);
+                        await syncAbandonmentFailure({
+                          userEmail: user.username,
+                          moduleId: module.id,
+                          reason: updated.failedReason ?? "Assessment abandoned",
+                        });
+                      }
+                    }
+                    if (document.fullscreenElement) {
+                      await document.exitFullscreen().catch(() => undefined);
+                    }
+                    window.location.href = "/dashboard";
+                  })();
                 }}
               >
                 Exit Assessment
@@ -1446,186 +1744,17 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
         </div>
       )}
 
-      {/* ── Failed Lock Screen Overlay ─────────────────────────────────────── */}
-      {isFailed && (() => {
-        const retakesRemaining = Math.max(0, 2 - retakeCount);
-        const isPendingReview = reviewRequest?.status === "Pending";
-        const isRejectedReview = reviewRequest?.status === "Rejected";
-        const isPermanentlyFailed =
-          dbStatus === "permanently_failed" ||
-          (liveWarningCount >= 3 && retakesRemaining <= 0);
-
-        const handleSubmitReview = async (e: React.FormEvent) => {
-          e.preventDefault();
-          if (!explanation.trim()) {
-            setReviewError("Please provide an explanation.");
-            return;
-          }
-          if (!user?.username) return;
-
-          setReviewSubmitting(true);
-          setReviewError("");
-          try {
-            const request = await submitReviewRequestApi({
-              username: user.username,
-              moduleId: module.id,
-              moduleTitle: module.title,
-              warningCount: liveWarningCount,
-              failureTimestamp: Date.now(),
-              userExplanation: explanation.trim(),
-            });
-            setReviewRequest(request);
-            setShowReviewForm(false);
-            setExplanation("");
-          } catch (err: unknown) {
-            setReviewError(
-              err instanceof Error ? err.message : "Failed to submit request.",
-            );
-          } finally {
-            setReviewSubmitting(false);
-          }
-        };
-
-        return (
-          <div className="pointer-events-auto fixed inset-0 z-[92] flex items-center justify-center bg-zinc-900/80 backdrop-blur-xs p-4">
-            <div className="training-form-zone pointer-events-auto w-full max-w-md rounded-lg border border-red-200 bg-white p-6 shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95 duration-300">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <span className="text-xl font-bold text-red-600">!</span>
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold text-zinc-950">
-                  {isPermanentlyFailed ? "Assessment Permanently Failed" : "Assessment Failed"}
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  {isPermanentlyFailed
-                    ? "Maximum retake limit reached. This assessment can no longer be retaken."
-                    : "Maximum warning limit reached."}
-                </p>
-                <p className="text-sm font-semibold text-red-600">
-                  Warnings: {liveWarningCount} / 3
-                </p>
-                {!isPermanentlyFailed && !isPendingReview && (
-                  <p className="text-xs text-zinc-400">
-                    Retakes Remaining: {retakesRemaining}
-                  </p>
-                )}
-              </div>
-
-              <div className="border-t border-b border-zinc-100 py-3 text-left">
-                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">Warning History</p>
-                <div className="max-h-24 overflow-y-auto space-y-1.5 font-mono text-[10px] text-zinc-500 pr-1">
-                  {liveWarningHistory.map((item, idx) => (
-                    <div key={idx} className="flex justify-between border-b border-zinc-50 pb-0.5">
-                      <span className="font-sans text-zinc-700">{item.reason}</span>
-                      <span>
-                        {new Date(item.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Case A: Permanently Failed details */}
-              {isPermanentlyFailed && (
-                <div className="rounded-md bg-zinc-950 text-zinc-100 p-3 text-left space-y-1 text-xs">
-                  <p className="font-bold text-zinc-200">Maximum Retake Limit Reached</p>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    This assessment can no longer be retaken as it has reached the absolute retake limit (2 retakes). Please contact compliance.
-                  </p>
-                </div>
-              )}
-
-              {/* Case B: Pending Review details */}
-              {isPendingReview && (
-                <div className="rounded-md bg-amber-50 border border-amber-100 p-3 text-left space-y-1 text-xs text-amber-900">
-                  <p className="font-bold text-amber-800">A review request is already under review</p>
-                  <p className="text-[11px] text-amber-700 leading-relaxed">
-                    You have already submitted a review request. The compliance administrator will review it.
-                  </p>
-                </div>
-              )}
-
-              {/* Case C: Rejected Review details */}
-              {isRejectedReview && !isPendingReview && !isPermanentlyFailed && (
-                <div className="rounded-md bg-red-50 border border-red-100 p-3 text-left space-y-1 text-xs text-red-900">
-                  <p className="font-bold text-red-800">Review Request Rejected</p>
-                  <p className="text-[11px] text-red-700 leading-relaxed">
-                    Admin Comment: &ldquo;{reviewRequest?.adminComment || "No comments provided."}&rdquo;
-                  </p>
-                  <p className="text-[10px] text-red-500 mt-1">
-                    You may submit another explanation if you have remaining retakes.
-                  </p>
-                </div>
-              )}
-
-              {/* Form or Request Button */}
-              {!isPermanentlyFailed && !isPendingReview && (
-                <div className="space-y-4 pt-1">
-                  {!showReviewForm ? (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      className="w-full cursor-pointer text-xs font-semibold"
-                      onClick={() => {
-                        setReviewError("");
-                        setShowReviewForm(true);
-                      }}
-                    >
-                      Request Review
-                    </Button>
-                  ) : (
-                    <form onSubmit={handleSubmitReview} className="space-y-3 text-left">
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-zinc-700">Reason for Failure</label>
-                        <textarea
-                          rows={3}
-                          className="training-form-input w-full cursor-text select-text rounded-md border border-zinc-200 p-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-[#2e3192]"
-                          placeholder="Please explain why the assessment integrity rules were violated. Provide any relevant context or explanation."
-                          value={explanation}
-                          onChange={(e) => setExplanation(e.target.value)}
-                          disabled={reviewSubmitting}
-                        />
-                      </div>
-                      {reviewError && (
-                        <p className="text-xs text-red-600 font-medium">{reviewError}</p>
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-xs"
-                          onClick={() => {
-                            setShowReviewForm(false);
-                            setExplanation("");
-                            setReviewError("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          variant="primary"
-                          size="sm"
-                          className="flex-1 cursor-pointer text-xs"
-                          disabled={reviewSubmitting}
-                        >
-                          {reviewSubmitting ? "Submitting…" : "Submit Request"}
-                        </Button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              )}
-
-            </div>
-          </div>
-        );
-      })()}
+      {/* ── Failed Lock Screen Overlay (portaled above MCQ checkpoints) ───── */}
+      {sessionStarted &&
+        isFailed &&
+        dbStatus !== "not_started" &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className="pointer-events-auto fixed inset-0 z-[310] flex items-center justify-center bg-zinc-900/80 backdrop-blur-sm p-4">
+            {renderIntegrityLockout()}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

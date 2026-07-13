@@ -6,11 +6,19 @@ interface GraphTokenResponse {
   error_description?: string;
 }
 
+export interface InlineMailAttachment {
+  contentId: string;
+  name: string;
+  contentBytes: string;
+  contentType: string;
+}
+
 export interface SendMailParams {
   to: string;
   subject: string;
   htmlBody: string;
   textBody?: string;
+  inlineAttachments?: InlineMailAttachment[];
 }
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -82,6 +90,14 @@ export async function sendGraphMail(params: SendMailParams): Promise<void> {
             content: params.htmlBody,
           },
           toRecipients: [{ emailAddress: { address: params.to } }],
+          attachments: params.inlineAttachments?.map((attachment) => ({
+            "@odata.type": "#microsoft.graph.fileAttachment",
+            name: attachment.name,
+            contentType: attachment.contentType,
+            contentBytes: attachment.contentBytes,
+            contentId: attachment.contentId,
+            isInline: true,
+          })),
         },
         saveToSentItems: true,
       }),

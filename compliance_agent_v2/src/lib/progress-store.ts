@@ -8,6 +8,7 @@
  */
 
 import type { ModuleStatus, WarningHistoryEntry, AssessmentAcknowledgement } from "./types";
+import { SCORE_QUIZ_RETAKE_MARKER } from "./constants";
 import { logAudit } from "./audit-store";
 
 export interface AssessmentProgress {
@@ -15,6 +16,7 @@ export interface AssessmentProgress {
   moduleId: string;
   moduleTitle: string;
   batchId: string;
+  batchLabel?: string;
   currentSlide: number;   // 0-based index of last viewed slide
   totalSlides: number;
   status: ModuleStatus;
@@ -35,7 +37,8 @@ export interface AssessmentProgress {
 }
 
 const STORE_KEY = "compliance-progress";
-const WARNING_COOLDOWN_MS = 5000;
+const SAME_REASON_COOLDOWN_MS = 1000;
+const ANY_REASON_DEBOUNCE_MS = 350;
 
 
 // ── Low-level helpers ─────────────────────────────────────────────────────────
@@ -100,12 +103,35 @@ export function markInProgress(
   const k = key(username, moduleId);
   const existing = all[k];
 
-  if (existing && (existing.status === "completed" || isProctorLocked(existing))) {
+  if (!existing) {
+    all[k] = {
+      username,
+      moduleId,
+      moduleTitle,
+      batchId,
+      currentSlide: 0,
+      totalSlides,
+      status: "in_progress",
+      lastAccessedAt: Date.now(),
+      warningCount: 0,
+      warningHistory: [],
+      retakeCount: 0,
+      archivedWarnings: [],
+    };
+    writeAll(all);
+    logAudit("Assessment Started", username, `Started initial attempt of ${moduleTitle}`);
     return;
   }
 
-  const isNew = !existing;
-  const isRetake = existing?.status === "not_started" && (existing?.retakeCount ?? 0) > 0;
+  if (existing.status === "completed") {
+    return;
+  }
+
+  if (isProctorLocked(existing)) {
+    return;
+  }
+
+  const isRetake = existing.status === "not_started" && (existing.retakeCount ?? 0) > 0;
 
   all[k] = {
     username,
@@ -125,13 +151,15 @@ export function markInProgress(
     lastFailureAt: existing?.lastFailureAt,
     lastFailureReason: existing?.lastFailureReason,
     archivedWarnings: existing?.archivedWarnings ?? [],
+    mcqCorrect: existing?.mcqCorrect,
+    mcqTotal: existing?.mcqTotal,
+    scorePercent: existing?.scorePercent,
+    acknowledgement: existing?.acknowledgement,
   };
   writeAll(all);
 
-  if (isNew) {
-    logAudit("Assessment Started", username, `Started initial attempt of ${moduleTitle}`);
-  } else if (isRetake) {
-    logAudit("Retake Started", username, `Started Retake #${existing?.retakeCount} of ${moduleTitle}`);
+  if (isRetake) {
+    logAudit("Retake Started", username, `Started Retake #${existing.retakeCount} of ${moduleTitle}`);
   }
 }
 
@@ -273,13 +301,13 @@ export function addWarning(
   username: string,
   moduleId: string,
   reason: string,
+  options?: { allowBurst?: boolean },
 ): AssessmentProgress {
   const all = readAll();
   const k = key(username, moduleId);
   const existing = all[k];
 
   if (!existing) {
-    // If warning triggered before markInProgress for some reason, skeleton
     return {} as AssessmentProgress;
   }
 
@@ -291,12 +319,17 @@ export function addWarning(
   ) {
     return existing;
   }
-
-  // Cooldown check: ignore if warning logged within last 5 seconds
   if (existing.warningHistory && existing.warningHistory.length > 0) {
-    const lastWarning = existing.warningHistory[existing.warningHistory.length - 1];
-    const diff = Date.now() - lastWarning.timestamp;
-    if (diff < WARNING_COOLDOWN_MS) {
+    const now = Date.now();
+    const lastAny = existing.warningHistory[existing.warningHistory.length - 1];
+    if (!options?.allowBurst && lastAny && now - lastAny.timestamp < ANY_REASON_DEBOUNCE_MS) {
+      return existing;
+    }
+
+    const lastSameReason = [...existing.warningHistory]
+      .reverse()
+      .find((entry) => entry.reason === reason);
+    if (lastSameReason && now - lastSameReason.timestamp < SAME_REASON_COOLDOWN_MS) {
       return existing;
     }
   }
@@ -351,6 +384,24 @@ export function addWarning(
   return all[k];
 }
 
+/** Fail an in-flight attempt when the learner exits or abandons the session. */
+export function failAssessmentForAbandonment(
+  username: string,
+  moduleId: string,
+  reason = "Assessment abandoned",
+): AssessmentProgress | null {
+  const existing = getProgress(username, moduleId);
+  if (!existing) return null;
+  if (
+    existing.status === "completed" ||
+    existing.status === "failed" ||
+    existing.status === "permanently_failed"
+  ) {
+    return existing;
+  }
+  return markAssessmentFailed(username, moduleId, reason);
+}
+
 export function markAssessmentFailed(
   username: string,
   moduleId: string,
@@ -392,7 +443,7 @@ export function getWarningStatus(
   };
 }
 
-/** Apply server-side progress into local store (dashboard + post-approval sync). */
+/** Apply server-side score fields into local progress (for dashboard display). */
 export function mergeServerProgress(
   username: string,
   entries: {
@@ -406,20 +457,25 @@ export function mergeServerProgress(
     mcqCorrect: number;
     mcqTotal: number;
     scorePercent: number | null;
-    warningCount?: number;
     failedReason?: string | null;
     completedAt?: string | null;
+    warningCount?: number;
   }[],
 ): void {
   const all = readAll();
   for (const e of entries) {
     const k = key(username, e.moduleId);
     const existing = all[k];
-    const serverWarnings = e.warningCount ?? existing?.warningCount ?? 0;
+    const serverWarnings = e.warningCount ?? 0;
+    const normalizedStatus = normalizeLearnerStatus(
+      e.status,
+      e.scorePercent,
+      e.completedAt ? new Date(e.completedAt).getTime() : undefined,
+    );
     const serverReset =
-      e.status === "not_started" &&
-      serverWarnings === 0 &&
-      (e.retakeCount > (existing?.retakeCount ?? 0) || existing?.status === "failed");
+      e.status === "not_started" ||
+      (serverWarnings === 0 &&
+        !isProctorLocked({ status: e.status, scorePercent: e.scorePercent }));
 
     all[k] = {
       username,
@@ -428,30 +484,93 @@ export function mergeServerProgress(
       batchId: e.batchId,
       currentSlide: e.currentSlide,
       totalSlides: e.totalSlides,
-      status: normalizeLearnerStatus(
-        e.status,
-        e.scorePercent,
-        e.completedAt ? new Date(e.completedAt).getTime() : undefined,
-      ),
-      lastAccessedAt: existing?.lastAccessedAt ?? Date.now(),
+      status: normalizedStatus,
+      lastAccessedAt: Date.now(),
       completedAt: e.completedAt
         ? new Date(e.completedAt).getTime()
         : serverReset
           ? undefined
           : existing?.completedAt,
       warningCount: serverWarnings,
-      warningHistory: serverReset ? [] : existing?.warningHistory ?? [],
+      warningHistory: serverReset ? [] : (existing?.warningHistory ?? []),
       retakeCount: e.retakeCount,
-      failedReason: serverReset ? undefined : e.failedReason ?? existing?.failedReason,
+      failedReason:
+        e.status === "not_started" || serverReset
+          ? undefined
+          : (e.failedReason ?? existing?.failedReason),
       failedAt: serverReset ? undefined : existing?.failedAt,
-      archivedWarnings: existing?.archivedWarnings ?? [],
+      lastFailureAt: serverReset ? undefined : existing?.lastFailureAt,
+      lastFailureReason: serverReset ? undefined : existing?.lastFailureReason,
+      archivedWarnings: serverReset ? [] : (existing?.archivedWarnings ?? []),
       mcqCorrect: e.mcqCorrect,
       mcqTotal: e.mcqTotal,
-      scorePercent: serverReset ? null : e.scorePercent,
-      acknowledgement: serverReset ? undefined : existing?.acknowledgement,
+      scorePercent: e.scorePercent,
+      acknowledgement:
+        e.status === "not_started" ? undefined : existing?.acknowledgement,
     };
   }
   writeAll(all);
+}
+
+/** Remove all local progress for a user (after server-side reset). */
+export function clearAllLocalProgressForUser(username: string): void {
+  const all = readAll();
+  let changed = false;
+  for (const [entryKey, entry] of Object.entries(all)) {
+    if (entry.username !== username) continue;
+    delete all[entryKey];
+    changed = true;
+  }
+  if (changed) writeAll(all);
+}
+
+/**
+ * Drop stale browser progress when the server has no row or admin reset the learner.
+ * Prevents permanently_failed localStorage from surviving DB clears.
+ */
+export function clearStaleLocalProgress(
+  username: string,
+  options: {
+    serverModuleIds: string[];
+    assignedModuleIds?: string[];
+  },
+): void {
+  const serverIds = new Set(options.serverModuleIds);
+  const assignedIds = options.assignedModuleIds
+    ? new Set(options.assignedModuleIds)
+    : null;
+  const all = readAll();
+  let changed = false;
+
+  for (const [entryKey, entry] of Object.entries(all)) {
+    if (entry.username !== username) continue;
+    if (assignedIds && !assignedIds.has(entry.moduleId)) continue;
+
+    const hasServerRow = serverIds.has(entry.moduleId);
+    const shouldClear = !hasServerRow;
+
+    if (shouldClear) {
+      delete all[entryKey];
+      changed = true;
+    }
+  }
+
+  if (changed) writeAll(all);
+}
+
+/** Remove local progress for one module when the server has no record (e.g. after admin reset). */
+export function clearLocalModuleProgressIfServerAbsent(
+  username: string,
+  moduleId: string,
+  hasServerRow: boolean,
+): boolean {
+  if (hasServerRow) return false;
+  const all = readAll();
+  const k = key(username, moduleId);
+  if (!all[k]) return false;
+  delete all[k];
+  writeAll(all);
+  return true;
 }
 
 export function applyScoreResult(
@@ -495,7 +614,33 @@ export function applyScoreResult(
   }
 }
 
-/** Reset local progress after an admin-approved proctor retake. */
+/** Reset local progress when starting a fresh attempt (no resume). */
+export function resetLocalAttempt(username: string, moduleId: string): void {
+  const all = readAll();
+  const k = key(username, moduleId);
+  const existing = all[k];
+  if (!existing) return;
+
+  all[k] = {
+    ...existing,
+    status: "in_progress",
+    currentSlide: 0,
+    mcqCorrect: 0,
+    scorePercent: null,
+    failedReason: undefined,
+    failedAt: undefined,
+    lastFailureAt: undefined,
+    lastFailureReason: undefined,
+    warningCount: 0,
+    warningHistory: [],
+    completedAt: undefined,
+    acknowledgement: undefined,
+    lastAccessedAt: Date.now(),
+  };
+  writeAll(all);
+}
+
+/** Reset local progress after an approved proctor retake. */
 export function resetForProctorRetake(username: string, moduleId: string): void {
   const all = readAll();
   const k = key(username, moduleId);
@@ -519,26 +664,6 @@ export function resetForProctorRetake(username: string, moduleId: string): void 
   writeAll(all);
 }
 
-/** Reset local progress when starting a fresh attempt (no resume). */
-export function resetLocalAttempt(username: string, moduleId: string): void {
-  const all = readAll();
-  const k = key(username, moduleId);
-  const existing = all[k];
-  if (!existing) return;
-
-  all[k] = {
-    ...existing,
-    status: "in_progress",
-    currentSlide: 0,
-    mcqCorrect: 0,
-    scorePercent: null,
-    failedReason: undefined,
-    completedAt: undefined,
-    lastAccessedAt: Date.now(),
-  };
-  writeAll(all);
-}
-
 /** Reset local progress for a score-based retake. */
 export function resetForScoreRetake(username: string, moduleId: string): void {
   const all = readAll();
@@ -557,6 +682,7 @@ export function resetForScoreRetake(username: string, moduleId: string): void {
     completedAt: undefined,
     acknowledgement: undefined,
     retakeCount: (existing.retakeCount ?? 0) + 1,
+    lastFailureReason: SCORE_QUIZ_RETAKE_MARKER,
     lastAccessedAt: Date.now(),
   };
   writeAll(all);
