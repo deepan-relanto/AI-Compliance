@@ -38,6 +38,8 @@ export interface EmployeeFilterParams {
   unassignedOnly?: boolean;
   page?: number;
   limit?: number;
+  /** Return every matching row (no pagination); capped at 5000. */
+  all?: boolean;
 }
 
 export interface EmployeeListResult {

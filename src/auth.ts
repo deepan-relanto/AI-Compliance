@@ -63,9 +63,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = user.email.trim().toLowerCase();
         try {
           const sql = getSql();
-          const dbUser =
-            (await getUserByEmail(sql, email)) ??
-            (await ensureUserForSignIn(sql, email, user.name ?? user.email));
+          await ensureUserForSignIn(sql, email, user.name ?? user.email);
+          token.email = email;
+        } catch {
+          /* keep token without email claim */
+        }
+      }
+
+      const email = (token.email as string | undefined)?.trim().toLowerCase();
+      if (email) {
+        try {
+          const sql = getSql();
+          const dbUser = await getUserByEmail(sql, email);
           if (dbUser) {
             const authUser = toAuthUser(dbUser);
             token.email = authUser.username;
@@ -74,9 +83,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.displayName = authUser.displayName;
           }
         } catch {
-          /* keep token without app claims */
+          /* keep existing token claims */
         }
       }
+
       return token;
     },
     async redirect({ url, baseUrl }) {

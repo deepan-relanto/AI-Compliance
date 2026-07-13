@@ -47,34 +47,31 @@ function PillGroup({
   onToggle: (value: string) => void;
 }) {
   if (!options.length) return null;
-  const visible = options.slice(0, 12);
-  const overflow = options.length - visible.length;
 
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {visible.map((opt) => {
-          const active = selected.includes(opt);
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onToggle(opt)}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                active
-                  ? "border-[#2e3192] bg-[#2e3192] text-white"
-                  : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-              )}
-            >
-              {opt}
-            </button>
-          );
-        })}
-        {overflow > 0 && (
-          <span className="self-center text-[10px] text-zinc-400">+{overflow} more</span>
-        )}
+      <div className="max-h-36 overflow-y-auto pr-1">
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((opt) => {
+            const active = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => onToggle(opt)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-[#2e3192] bg-[#2e3192] text-white"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+                )}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

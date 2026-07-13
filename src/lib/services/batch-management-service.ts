@@ -5,6 +5,28 @@ type Sql = ReturnType<typeof getSql>;
 
 const SSO_PLACEHOLDER = "microsoft-sso";
 
+/** Keep progress rows aligned when roster batch changes. */
+export async function syncProgressBatchForEmails(
+  sql: Sql,
+  emails: string[],
+): Promise<number> {
+  const normalized = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  if (!normalized.length) return 0;
+
+  const rows = await sql`
+    UPDATE assessment_progress ap
+    SET batch_id = u.batch_id,
+        updated_at = NOW()
+    FROM users u
+    WHERE LOWER(ap.user_email) = LOWER(u.email)
+      AND LOWER(u.email) = ANY(${normalized})
+      AND u.batch_id IS NOT NULL
+      AND ap.batch_id IS DISTINCT FROM u.batch_id
+    RETURNING ap.user_email
+  `;
+  return rows.length;
+}
+
 export async function syncBatchMemberCount(sql: Sql, batchId: string): Promise<number> {
   const rows = await sql`
     SELECT COUNT(*)::int AS c FROM users WHERE batch_id = ${batchId} AND role = 'user'
@@ -45,6 +67,7 @@ async function assignEmployeesToBatch(
     `;
     assigned++;
   }
+  await syncProgressBatchForEmails(sql, normalized);
   return assigned;
 }
 
@@ -108,6 +131,10 @@ export async function removeBatchMembers(
       AND LOWER(email) = ANY(${normalized})
     RETURNING email
   `;
+  const removedEmails = rows.map((r) => r.email as string);
+  if (removedEmails.length) {
+    await syncProgressBatchForEmails(sql, removedEmails);
+  }
   await syncBatchMemberCount(sql, batchId);
   return rows.length;
 }

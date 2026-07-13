@@ -2,7 +2,6 @@
 
 import { EmployeePicker } from "@/components/admin/employee-picker";
 import { Button } from "@/components/ui/button";
-import { invalidateBatchesClientCache } from "@/hooks/use-batches";
 import { Loader2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -41,7 +40,6 @@ export function BatchCreatePanel({ onCancel }: { onCancel: () => void }) {
         setError(data.error ?? "Could not create batch.");
         return;
       }
-      invalidateBatchesClientCache();
       router.push(`/admin/batch/${encodeURIComponent(data.batch.id)}`);
     } catch {
       setError("Network error. Try again.");

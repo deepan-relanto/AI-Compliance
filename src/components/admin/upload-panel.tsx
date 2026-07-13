@@ -17,8 +17,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useBatches } from "@/hooks/use-batches";
 import { useAuthStore } from "@/lib/auth-store";
+import { makeAssessmentId } from "@/lib/assessment-id";
+import type { BatchInfo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
@@ -82,19 +83,6 @@ function displayPdfName(originalName: string): string {
 
 function guessAssessmentName(originalName: string): string {
   return originalName.replace(/\.pdf$/i, "").replace(/[-_]/g, " ");
-}
-
-/** Generates a URL-safe id from an assessment name + timestamp */
-function makeAssessmentId(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") +
-    "-" +
-    Date.now().toString(36)
-  );
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -277,9 +265,21 @@ function StepIndicator({ current }: { current: 0 | 1 | 2 }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+function mapBatch(row: Record<string, unknown>): BatchInfo {
+  return {
+    id: row.id as string,
+    label: row.label as string,
+    description: (row.description as string) ?? "",
+    memberCount: Number(row.member_count ?? row.memberCount ?? 0),
+    compliance: Number(row.compliance ?? 0),
+    passRate: Number(row.pass_rate ?? row.passRate ?? 0),
+    failRate: Number(row.fail_rate ?? row.failRate ?? 0),
+    activeSessions: Number(row.active_sessions ?? row.activeSessions ?? 0),
+  };
+}
+
 export function UploadPanel() {
   const user = useAuthStore((s) => s.user);
-  const { batches } = useBatches();
   const [state, setState] = useState<PanelState>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -288,6 +288,7 @@ export function UploadPanel() {
   const [assessmentName, setAssessmentName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [createdTitle, setCreatedTitle] = useState("");
+  const [batches, setBatches] = useState<BatchInfo[]>([]);
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -300,6 +301,17 @@ export function UploadPanel() {
   const [generatedCount, setGeneratedCount] = useState(0);
 
   const isProcessing = state === "processing";
+
+  useEffect(() => {
+    fetch("/api/batches")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && Array.isArray(data.batches)) {
+          setBatches(data.batches.map(mapBatch));
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (state !== "done" || !createdModuleId) return;

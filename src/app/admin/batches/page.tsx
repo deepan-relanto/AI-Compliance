@@ -4,7 +4,6 @@ import { BatchCreatePanel } from "@/components/admin/batch-create-panel";
 import { BatchPicker } from "@/components/admin/batch-picker";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { AdminShell } from "@/components/layout/admin-shell";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LayoutGrid, Plus } from "lucide-react";
 import { useState } from "react";
@@ -46,12 +45,6 @@ export default function AdminBatchesPage() {
               Create batch
             </button>
           </div>
-          {tab === "list" && (
-            <Button size="sm" onClick={() => setTab("create")} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              New batch
-            </Button>
-          )}
         </div>
 
         {tab === "list" ? <BatchPicker /> : <BatchCreatePanel onCancel={() => setTab("list")} />}

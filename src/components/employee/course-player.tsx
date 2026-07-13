@@ -276,7 +276,8 @@ export function CoursePlayer({
     const wasLocked = progBefore ? isProctorLocked(progBefore) : false;
 
     try {
-      const serverEntries = await fetchUserProgress(user.username);
+      const result = await fetchUserProgress(user.username);
+      const serverEntries = result.progress;
       const mine = serverEntries.find((e) => e.moduleId === module.id);
       const serverGrantedRetake =
         Boolean(mine) &&

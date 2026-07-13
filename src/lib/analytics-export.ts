@@ -1,4 +1,4 @@
-import type { AnalyticsPayload } from "@/lib/analytics-types";
+import type { AnalyticsExportOptions, AnalyticsPayload } from "@/lib/analytics-types";
 import Papa from "papaparse";
 
 function downloadBlob(filename: string, blob: Blob) {
@@ -10,16 +10,30 @@ function downloadBlob(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
-export function exportAnalyticsCsv(data: AnalyticsPayload) {
-  const historyRows = data.history.map((r) => ({
+function historyRowsForExport(
+  data: AnalyticsPayload,
+  options?: AnalyticsExportOptions,
+) {
+  return options?.historyRows ?? data.history;
+}
+
+export function exportAnalyticsCsv(
+  data: AnalyticsPayload,
+  options?: AnalyticsExportOptions,
+) {
+  const rows = historyRowsForExport(data, options);
+  const historyRows = rows.map((r) => ({
     learner: r.userEmail,
     assessment: r.moduleTitle,
+    assessment_id: r.moduleId,
     batch: r.batchLabel,
     status: r.status,
     score_percent: r.scorePercent ?? "",
     mcq_correct: r.mcqCorrect,
     mcq_total: r.mcqTotal,
     retakes: r.retakeCount,
+    acknowledged: r.acknowledged ? "Yes" : "No",
+    acknowledged_at: r.acknowledgedAt ?? "",
     completed_at: r.completedAt ?? "",
     updated_at: r.updatedAt,
   }));
@@ -37,9 +51,15 @@ export function exportAnalyticsCsv(data: AnalyticsPayload) {
     pass_rate: b.passRate ?? "",
   }));
 
+  const filterLine = options?.filterSummary
+    ? `# Filters: ${options.filterSummary}`
+    : "# Filters: none (full export)";
+
   const csv = [
     "# Compliance Agent — Analytics Export",
     `# Generated: ${data.generatedAt}`,
+    filterLine,
+    `# Learner rows: ${historyRows.length}`,
     "",
     "## Batch Summary",
     Papa.unparse(batchRows),
@@ -48,14 +68,22 @@ export function exportAnalyticsCsv(data: AnalyticsPayload) {
     Papa.unparse(historyRows),
   ].join("\n");
 
+  const suffix = options?.filterSummary
+    ? "-filtered"
+    : "";
   downloadBlob(
-    `compliance-analytics-${new Date().toISOString().slice(0, 10)}.csv`,
+    `compliance-analytics${suffix}-${new Date().toISOString().slice(0, 10)}.csv`,
     new Blob([csv], { type: "text/csv;charset=utf-8" }),
   );
 }
 
-export function exportAnalyticsPdf(data: AnalyticsPayload) {
+export function exportAnalyticsPdf(
+  data: AnalyticsPayload,
+  options?: AnalyticsExportOptions,
+) {
   const { summary } = data;
+  const rows = historyRowsForExport(data, options);
+
   const batchRows = data.batches
     .map(
       (b) =>
@@ -70,8 +98,8 @@ export function exportAnalyticsPdf(data: AnalyticsPayload) {
     )
     .join("");
 
-  const historyRows = data.history
-    .slice(0, 50)
+  const historyRows = rows
+    .slice(0, 100)
     .map(
       (r) =>
         `<tr>
@@ -80,10 +108,15 @@ export function exportAnalyticsPdf(data: AnalyticsPayload) {
           <td>${escapeHtml(r.batchLabel)}</td>
           <td>${escapeHtml(r.status.replace(/_/g, " "))}</td>
           <td>${r.scorePercent != null ? `${r.scorePercent}%` : "—"}</td>
+          <td>${r.acknowledged ? "Yes" : "No"}</td>
           <td>${formatDate(r.completedAt ?? r.updatedAt)}</td>
         </tr>`,
     )
     .join("");
+
+  const filterMeta = options?.filterSummary
+    ? `<p class="meta">Export filters: ${escapeHtml(options.filterSummary)} · ${rows.length} learner row(s)</p>`
+    : `<p class="meta">Full export · ${rows.length} learner row(s)</p>`;
 
   const html = `<!DOCTYPE html>
 <html>
@@ -108,6 +141,7 @@ export function exportAnalyticsPdf(data: AnalyticsPayload) {
 <body>
   <h1>Relanto Compliance Analytics</h1>
   <p class="meta">Generated ${formatDate(data.generatedAt)} · Organization-wide report</p>
+  ${filterMeta}
 
   <div class="kpis">
     <div class="kpi"><label>Learners</label><value>${summary.totalLearners}</value></div>
@@ -122,10 +156,10 @@ export function exportAnalyticsPdf(data: AnalyticsPayload) {
     <tbody>${batchRows || "<tr><td colspan='6'>No batch data</td></tr>"}</tbody>
   </table>
 
-  <h2>Recent learner activity</h2>
+  <h2>Learner activity${rows.length > 100 ? " (first 100 rows)" : ""}</h2>
   <table>
-    <thead><tr><th>Learner</th><th>Assessment</th><th>Batch</th><th>Status</th><th>Score</th><th>Date</th></tr></thead>
-    <tbody>${historyRows || "<tr><td colspan='6'>No activity yet</td></tr>"}</tbody>
+    <thead><tr><th>Learner</th><th>Assessment</th><th>Batch</th><th>Status</th><th>Score</th><th>Acknowledged</th><th>Date</th></tr></thead>
+    <tbody>${historyRows || "<tr><td colspan='7'>No activity yet</td></tr>"}</tbody>
   </table>
 </body>
 </html>`;

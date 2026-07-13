@@ -9,11 +9,42 @@ import type {
   TimeSeriesPoint,
 } from "@/lib/analytics-types";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
-import { resolveDisplayScorePercent } from "@/lib/progress-score";
+import { countMcqAnswers, resolveDisplayScorePercent } from "@/lib/progress-score";
+import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
+
+// NOTE: reconcileInvalidProgressScores / reconcilePassedProgressStatus are
+// intentionally NOT called here. Running heavy UPDATE+SELECT repair on every
+// dashboard load added 1-4 s of latency. Run `npm run db:reconcile-progress`
+// as a maintenance job when needed, or call the functions from a dedicated
+// admin action endpoint.
 
 type Sql = ReturnType<typeof getSql>;
 
 const TIME_SERIES_DAYS = 30;
+
+function parseAcknowledgement(raw: unknown): {
+  accepted: boolean;
+  timestamp: string | null;
+} {
+  if (!raw) return { accepted: false, timestamp: null };
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!value || typeof value !== "object") {
+      return { accepted: false, timestamp: null };
+    }
+    const accepted = Boolean((value as { accepted?: boolean }).accepted);
+    const ts = (value as { timestamp?: number }).timestamp;
+    return {
+      accepted,
+      timestamp:
+        accepted && typeof ts === "number"
+          ? new Date(ts).toISOString()
+          : null,
+    };
+  } catch {
+    return { accepted: false, timestamp: null };
+  }
+}
 
 function fillTimeSeries(
   rows: { date: string; completions: number; failures: number }[],
@@ -38,6 +69,8 @@ function fillTimeSeries(
 }
 
 export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+  // Reconcile functions intentionally removed from read path — see comment above.
+
   const [summaryRows, batchRows, seriesRows, moduleRows, statusRows, historyRows] =
     await Promise.all([
       sql`
@@ -122,22 +155,28 @@ export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       sql`
         SELECT
           ap.user_email,
+          ap.module_id,
           ap.module_title,
           ap.batch_id,
-          b.label AS batch_label,
+          COALESCE(b.label, ub.label) AS batch_label,
           ap.status,
           LEAST(ap.score_percent, 100) AS score_percent,
           ap.mcq_correct,
           ap.mcq_total,
           ap.retake_count,
+          ap.acknowledgement,
           ap.completed_at,
-          ap.updated_at
+          ap.updated_at,
+          ap.last_accessed_at,
+          ap.current_slide,
+          ap.warning_count,
+          ap.mcq_answers
         FROM assessment_progress ap
         LEFT JOIN batches b ON b.id = ap.batch_id
-        WHERE ap.score_percent IS NOT NULL
-           OR ap.status IN ('completed', 'failed', 'permanently_failed', 'in_progress')
-        ORDER BY COALESCE(ap.completed_at, ap.updated_at) DESC
-        LIMIT 100
+        LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
+        LEFT JOIN batches ub ON ub.id = u.batch_id
+        ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC
+        LIMIT 500
       `,
     ]);
 
@@ -201,9 +240,24 @@ export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
     const mcqTotal = Number(r.mcq_total ?? 0);
     const storedScorePercent =
       r.score_percent != null ? Number(r.score_percent) : null;
-    const status = r.status as string;
+    const rawStatus = (r.status as string) ?? "not_started";
+    const ack = parseAcknowledgement(r.acknowledgement);
+    const status = normalizeProgressStatus(
+      rawStatus,
+      storedScorePercent,
+      (r.completed_at as string) ?? null,
+      {
+        lastAccessedAt: (r.last_accessed_at as string) ?? null,
+        currentSlide: Number(r.current_slide ?? 0),
+        answerCount: countMcqAnswers(
+          r.mcq_answers as Record<string, boolean> | null,
+        ),
+        warningCount: Number(r.warning_count ?? 0),
+      },
+    );
     return {
       userEmail: r.user_email as string,
+      moduleId: r.module_id as string,
       moduleTitle: r.module_title as string,
       batchId: r.batch_id as string,
       batchLabel: (r.batch_label as string) ?? r.batch_id,
@@ -217,6 +271,8 @@ export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       mcqCorrect,
       mcqTotal,
       retakeCount: Number(r.retake_count ?? 0),
+      acknowledged: ack.accepted,
+      acknowledgedAt: ack.timestamp,
       completedAt: (r.completed_at as string) ?? null,
       updatedAt: r.updated_at as string,
     };

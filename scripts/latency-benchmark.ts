@@ -98,7 +98,7 @@ async function runDbBenchmarks(): Promise<TimedResult[]> {
 
   await bench("batches-list", () => sql`SELECT id, label FROM batches ORDER BY label`);
   if (batchId) {
-    await bench("batch-performance", () => getBatchPerformance(sql, batchId, "compliance"));
+    await bench("batch-performance", () => getBatchPerformance(sql, batchId));
   }
   await bench("analytics", () => getAnalytics(sql));
   await bench("course-library", () => listCourseLibraryDb(sql));

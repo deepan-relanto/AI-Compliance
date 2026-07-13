@@ -32,9 +32,10 @@ export async function listEmployees(
   sql: Sql,
   params: EmployeeFilterParams,
 ): Promise<EmployeeListResult> {
+  const fetchAll = params.all === true;
   const page = Math.max(1, params.page ?? 1);
-  const limit = Math.min(100, Math.max(10, params.limit ?? 50));
-  const offset = (page - 1) * limit;
+  const limit = fetchAll ? 5000 : Math.min(100, Math.max(10, params.limit ?? 50));
+  const offset = fetchAll ? 0 : (page - 1) * limit;
   const search = params.search?.trim().toLowerCase() ?? "";
   const searchPattern = search ? `%${search}%` : null;
   const departments = params.departments?.length ? params.departments : null;
@@ -93,14 +94,15 @@ export async function listEmployees(
       AND (${dateTo}::date IS NULL OR e.date_joined <= ${dateTo}::date)
       AND (${unassignedOnly}::boolean IS FALSE OR u.batch_id IS NULL)
     ORDER BY e.name
-    LIMIT ${limit} OFFSET ${offset}
+    LIMIT ${limit}
+    OFFSET ${offset}
   `;
 
   return {
     employees: rows.map((r) => mapRow(r as Record<string, unknown>)),
     total,
-    page,
-    limit,
+    page: fetchAll ? 1 : page,
+    limit: fetchAll ? total : limit,
   };
 }
 

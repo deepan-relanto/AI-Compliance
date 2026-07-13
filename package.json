@@ -13,20 +13,27 @@
     "db:seed": "node scripts/db-seed.mjs",
     "db:seed:relanto": "node scripts/db-seed-relanto-users.mjs",
     "db:seed:employees": "node scripts/db-seed-employees.mjs",
+    "db:import:employees": "node scripts/db-import-employees-xlsx.mjs",
+    "db:prune:employees": "node scripts/db-prune-employees.mjs",
+    "db:clear-modules": "node scripts/db-clear-modules.mjs",
+    "db:clear-progress": "node scripts/db-clear-progress.mjs",
+    "db:fix-failed-scores": "node scripts/db-fix-failed-scores.mjs",
+    "db:clear-feedback": "node scripts/db-clear-feedback.mjs",
+    "db:clear-monitoring": "node scripts/db-clear-monitoring.mjs",
+    "db:clear-batches-monitoring": "node scripts/db-clear-batches-monitoring.mjs",
+    "db:clear-assignments-monitoring": "node scripts/db-clear-assignments-monitoring.mjs",
+    "db:keep-one-module": "node scripts/db-keep-one-module-clear-rest.mjs",
+    "db:reset-user-progress": "node scripts/db-reset-user-progress.mjs",
+    "db:clear-all": "node scripts/db-clear-all.mjs",
+    "db:reset": "node scripts/db-reset.mjs",
+    "db:setup": "npm run db:migrate && npm run db:migrate:alter && npm run db:seed",
+    "db:reshuffle:mcqs": "node scripts/db-reshuffle-mcq-options.mjs",
+    "db:reconcile-progress": "node scripts/db-reconcile-progress.mjs",
     "db:reset-course-assignments": "node scripts/db-reset-course-assignments.mjs",
     "db:update-bundle-html": "node scripts/db-update-bundle-html.mjs",
     "db:sync-course-assets": "node scripts/db-sync-course-assets.mjs",
     "db:verify-course-assets": "node scripts/db-verify-course-assets.mjs",
-    "db:clear-modules": "node scripts/db-clear-modules.mjs",
-    "db:clear-progress": "node scripts/db-clear-progress.mjs",
-    "db:fix-failed-scores": "node scripts/db-fix-failed-scores.mjs",
-    "db:reconcile-progress": "npx --yes tsx scripts/db-reconcile-progress.ts",
-    "benchmark:latency": "npx --yes tsx scripts/latency-benchmark.ts",
-    "db:clear-feedback": "node scripts/db-clear-feedback.mjs",
-    "db:clear-monitoring": "node scripts/db-clear-monitoring.mjs",
-    "db:clear-all": "node scripts/db-clear-all.mjs",
-    "db:reset": "node scripts/db-reset.mjs",
-    "db:setup": "npm run db:migrate && npm run db:migrate:alter && npm run db:seed"
+    "benchmark:latency": "npx --yes tsx scripts/latency-benchmark.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
@@ -39,9 +46,11 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-pdf": "^9.2.1",
+    "sharp": "^0.35.2",
+    "swr": "^2.4.1",
     "tailwind-merge": "^3.3.0",
-    "ws": "^8.21.0",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.5",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -50,11 +59,12 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
-    "@types/ws": "^8.18.1",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",
     "postgres": "^3.4.5",
     "tailwindcss": "^4.1.8",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "xlsx": "^0.18.5",
+    "@types/ws": "^8.18.1"
   }
 }

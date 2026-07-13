@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Loader2, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface BatchMeta {
   id: string;
@@ -21,40 +24,26 @@ export default function BatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const batchId = typeof params.batchId === "string" ? params.batchId : "";
-  const [batch, setBatch] = useState<BatchMeta | null>(null);
-  const [members, setMembers] = useState<BatchMember[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const loadBatch = useCallback(() => {
-    if (!batchId) return;
-    setLoading(true);
-    fetch(`/api/batches/${encodeURIComponent(batchId)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.ok && data.batch) {
-          setBatch({
-            id: data.batch.id,
-            label: data.batch.label,
-            description: data.batch.description ?? "",
-            memberCount: Number(data.batch.memberCount ?? 0),
-          });
-          setMembers(Array.isArray(data.users) ? data.users : []);
-        } else {
-          setBatch(null);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [batchId]);
+  const { data, isLoading, mutate } = useSWR(
+    batchId ? `/api/batches/${encodeURIComponent(batchId)}` : null,
+    fetcher
+  );
+
+  const batch = data?.ok && data.batch ? {
+    id: data.batch.id,
+    label: data.batch.label,
+    description: data.batch.description ?? "",
+    memberCount: Number(data.batch.memberCount ?? 0),
+  } : null;
+
+  const members: BatchMember[] = data?.ok && Array.isArray(data.users) ? data.users : [];
 
   useEffect(() => {
-    loadBatch();
-  }, [loadBatch]);
-
-  useEffect(() => {
-    if (!loading && !batch) router.replace("/admin/batches");
-  }, [loading, batch, router]);
+    if (!isLoading && !batch) router.replace("/admin/batches");
+  }, [isLoading, batch, router]);
 
   const handleDelete = async () => {
     if (!batch || !confirm(`Delete batch "${batch.label}"? Members will be unassigned.`)) return;
@@ -68,7 +57,7 @@ export default function BatchDetailPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-zinc-500">
         <Loader2 className="h-5 w-5 animate-spin text-[#2e3192]" />
@@ -123,7 +112,7 @@ export default function BatchDetailPage() {
               existingEmails={members.map((m) => m.email)}
               onAdded={() => {
                 setShowAdd(false);
-                loadBatch();
+                void mutate();
               }}
               onCancel={() => setShowAdd(false)}
             />
@@ -135,7 +124,7 @@ export default function BatchDetailPage() {
           batchLabel={batch.label}
           batchId={batchId}
           analyticsHref={`/admin/analytics/batch/${encodeURIComponent(batchId)}`}
-          onMemberRemoved={loadBatch}
+          onMemberRemoved={() => void mutate()}
         />
       </AdminShell>
     </RouteGuard>

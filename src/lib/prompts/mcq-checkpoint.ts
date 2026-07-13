@@ -11,6 +11,7 @@ STRICT RULES FOR EVERY QUESTION:
 2. Ground the dilemma in the PDF training content (policies, procedures, client rules).
 3. End with "What should [name] do?" or "What is the best course of action?"
 4. Exactly 4 options (ids: a, b, c, d) — one correct, three plausible wrong choices.
+   Spread correct answers across a, b, c, and d — do NOT default every question to "a".
 5. Explanation: exactly TWO sentences (specific, not generic):
    - Why the correct option follows policy.
    - Why the tempting wrong options are unsafe or non-compliant.
@@ -28,7 +29,7 @@ Output valid JSON only (no markdown).
     {
       "prompt": "...",
       "options": [{"id":"a","label":"..."},{"id":"b","label":"..."},{"id":"c","label":"..."},{"id":"d","label":"..."}],
-      "correctOptionId":"a",
+      "correctOptionId":"b",
       "explanation":"..."
     }
   ]
@@ -67,5 +68,6 @@ ${fullText.slice(0, 45000) || "(no extractable text)"}
 
 Generate exactly ${questionCount} unique scenario questions.
 Each prompt: 3–5 sentences, named employee, real dilemma from the content above.
+Vary which option (a, b, c, or d) is correct — avoid making most answers "a".
 Never reference the training document by title. Return JSON only.`;
 }

@@ -3,37 +3,30 @@
 import { MetricCard } from "@/components/admin/metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { fetchBatches } from "@/hooks/use-batches";
 import { exportFeedbackCsv, type FeedbackDisplayRow } from "@/lib/feedback-export";
 import { parseRating } from "@/lib/feedback-store";
-import type { ModuleKind } from "@/lib/module-kind";
-import { MODULE_KIND_LABELS } from "@/lib/module-kind";
 import { cn } from "@/lib/utils";
 import {
   Download,
   FileSpreadsheet,
   Filter,
-  GraduationCap,
   Layers3,
   Loader2,
   MessageSquare,
   RefreshCw,
   Search,
-  ShieldCheck,
   Star,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface BatchOption {
   id: string;
   label: string;
 }
-
-const TRACKS: { id: ModuleKind; label: string; icon: typeof ShieldCheck }[] = [
-  { id: "compliance", label: "Compliance feedback", icon: ShieldCheck },
-  { id: "course", label: "Course feedback", icon: GraduationCap },
-];
 
 function mapApiEntries(
   apiEntries: Array<{
@@ -46,7 +39,6 @@ function mapApiEntries(
     createdAt: string;
     batchId: string | null;
     batchLabel: string | null;
-    moduleKind?: ModuleKind;
   }>,
 ): FeedbackDisplayRow[] {
   return apiEntries
@@ -111,41 +103,28 @@ function FilterPill({
 }
 
 export function FeedbackTable() {
-  const [track, setTrack] = useState<ModuleKind>("compliance");
-  const [rows, setRows] = useState<FeedbackDisplayRow[]>([]);
-  const [batches, setBatches] = useState<BatchOption[]>([]);
-  const [loading, setLoading] = useState(true);
   const [batchFilter, setBatchFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fbRes, batchList] = await Promise.all([
-        fetch(`/api/feedback?track=${track}`),
-        fetchBatches(),
-      ]);
-      const fbData = await fbRes.json();
+  const { data: fbData, isLoading: fbLoading, mutate: mutateFb } = useSWR("/api/feedback", fetcher);
+  const { data: batchData, isLoading: batchLoading } = useSWR("/api/batches", fetcher);
 
-      setBatches(batchList.map((b) => ({ id: b.id, label: b.label })));
+  const batches: BatchOption[] =
+    batchData?.ok && Array.isArray(batchData.batches)
+      ? batchData.batches.map((b: { id: string; label: string }) => ({
+          id: b.id,
+          label: b.label,
+        }))
+      : [];
 
-      const apiEntries = fbData.ok && Array.isArray(fbData.entries) ? fbData.entries : [];
-      setRows(mapApiEntries(apiEntries));
-    } catch {
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [track]);
-
-  useEffect(() => {
-    setBatchFilter("all");
-    setSearchTerm("");
-  }, [track]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const apiEntries = fbData?.ok && Array.isArray(fbData.entries) ? fbData.entries : [];
+  const rows = useMemo(() => mapApiEntries(apiEntries), [apiEntries]);
+  
+  const loading = fbLoading || batchLoading;
+  
+  const load = async () => {
+    await mutateFb();
+  };
 
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -183,37 +162,27 @@ export function FeedbackTable() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <TrackTabs track={track} onTrack={setTrack} />
-        <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-500">
-          <Loader2 className="h-5 w-5 animate-spin text-[#2e3192]" />
-          Loading feedback…
-        </div>
+      <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-500">
+        <Loader2 className="h-5 w-5 animate-spin text-[#2e3192]" />
+        Loading feedback…
       </div>
     );
   }
 
   if (rows.length === 0) {
     return (
-      <div className="space-y-6">
-        <TrackTabs track={track} onTrack={setTrack} />
-        <div className="empty-state mx-auto max-w-md">
-          <MessageSquare className="h-10 w-10 text-zinc-300" strokeWidth={1.5} />
-          <p className="mt-4 text-sm font-medium text-zinc-600">
-            No {MODULE_KIND_LABELS[track].toLowerCase()} feedback yet
-          </p>
-          <p className="mt-1 text-xs text-zinc-400">
-            Feedback appears here after learners complete {MODULE_KIND_LABELS[track].toLowerCase()}{" "}
-            modules and submit their responses.
-          </p>
-        </div>
+      <div className="empty-state mx-auto max-w-md">
+        <MessageSquare className="h-10 w-10 text-zinc-300" strokeWidth={1.5} />
+        <p className="mt-4 text-sm font-medium text-zinc-600">No feedback submitted yet</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Feedback appears here after learners complete assessments and submit their responses.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <TrackTabs track={track} onTrack={setTrack} />
       {/* Summary */}
       <section className="grid gap-4 sm:grid-cols-3">
         <MetricCard
@@ -248,9 +217,7 @@ export function FeedbackTable() {
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-900">
-                {MODULE_KIND_LABELS[track]} feedback
-              </h2>
+              <h2 className="text-sm font-semibold text-zinc-900">All feedback</h2>
               <p className="mt-0.5 text-xs text-zinc-500">
                 {filtered.length} of {rows.length} submission
                 {rows.length !== 1 ? "s" : ""} — newest first
@@ -420,44 +387,6 @@ export function FeedbackTable() {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function TrackTabs({
-  track,
-  onTrack,
-}: {
-  track: ModuleKind;
-  onTrack: (t: ModuleKind) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="inline-flex flex-wrap gap-1 rounded-xl border border-zinc-200/80 bg-zinc-100/60 p-1">
-        {TRACKS.map((t) => {
-          const active = track === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => onTrack(t.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150",
-                active
-                  ? "bg-white text-[#2e3192] shadow-sm ring-1 ring-zinc-200/80"
-                  : "text-zinc-600 hover:bg-white/60 hover:text-zinc-900",
-              )}
-            >
-              <t.icon className="h-4 w-4" strokeWidth={1.75} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-sm text-zinc-500">
-        Showing feedback from{" "}
-        <span className="font-medium text-zinc-700">{MODULE_KIND_LABELS[track]}</span> modules only.
-      </p>
     </div>
   );
 }

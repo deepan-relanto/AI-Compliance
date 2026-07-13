@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS review_requests (
   failure_timestamp   BIGINT NOT NULL,
   user_explanation    TEXT NOT NULL,
   status              TEXT NOT NULL DEFAULT 'Pending'
-    CHECK (status IN ('Pending', 'Approved', 'Rejected')),
+    CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Consumed')),
   submitted_timestamp BIGINT NOT NULL,
   decision_timestamp  BIGINT,
   approved_by         TEXT,

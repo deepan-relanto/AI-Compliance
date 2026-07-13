@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useBatches } from "@/hooks/use-batches";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { cn } from "@/lib/utils";
@@ -26,9 +25,8 @@ interface BatchOption {
 }
 
 export function ScoresPanel() {
-  const { batches: allBatches } = useBatches();
-  const batches: BatchOption[] = allBatches.map((b) => ({ id: b.id, label: b.label }));
   const [scores, setScores] = useState<ScoreRow[]>([]);
+  const [batches, setBatches] = useState<BatchOption[]>([]);
   const [batchFilter, setBatchFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +49,22 @@ export function ScoresPanel() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/batches")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.ok && Array.isArray(data.batches)) {
+          setBatches(
+            data.batches.map((b: { id: string; label: string }) => ({
+              id: b.id,
+              label: b.label,
+            })),
+          );
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {

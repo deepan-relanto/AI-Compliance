@@ -69,7 +69,7 @@ function ResultGauge({
           strokeLinecap="round"
           className={passed ? "text-emerald-600" : "text-red-600"}
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          initial={false}
           animate={{ strokeDashoffset: offset }}
           transition={{ duration: 0.75, ease: "easeOut" }}
         />
@@ -118,40 +118,40 @@ export function FinalResultScreen({
       >
         <div
           className={cn(
-            "border-b px-6 py-6 sm:px-8",
+            "relative border-b px-6 py-6 sm:px-8",
             passed ? "border-emerald-100 bg-emerald-50/70" : "border-red-100 bg-red-50/70",
           )}
         >
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-2xl">
-              <div
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider",
-                  passed
-                    ? "border-emerald-200 text-emerald-700"
-                    : "border-red-200 text-red-700",
-                )}
-              >
-                {passed ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  <XCircle className="h-4 w-4" />
-                )}
-                Final result
-              </div>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-950">
-                {passed ? "Compliance Training Passed" : "Compliance Training Failed"}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-700">
-                {passed
-                  ? "You have successfully completed the training."
-                  : `You did not achieve the minimum passing score of ${PASS_THRESHOLD_PERCENT}%. Please review the material and try again.`}
-              </p>
-              <p className="mt-3 text-sm font-semibold text-zinc-900">
-                {motivationalMessage(scorePercent)}
-              </p>
-            </div>
+          <div className="absolute right-5 top-5 sm:right-8 sm:top-6">
             <ResultGauge scorePercent={scorePercent} passed={passed} />
+          </div>
+          <div className="max-w-2xl pr-36 sm:pr-40">
+            <div
+              className={cn(
+                "inline-flex items-center gap-2 rounded-md border bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider",
+                passed
+                  ? "border-emerald-200 text-emerald-700"
+                  : "border-red-200 text-red-700",
+              )}
+            >
+              {passed ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              Final result
+            </div>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-950">
+              {passed ? "Compliance Training Passed" : "Compliance Training Failed"}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-700">
+              {passed
+                ? "You have successfully completed the training."
+                : `You did not achieve the minimum passing score of ${PASS_THRESHOLD_PERCENT}%. Please review the material and try again.`}
+            </p>
+            <p className="mt-3 text-sm font-semibold text-zinc-900">
+              {motivationalMessage(scorePercent)}
+            </p>
           </div>
         </div>
 

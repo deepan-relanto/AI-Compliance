@@ -100,7 +100,7 @@ export function FinalQaForm({
       )}
     >
       <div className="h-1 w-full bg-gradient-to-r from-[#2e3192] via-[#3d42a8] to-[#f15a24]" />
-      <div className={cn(large ? "p-8 sm:p-10" : "p-6")}>
+      <div className={cn(large ? "p-5 sm:p-6" : "p-6")}>
       <div className={cn("flex items-center", large ? "gap-3" : "gap-2")}>
         <MessageSquare
           className={cn("text-[#2e3192]", large ? "h-6 w-6" : "h-4 w-4")}
@@ -125,7 +125,7 @@ export function FinalQaForm({
               : "Optional — help us improve this module with a quick rating or comment."}
       </p>
 
-      <form onSubmit={handleSubmit} className={cn(large ? "mt-8 space-y-6" : "mt-4 space-y-3")}>
+      <form onSubmit={handleSubmit} className={cn(large ? "mt-5 space-y-4" : "mt-4 space-y-3")}>
         <div>
           <p
             className={cn(
@@ -159,7 +159,7 @@ export function FinalQaForm({
                 aria-label={`Rate ${star} out of 5`}
               >
                 <Star
-                  className={cn("transition-colors", large ? "h-9 w-9" : "h-5 w-5")}
+                  className={cn("transition-colors", large ? "h-7 w-7" : "h-5 w-5")}
                   fill={(hoveredStar || rating) >= star ? "#f15a24" : "none"}
                   stroke={(hoveredStar || rating) >= star ? "#f15a24" : "#d4d4d8"}
                   strokeWidth={1.5}
@@ -187,7 +187,7 @@ export function FinalQaForm({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Share what worked well, what was unclear, or how we can improve…"
-          rows={large ? 6 : 4}
+          rows={large ? 4 : 3}
           required={messageRequired}
           className={cn(
             "training-form-input flex w-full cursor-text select-text resize-none rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2e3192]/25",

@@ -49,7 +49,7 @@ if (!url) {
 
 const sql = neon(url);
 
-console.log("🧹 Clearing ALL app data (keeping users + batches)…\n");
+console.log("🧹 Clearing ALL app data (keeping users + employees)…\n");
 
 const tables = [
   ["training_notifications", await sql`DELETE FROM training_notifications RETURNING id`],
@@ -64,18 +64,12 @@ const tables = [
   ["upload_files", await sql`DELETE FROM upload_files RETURNING id`],
   ["pdf_storage", await sql`DELETE FROM pdf_storage RETURNING filename`],
   ["training_modules", await sql`DELETE FROM training_modules RETURNING id`],
+  ["batches", await sql`DELETE FROM batches RETURNING id`],
 ];
 
 for (const [name, rows] of tables) {
   console.log(`  · ${name}: ${rows.length} row(s) removed`);
 }
-
-await sql`
-  UPDATE batches
-  SET compliance = 0, pass_rate = 0, fail_rate = 0, active_sessions = 0,
-      updated_at = NOW()
-`;
-console.log("  · batches: compliance counters reset");
 
 const uploadsDir = join(root, "public", "uploads");
 let filesRemoved = 0;
@@ -95,6 +89,24 @@ if (filesRemoved === 0) {
   console.log("  · public/uploads: no PDF/PPT files to remove");
 }
 
+const courseAssetsDir = join(root, "public", "course-assets");
+let assetsRemoved = 0;
+try {
+  for (const name of readdirSync(courseAssetsDir)) {
+    if (name !== ".gitkeep") {
+      unlinkSync(join(courseAssetsDir, name));
+      assetsRemoved++;
+      console.log(`  · removed public/course-assets/${name}`);
+    }
+  }
+} catch {
+  console.log("  · public/course-assets: (empty or missing)");
+}
+
+if (assetsRemoved === 0) {
+  console.log("  · public/course-assets: no generated assets to remove");
+}
+
 console.log("\n✅ Everything cleared.");
-console.log("   Kept: users (logins) + batches");
+console.log("   Kept: users (logins) + employees");
 console.log("   Tip: hard-refresh the browser (Ctrl+Shift+R) to clear cached local data.");

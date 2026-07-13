@@ -98,23 +98,23 @@ export function TypedSignatureField({
 
       {valid && (
         <div
-          className="relative overflow-hidden rounded-lg border border-zinc-200/90 bg-gradient-to-b from-white via-white to-zinc-50 px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+          className="relative overflow-hidden rounded-lg border border-zinc-200/90 bg-gradient-to-b from-white via-white to-zinc-50 px-6 py-4.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
           aria-live="polite"
         >
           <div
-            className="pointer-events-none absolute inset-x-10 bottom-[2.75rem] h-px bg-gradient-to-r from-transparent via-zinc-300/90 to-transparent"
+            className="pointer-events-none absolute inset-x-10 bottom-[2.2rem] h-px bg-gradient-to-r from-transparent via-zinc-300/90 to-transparent"
             aria-hidden
           />
           <p
             className={cn(
               "relative text-center leading-none tracking-wide text-[#1a2d52]",
-              "text-[2.35rem] sm:text-[2.85rem]",
+              "text-[2.2rem] sm:text-[2.6rem]",
               signatureFont.className,
             )}
           >
             {normalized}
           </p>
-          <p className="relative mt-5 text-center text-[9px] font-medium uppercase tracking-[0.22em] text-zinc-400">
+          <p className="relative mt-4 text-center text-[9px] font-medium uppercase tracking-[0.22em] text-zinc-400">
             Electronic signature
           </p>
         </div>

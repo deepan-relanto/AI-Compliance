@@ -395,7 +395,7 @@
     <div id="shell">
       <header id="topbar">
         <div class="brand">
-          <img src="/relanto-logo.png" alt="Relanto" />
+          <img src="/relanto-logo.png" alt="Relanto" onerror="this.style.display='none'" />
           <div class="brand-copy">
             <strong>Relanto</strong>
             <span>Compliance Agent</span>
@@ -671,10 +671,11 @@
       /* Horizontal (left → right) layout — matches NotebookLM screenshots */
       const NODE_H = 40;
       const NODE_GAP_Y = 18;
-      const LEVEL_GAP_X = 220;
+      const COLUMN_GAP = 48;
       const H_PAD = 16;
-      const CHAR_W = 7.1;
+      const CHAR_W = 7.6;
       const TOGGLE_R = 9;
+      const TOGGLE_FOOTPRINT = TOGGLE_R * 2 + 12;
 
       const collapsed = new Map();
       let highlightIds = new Set();
@@ -685,11 +686,14 @@
 
       function measureWidthFor(node, depth) {
         const base = Math.ceil(String(node.label).length * CHAR_W) + H_PAD * 2;
-        const extra = hasChildren(node) ? 22 : 0;
         if (depth === 0) return Math.max(238, base + 16);
-        if (depth === 1) return Math.max(170, base + extra);
-        if (depth === 2) return Math.max(148, base + extra);
+        if (depth === 1) return Math.max(170, base);
+        if (depth === 2) return Math.max(148, base);
         return Math.max(130, base);
+      }
+
+      function nodeExtentRight(width, hasKids) {
+        return width + (hasKids ? TOGGLE_FOOTPRINT : 0);
       }
 
       function hasChildren(node) {
@@ -717,10 +721,11 @@
         zoomBadge.textContent = `${Math.round(zoom * 100)}%`;
       }
 
-      /** Horizontal tree: x by depth, y by subtree midpoints */
+      /** Horizontal tree: x by dynamic column, y by subtree midpoints */
       function layout(root) {
         const positions = new Map();
         const sizes = new Map();
+        const maxWidthByDepth = new Map();
 
         function subtreeHeight(node) {
           const kids = visibleChildren(node);
@@ -733,13 +738,34 @@
           return Math.max(NODE_H, h);
         }
 
+        function measureDepths(node, depth) {
+          const width = measureWidthFor(node, depth);
+          const extent = nodeExtentRight(width, hasChildren(node));
+          maxWidthByDepth.set(
+            depth,
+            Math.max(maxWidthByDepth.get(depth) || 0, extent),
+          );
+          for (const child of visibleChildren(node)) {
+            measureDepths(child, depth + 1);
+          }
+        }
+
+        measureDepths(root, 0);
+
+        const columnX = [0];
+        const maxDepth = Math.max(...maxWidthByDepth.keys(), 0);
+        for (let d = 1; d <= maxDepth; d++) {
+          const prevExtent = maxWidthByDepth.get(d - 1) || 0;
+          columnX[d] = columnX[d - 1] + prevExtent + COLUMN_GAP;
+        }
+
         function walk(node, depth, yTop) {
           const kids = visibleChildren(node);
           const width = measureWidthFor(node, depth);
           const height = subtreeHeight(node);
           sizes.set(node.id, { w: width, h: NODE_H, depth });
 
-          const x = depth * LEVEL_GAP_X;
+          const x = columnX[depth] ?? depth * 280;
           const y = yTop + height / 2 - NODE_H / 2;
           positions.set(node.id, { x, y });
 
@@ -762,8 +788,9 @@
         let maxX = -Infinity;
         for (const [id, p] of positions) {
           const s = sizes.get(id);
+          const extent = nodeExtentRight(s.w, true);
           minX = Math.min(minX, p.x);
-          maxX = Math.max(maxX, p.x + s.w);
+          maxX = Math.max(maxX, p.x + extent);
         }
         return {
           positions,
@@ -815,14 +842,14 @@
 
         const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
         arrowEnd.id = "arrowEnd";
-        arrowEnd.setAttribute("markerWidth", "8");
-        arrowEnd.setAttribute("markerHeight", "8");
-        arrowEnd.setAttribute("refX", "7");
-        arrowEnd.setAttribute("refY", "4");
+        arrowEnd.setAttribute("markerWidth", "10");
+        arrowEnd.setAttribute("markerHeight", "10");
+        arrowEnd.setAttribute("refX", "9");
+        arrowEnd.setAttribute("refY", "5");
         arrowEnd.setAttribute("orient", "auto");
-        arrowEnd.setAttribute("markerUnits", "strokeWidth");
+        arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
         arrowEnd.innerHTML = `
-          <path d="M0,0 L8,4 L0,8 Z" fill="#2e3192" fill-opacity="0.55"/>
+          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.65"/>
         `;
 
         defs.appendChild(rootFill);
@@ -837,7 +864,19 @@
       }
 
       function drawCurve(x1, y1, x2, y2) {
-        const dx = Math.max(48, Math.abs(x2 - x1) * 0.42);
+        if (x2 <= x1 + 8) {
+          // Fallback stub when spacing is still tight
+          const midY = (y1 + y2) / 2;
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute(
+            "d",
+            `M ${x1} ${y1} L ${x1 + 12} ${y1} L ${x1 + 12} ${midY} L ${x2} ${y2}`,
+          );
+          path.setAttribute("class", "link");
+          svg.appendChild(path);
+          return;
+        }
+        const dx = Math.max(36, (x2 - x1) * 0.45);
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute(
           "d",
@@ -915,14 +954,14 @@
         const parentSize = sizes.get(node.id);
         if (!parent || !parentSize) return;
 
-        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 8 : 4);
+        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 10 : 4);
         const y1 = parent.y + parentSize.h / 2;
 
         for (const child of kids) {
           const childPos = positions.get(child.id);
           const childSize = sizes.get(child.id);
           if (!childPos || !childSize) continue;
-          const x2 = childPos.x - 6;
+          const x2 = childPos.x - 10;
           const y2 = childPos.y + childSize.h / 2;
           drawCurve(x1, y1, x2, y2);
           renderLinks(child, positions, sizes);
@@ -944,13 +983,13 @@
         ensureDefs();
         const { positions, sizes, bounds } = layout(MINDMAP_DATA);
         const pad = 56;
-        const width = Math.max(1100, bounds.maxX - bounds.minX + pad * 2 + 40);
-        const height = Math.max(700, bounds.maxY - bounds.minY + pad * 2);
-        svg.setAttribute("width", String(width));
-        svg.setAttribute("height", String(height));
+        const vbW = Math.max(320, bounds.maxX - bounds.minX + pad * 2);
+        const vbH = Math.max(240, bounds.maxY - bounds.minY + pad * 2);
+        svg.setAttribute("width", String(vbW));
+        svg.setAttribute("height", String(vbH));
         svg.setAttribute(
           "viewBox",
-          `${bounds.minX - pad} ${bounds.minY - pad} ${width} ${height}`,
+          `${bounds.minX - pad} ${bounds.minY - pad} ${vbW} ${vbH}`,
         );
 
         renderLinks(MINDMAP_DATA, positions, sizes);

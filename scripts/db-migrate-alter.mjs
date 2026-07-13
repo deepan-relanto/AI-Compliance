@@ -156,4 +156,12 @@ await sql`CREATE INDEX IF NOT EXISTS idx_module_batches_module ON module_batches
 await sql`CREATE INDEX IF NOT EXISTS idx_mcq_questions_module ON mcq_questions(module_id)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_progress_user_module ON assessment_progress(user_email, module_id)`;
 
+// Allow Consumed status on proctor retake approvals (one-time use).
+await sql`ALTER TABLE review_requests DROP CONSTRAINT IF EXISTS review_requests_status_check`;
+await sql`
+  ALTER TABLE review_requests
+  ADD CONSTRAINT review_requests_status_check
+  CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Consumed'))
+`;
+
 console.log("✅ Schema alterations applied.");

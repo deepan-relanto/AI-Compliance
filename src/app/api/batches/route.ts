@@ -1,22 +1,32 @@
 import { requireAdminSession } from "@/lib/api-admin";
-import { CACHE_TTL, cachedFetch, invalidateCache } from "@/lib/api-cache";
 import { getSql } from "@/lib/db";
 import { createBatch } from "@/lib/services/batch-management-service";
+import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const batches = await cachedFetch("batches:all", CACHE_TTL.batches, async () => {
-      const sql = getSql();
-      return sql`
-        SELECT id, label, description, member_count, compliance, pass_rate, fail_rate, active_sessions
-        FROM batches
-        ORDER BY label
-      `;
-    });
-    return NextResponse.json({ ok: true, batches });
+    const cached = cacheGet<object[]>(CACHE_KEYS.batches);
+    if (cached) {
+      return NextResponse.json(
+        { ok: true, batches: cached },
+        { headers: { "X-Cache": "HIT" } },
+      );
+    }
+
+    const sql = getSql();
+    const rows = await sql`
+      SELECT id, label, description, member_count, compliance, pass_rate, fail_rate, active_sessions
+      FROM batches
+      ORDER BY label
+    `;
+    cacheSet(CACHE_KEYS.batches, rows, 60);
+    return NextResponse.json(
+      { ok: true, batches: rows },
+      { headers: { "X-Cache": "MISS" } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load batches";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
@@ -47,8 +57,10 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
     const batch = await createBatch(sql, { label, description, employeeEmails });
-    invalidateCache("batches:");
-    invalidateCache("analytics:");
+    // Invalidate stale caches asynchronously so the response is not blocked
+    void Promise.resolve().then(() => {
+      cacheInvalidate(CACHE_KEYS.batches, CACHE_KEYS.analytics);
+    });
     return NextResponse.json({ ok: true, batch });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to create batch";

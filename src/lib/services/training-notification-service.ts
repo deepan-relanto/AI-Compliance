@@ -1,22 +1,31 @@
 import type { getSql } from "@/lib/db";
 import { getGraphMailConfig } from "@/lib/graph-mail-config";
 import { firstNameFromEmail } from "@/lib/auth-env";
+import {
+  buildCompletionResultSummary,
+  completionResultSummaryHtml,
+  completionResultTextSummary,
+  escapeHtml,
+} from "@/lib/services/completion-result-email-html";
+import {
+  buildScoreRingPngBuffer,
+  SCORE_RING_IMAGE_CID,
+} from "@/lib/services/score-ring-image";
 import { sendGraphMail } from "@/lib/services/graph-mail-service";
+import { trainingLoginUrl } from "@/lib/training-link";
 
 type Sql = ReturnType<typeof getSql>;
 
-function trainingLoginUrl(moduleId: string, baseUrl: string): string {
-  const callback = `/training/${encodeURIComponent(moduleId)}`;
-  return `${baseUrl}/login?callbackUrl=${encodeURIComponent(callback)}`;
-}
+const EMAIL_DURATION_LABEL = "approximately 15 min";
+const ONE_STRETCH_NOTE =
+  "To ensure a seamless learning experience, the training should be completed in one uninterrupted session.";
 
 function invitationHtml(params: {
   displayName: string;
   moduleTitle: string;
   loginUrl: string;
-  durationMinutes: number;
 }): string {
-  const { displayName, moduleTitle, loginUrl, durationMinutes } = params;
+  const { displayName, moduleTitle, loginUrl } = params;
   return `
 <!DOCTYPE html>
 <html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
@@ -24,31 +33,68 @@ function invitationHtml(params: {
   <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
   <h1 style="font-size:22px;margin:8px 0 16px">Mandatory training assigned</h1>
   <p>Hi ${displayName},</p>
-  <p>Your administrator has sent <strong>${moduleTitle}</strong> to you. This is a proctored compliance assessment (~${durationMinutes} min).</p>
+  <p>Your administrator has sent <strong>${moduleTitle}</strong> to you. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).</p>
+  <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
   <p style="margin:28px 0">
     <a href="${loginUrl}" style="display:inline-block;background:#2e3192;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Start training</a>
   </p>
-  <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to begin.</p>
+  <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
+  <p style="font-size:12px;color:#71717a">In case of any technical issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
   <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
 </body></html>`;
+}
+
+function invitationTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl } = params;
+  return [
+    `Hi ${displayName},`,
+    `Your administrator has sent "${moduleTitle}" to you. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).`,
+    ONE_STRETCH_NOTE,
+    `Start here: ${loginUrl}`,
+    "Sign in with your @relanto.ai Microsoft work account to begin.",
+  ].join("\n\n");
 }
 
 function completionHtml(params: {
   displayName: string;
   moduleTitle: string;
+  resultSummaryHtml?: string;
 }): string {
-  const { displayName, moduleTitle } = params;
+  const { displayName, moduleTitle, resultSummaryHtml = "" } = params;
+  const safeName = escapeHtml(displayName);
+  const safeTitle = escapeHtml(moduleTitle);
   return `
 <!DOCTYPE html>
-<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:640px;margin:0 auto;padding:24px">
   <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
   <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
   <h1 style="font-size:22px;margin:8px 0 16px">Training submitted</h1>
-  <p>Hi ${displayName},</p>
-  <p>We received your completed assessment for <strong>${moduleTitle}</strong>, including your attestation and feedback.</p>
+  <p>Hi ${safeName},</p>
+  <p>We received your completed assessment for <strong>${safeTitle}</strong>, including your attestation and feedback.</p>
+  ${resultSummaryHtml}
   <p style="color:#52525b">No further action is required. Thank you for completing your mandatory training.</p>
   <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
 </body></html>`;
+}
+
+function completionTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  resultSummaryText?: string;
+}): string {
+  const { displayName, moduleTitle, resultSummaryText } = params;
+  return [
+    `Hi ${displayName},`,
+    `We received your completed assessment for "${moduleTitle}", including your attestation and feedback.`,
+    resultSummaryText,
+    "No further action is required. Thank you for completing your mandatory training.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 async function wasNotificationSent(
@@ -89,11 +135,18 @@ export interface InvitationSendResult {
   message: string;
 }
 
+export interface SendModuleInvitationOptions {
+  /** When true, resend even if the learner was already notified for this module. */
+  forceResend?: boolean;
+}
+
 /** Email all learners in assigned batches when a module is ready. */
 export async function sendModuleInvitationEmails(
   sql: Sql,
   moduleId: string,
+  options?: SendModuleInvitationOptions,
 ): Promise<InvitationSendResult> {
+  const forceResend = options?.forceResend === true;
   const cfg = getGraphMailConfig();
   if (!cfg.isConfigured) {
     return {
@@ -125,7 +178,6 @@ export async function sendModuleInvitationEmails(
   }
 
   const moduleTitle = modules[0].title as string;
-  const durationMinutes = Number(modules[0].duration_minutes ?? 20);
   const loginBase = cfg.baseUrl;
 
   const learners = await sql`
@@ -148,18 +200,21 @@ export async function sendModuleInvitationEmails(
     const displayName =
       (row.display_name as string | null)?.trim() || firstNameFromEmail(email);
 
-    if (await wasNotificationSent(sql, moduleId, email, "invited")) {
+    if (
+      !forceResend &&
+      (await wasNotificationSent(sql, moduleId, email, "invited"))
+    ) {
       skipped++;
       continue;
     }
 
     try {
-      const loginUrl = trainingLoginUrl(moduleId, loginBase);
+      const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
       await sendGraphMail({
         to: email,
         subject: `Action required: ${moduleTitle} — Relanto Compliance Training`,
-        htmlBody: invitationHtml({ displayName, moduleTitle, loginUrl, durationMinutes }),
-        textBody: `Hi ${displayName}, complete "${moduleTitle}" here: ${loginUrl}`,
+        htmlBody: invitationHtml({ displayName, moduleTitle, loginUrl }),
+        textBody: invitationTextBody({ displayName, moduleTitle, loginUrl }),
       });
       await recordNotification(sql, moduleId, email, "invited");
       sent++;
@@ -188,7 +243,45 @@ export async function sendModuleInvitationEmails(
   };
 }
 
-export async function sendModuleCompletionEmail(
+function retakeHtml(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl } = params;
+  return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
+  <p>Hi ${displayName},</p>
+  <p>Your administrator approved a new attempt for <strong>${moduleTitle}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).</p>
+  <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
+  <p style="margin:28px 0">
+    <a href="${loginUrl}" style="display:inline-block;background:#2e3192;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Start retake</a>
+  </p>
+  <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+</body></html>`;
+}
+
+function retakeTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl } = params;
+  return [
+    `Hi ${displayName},`,
+    `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).`,
+    ONE_STRETCH_NOTE,
+    `Start retake here: ${loginUrl}`,
+    "Sign in with your @relanto.ai Microsoft work account to continue.",
+  ].join("\n\n");
+}
+
+export async function sendRetakeApprovalEmail(
   sql: Sql,
   userEmail: string,
   moduleId: string,
@@ -199,10 +292,6 @@ export async function sendModuleCompletionEmail(
   }
 
   const email = userEmail.trim().toLowerCase();
-  if (await wasNotificationSent(sql, moduleId, email, "completed")) {
-    return { ok: true, message: "Completion email already sent." };
-  }
-
   const modules = await sql`
     SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
   `;
@@ -216,18 +305,115 @@ export async function sendModuleCompletionEmail(
   const displayName =
     (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
   const moduleTitle = modules[0].title as string;
+  const loginUrl = trainingLoginUrl(moduleId, cfg.baseUrl, email);
+
+  try {
+    await sendGraphMail({
+      to: email,
+      subject: `Retake approved: ${moduleTitle} — Relanto Compliance Training`,
+      htmlBody: retakeHtml({ displayName, moduleTitle, loginUrl }),
+      textBody: retakeTextBody({ displayName, moduleTitle, loginUrl }),
+    });
+    return { ok: true, message: "Retake approval email sent." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Send failed";
+    console.error("[training-notification retake]", email, err);
+    return { ok: false, message };
+  }
+}
+
+export async function sendModuleCompletionEmail(
+  sql: Sql,
+  userEmail: string,
+  moduleId: string,
+): Promise<{ ok: boolean; message: string; emailSent: boolean }> {
+  const cfg = getGraphMailConfig();
+  if (!cfg.isConfigured) {
+    return { ok: false, message: "Mail not configured.", emailSent: false };
+  }
+
+  const email = userEmail.trim().toLowerCase();
+  if (await wasNotificationSent(sql, moduleId, email, "completed")) {
+    return { ok: true, message: "Completion email already sent.", emailSent: true };
+  }
+
+  const modules = await sql`
+    SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  if (modules.length === 0) {
+    return { ok: false, message: "Module not found.", emailSent: false };
+  }
+
+  const users = await sql`
+    SELECT display_name FROM users WHERE LOWER(email) = LOWER(${email}) LIMIT 1
+  `;
+  const displayName =
+    (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
+  const moduleTitle = modules[0].title as string;
+
+  const progressRows = await sql`
+    SELECT score_percent, mcq_correct, mcq_total
+    FROM assessment_progress
+    WHERE module_id = ${moduleId}
+      AND LOWER(user_email) = LOWER(${email})
+    LIMIT 1
+  `;
+  const progress = progressRows[0];
+  const resultSummary = buildCompletionResultSummary({
+    moduleTitle,
+    scorePercent:
+      progress?.score_percent != null ? Number(progress.score_percent) : null,
+    mcqCorrect:
+      progress?.mcq_correct != null ? Number(progress.mcq_correct) : null,
+    mcqTotal: progress?.mcq_total != null ? Number(progress.mcq_total) : null,
+  });
+
+  if (!resultSummary?.passed) {
+    return {
+      ok: true,
+      message: "Completion email skipped (passing score required).",
+      emailSent: false,
+    };
+  }
+
+  const scoreRingPng = await buildScoreRingPngBuffer(
+    resultSummary.scorePercent,
+    true,
+  );
+  const inlineAttachments = [
+    {
+      contentId: SCORE_RING_IMAGE_CID,
+      name: "score-ring.png",
+      contentBytes: scoreRingPng.toString("base64"),
+      contentType: "image/png",
+    },
+  ];
+  const resultSummaryHtml = completionResultSummaryHtml(resultSummary, {
+    scoreRingImageSrc: `cid:${SCORE_RING_IMAGE_CID}`,
+  });
+  const resultSummaryText = completionResultTextSummary(resultSummary);
 
   try {
     await sendGraphMail({
       to: email,
       subject: `Submitted: ${moduleTitle} — Relanto Compliance Training`,
-      htmlBody: completionHtml({ displayName, moduleTitle }),
+      htmlBody: completionHtml({
+        displayName,
+        moduleTitle,
+        resultSummaryHtml,
+      }),
+      textBody: completionTextBody({
+        displayName,
+        moduleTitle,
+        resultSummaryText,
+      }),
+      inlineAttachments,
     });
     await recordNotification(sql, moduleId, email, "completed");
-    return { ok: true, message: "Completion email sent." };
+    return { ok: true, message: "Completion email sent.", emailSent: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";
     console.error("[training-notification complete]", email, err);
-    return { ok: false, message };
+    return { ok: false, message, emailSent: false };
   }
 }

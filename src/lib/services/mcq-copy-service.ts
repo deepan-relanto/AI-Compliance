@@ -24,8 +24,8 @@ export async function copyMcqsFromModule(
   let copied = 0;
   for (const q of questions) {
     const oldQid = q.id as string;
-    const slideIndex = targetModuleId.startsWith("course-") ? 0 : Number(q.slide_index);
-    const newQid = `${targetModuleId}-gate-${slideIndex}-${copied}`;
+    const slideIndex = Number(q.slide_index);
+    const newQid = `${targetModuleId}-gate-${slideIndex}`;
 
     await sql`
       INSERT INTO mcq_questions (id, module_id, slide_index, prompt, correct_option_id, explanation)

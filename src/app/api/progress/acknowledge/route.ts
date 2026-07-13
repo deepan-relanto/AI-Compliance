@@ -1,3 +1,4 @@
+import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { saveAcknowledgementDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -15,9 +16,9 @@ export async function POST(req: NextRequest) {
       signatureName,
       digitalSignature,
     } = await req.json();
-    if (!userEmail || !moduleId || !moduleTitle) {
+    if (!moduleId || !moduleTitle) {
       return NextResponse.json(
-        { ok: false, message: "userEmail, moduleId, and moduleTitle are required." },
+        { ok: false, message: "moduleId and moduleTitle are required." },
         { status: 400 },
       );
     }
@@ -28,9 +29,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const access = await requireLearnerModuleAccess(moduleId, userEmail);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
     await saveAcknowledgementDb(sql, {
-      userEmail,
+      userEmail: access.email,
       moduleId,
       moduleTitle,
       feedbackRequired: Boolean(feedbackRequired),
