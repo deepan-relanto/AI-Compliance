@@ -28,7 +28,7 @@ function loadEnv() {
 loadEnv();
 neonConfig.webSocketConstructor = ws;
 
-const MODULE_ID = process.argv[2] || "course-ai-basics-1783507586349";
+const MODULE_ID = process.argv[2] || "course-ai-basics-1783575957097";
 const HTTP_SAFE = 40 * 1024 * 1024; // stay under Neon HTTP 64MB request limit after encoding
 
 const sql = neon(process.env.DATABASE_URL);
@@ -47,7 +47,7 @@ const MIME = {
 
 const steps = await sql`
   SELECT config->>'assetUrl' AS asset_url
-  FROM module_steps
+  FROM course_module_steps
   WHERE module_id = ${MODULE_ID}
     AND config->>'assetUrl' IS NOT NULL
 `;

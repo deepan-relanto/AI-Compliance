@@ -84,7 +84,7 @@ async function upsertAsset(filename, assetUrl, buffer, mimeType) {
 
 const steps = await sql`
   SELECT step_order, step_type, config
-  FROM module_steps
+  FROM course_module_steps
   WHERE module_id = ${MODULE_ID}
   ORDER BY step_order
 `;
@@ -130,13 +130,13 @@ const lessonConfig = {
 };
 
 await sql`
-  UPDATE module_steps
-  SET config = ${JSON.stringify(lessonConfig)}::jsonb
+  UPDATE course_module_steps
+  SET config = ${JSON.stringify(lessonConfig)}::jsonb, updated_at = NOW()
   WHERE module_id = ${MODULE_ID} AND step_type = 'pdf'
 `;
 
 await sql`
-  UPDATE training_modules
+  UPDATE course_modules
   SET slide_count = ${slideCount}, updated_at = NOW()
   WHERE id = ${MODULE_ID}
 `;

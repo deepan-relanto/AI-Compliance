@@ -41,10 +41,31 @@ body.embed .deck-shell > .deck,
 body.embed .deck {
   position: relative !important;
   flex-shrink: 0 !important;
+  width: min(100%, calc(100% * 16 / 9)) !important;
+  height: min(100%, calc(100% * 9 / 16)) !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   transform-origin: center center !important;
   overflow: hidden !important;
 }
-body.embed .slide { overflow: auto !important; box-sizing: border-box !important; }
+body.embed .slide {
+  overflow: auto !important;
+  box-sizing: border-box !important;
+  padding: 18px 24px 36px !important;
+}
+body.embed .flow { margin-top: 10px !important; gap: 6px !important; }
+body.embed .flow-step { min-height: 0 !important; padding: 8px 10px !important; font-size: 13px !important; }
+body.embed .content { margin-top: 8px !important; }
+body.embed .grid { gap: 8px !important; }
+body.embed .card { padding: 8px 10px !important; }
+body.embed .card h3, body.embed .card strong { font-size: 14px !important; }
+body.embed .card p, body.embed .card li { font-size: 12px !important; line-height: 1.35 !important; }
+body.embed .journey { margin-top: 10px !important; gap: 6px !important; }
+body.embed .journey-step { min-height: 0 !important; padding: 8px !important; }
+body.embed h1 { font-size: clamp(16px, 2.4vw, 26px) !important; margin-bottom: 8px !important; }
+body.embed .kicker { margin-bottom: 4px !important; }
+body.embed .footer { left: 24px !important; right: 24px !important; bottom: 10px !important; font-size: 11px !important; }
 `;
 
 const EMBED_FIT_SCRIPT = `(function(){
@@ -55,17 +76,33 @@ const EMBED_FIT_SCRIPT = `(function(){
     var deck=shell&&(shell.querySelector(".deck")||document.querySelector(".deck"));
     if(!shell||!deck)return;
     deck.style.transform="none";
+    deck.querySelectorAll(".slide").forEach(function(s){
+      s.style.zoom="";
+      s.style.transform="";
+    });
     var sw=shell.clientWidth,sh=shell.clientHeight;
     if(sw<1||sh<1)return;
     var dw=deck.offsetWidth,dh=deck.offsetHeight;
     if(dw<1||dh<1)return;
     var scale=Math.min(sw/dw,sh/dh,1);
+    var active=deck.querySelector(".slide.active");
+    if(active){
+      var ch=active.clientHeight;
+      var contentH=active.scrollHeight;
+      if(ch>0&&contentH>ch+2){
+        var z=Math.max(0.55, ch/contentH);
+        active.style.zoom=String(z);
+        if(active.scrollHeight>active.clientHeight+2){
+          active.style.overflow="auto";
+        }
+      }
+    }
     deck.style.transform="scale("+scale+")";
     deck.style.transformOrigin="center center";
   }
   window.relantoFitEmbedDeck=fitEmbedDeck;
   window.addEventListener("resize",fitEmbedDeck);
-  function schedule(){setTimeout(fitEmbedDeck,0);setTimeout(fitEmbedDeck,150);}
+  function schedule(){setTimeout(fitEmbedDeck,0);setTimeout(fitEmbedDeck,150);setTimeout(fitEmbedDeck,400);}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",schedule);
   else schedule();
   try{
@@ -81,12 +118,13 @@ function injectEmbedSizeFix(iframe: HTMLIFrameElement | null) {
   try {
     const doc = iframe.contentDocument;
     if (!doc?.head) return;
-    if (!doc.getElementById("relanto-embed-size-fix")) {
-      const style = doc.createElement("style");
+    let style = doc.getElementById("relanto-embed-size-fix");
+    if (!style) {
+      style = doc.createElement("style");
       style.id = "relanto-embed-size-fix";
-      style.textContent = EMBED_SIZE_FIX_CSS;
       doc.head.appendChild(style);
     }
+    style.textContent = EMBED_SIZE_FIX_CSS;
     if (!doc.getElementById("relanto-embed-fit")) {
       const script = doc.createElement("script");
       script.id = "relanto-embed-fit";
@@ -308,14 +346,26 @@ function CourseVideoPlayer({
             src={url}
             controls
             controlsList="nodownload"
-            preload="auto"
+            preload="metadata"
             playsInline
             className="absolute inset-0 h-full w-full object-contain"
-            onError={() =>
-              setVideoError(
-                "This video could not be loaded. It may be missing from storage or use an unsupported format.",
-              )
-            }
+            onError={(e) => {
+              const el = e.currentTarget;
+              const mediaCode = el.error?.code;
+              const mediaMsg = el.error?.message;
+              void fetch(url, { method: "HEAD" })
+                .then(async (res) => {
+                  const ct = res.headers.get("content-type") ?? "unknown";
+                  setVideoError(
+                    `Video failed to load (HTTP ${res.status}, ${ct}${mediaCode != null ? `, media error ${mediaCode}` : ""}${mediaMsg ? `: ${mediaMsg}` : ""}).`,
+                  );
+                })
+                .catch(() => {
+                  setVideoError(
+                    `This video could not be loaded${mediaCode != null ? ` (media error ${mediaCode})` : ""}. It may be missing from storage or use an unsupported format.`,
+                  );
+                });
+            }}
           >
             Your browser does not support video playback.
           </video>

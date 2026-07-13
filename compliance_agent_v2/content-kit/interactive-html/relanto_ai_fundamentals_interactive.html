@@ -51,28 +51,31 @@
     body.embed .deck {
       flex-shrink: 0;
       transform-origin: center center;
-      width: min(100% - 40px, calc((100% - 40px) * 16 / 9));
-      height: min(calc(100% - 40px), calc((100% - 40px) * 9 / 16));
+      width: min(100%, calc(100% * 16 / 9));
+      height: min(100%, calc(100% * 9 / 16));
       max-width: none;
       border-radius: 0;
       box-shadow: none;
     }
 
     body.embed .slide {
-      padding: 28px 36px 32px;
+      padding: 18px 24px 36px;
       overflow: auto;
       box-sizing: border-box;
     }
 
-    body.embed .journey {
-      margin-top: 16px;
-      gap: 10px;
-    }
-
-    body.embed .journey-step {
-      min-height: 0;
-      padding: 12px;
-    }
+    body.embed .flow { margin-top: 10px; gap: 6px; }
+    body.embed .flow-step { min-height: 0; padding: 8px 10px; font-size: 13px; }
+    body.embed .content { margin-top: 8px; }
+    body.embed .grid { gap: 8px; }
+    body.embed .card { padding: 8px 10px; }
+    body.embed .card h3, body.embed .card strong { font-size: 14px; }
+    body.embed .card p, body.embed .card li { font-size: 12px; line-height: 1.35; }
+    body.embed .journey { margin-top: 10px; gap: 6px; }
+    body.embed .journey-step { min-height: 0; padding: 8px; }
+    body.embed h1 { font-size: clamp(16px, 2.4vw, 26px); margin-bottom: 8px; }
+    body.embed .kicker { margin-bottom: 4px; }
+    body.embed .footer { left: 24px; right: 24px; bottom: 10px; font-size: 11px; }
 
     body.embed .nav,
     body.embed .help,
@@ -1129,13 +1132,29 @@
       const deck = shell?.querySelector(".deck");
       if (!shell || !deck) return;
       deck.style.transform = "none";
+      slides.forEach((s) => {
+        s.style.zoom = "";
+        s.style.transform = "";
+      });
       const sw = shell.clientWidth;
       const sh = shell.clientHeight;
       if (sw < 1 || sh < 1) return;
       const dw = deck.offsetWidth;
       const dh = deck.offsetHeight;
       if (dw < 1 || dh < 1) return;
-      const scale = Math.min(sw / dw, sh / dh, 1);
+      let scale = Math.min(sw / dw, sh / dh, 1);
+      const active = deck.querySelector(".slide.active");
+      if (active) {
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) {
+            active.style.overflow = "auto";
+          }
+        }
+      }
       deck.style.transform = `scale(${scale})`;
       deck.style.transformOrigin = "center center";
     }
