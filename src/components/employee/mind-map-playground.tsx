@@ -56,7 +56,7 @@ function BranchSection({
     <div
       className={cn(
         "rounded-lg border border-zinc-700/80 bg-zinc-900/60",
-        depth > 0 && "ml-4 border-l-2 border-l-violet-500/40",
+        depth > 0 && "ml-4 border-l-2 border-l-[#2e3192]/30",
       )}
     >
       <button
@@ -70,9 +70,9 @@ function BranchSection({
       >
         {hasChildren ? (
           open ? (
-            <ChevronDown className="h-4 w-4 shrink-0 text-violet-400" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[#2e3192]" />
           ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-violet-400" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-[#2e3192]" />
           )
         ) : (
           <span className="h-4 w-4 shrink-0" />
@@ -209,9 +209,9 @@ export function MindMapPlayground({
           }}
         >
           <div className="mb-5 flex flex-col items-center gap-2 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-950/40 px-4 py-1.5">
-              <Maximize2 className="h-3.5 w-3.5 text-violet-400" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#2e3192]/30 bg-[#2e3192]/15 px-4 py-1.5">
+              <Maximize2 className="h-3.5 w-3.5 text-[#f15a24]" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f15a24]">
                 Interactive mind map
               </span>
             </div>

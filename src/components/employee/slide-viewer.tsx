@@ -18,7 +18,7 @@ import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { ProctorRulesModal } from "@/components/employee/proctor-rules-modal";
-import { ChevronLeft, ChevronRight, Clock, Maximize2, Minimize2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Maximize2, Minimize2, ShieldCheck } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -56,6 +56,10 @@ import {
 } from "@/lib/review-api";
 import { useProctorMonitor, toProctorViolationReason } from "@/hooks/use-proctor-monitor";
 import { ProctorWarningModal } from "@/components/employee/proctor-warning-modal";
+import {
+  ASSESSMENT_LOCKOUT_LABELS,
+  IntegrityLockoutPanel,
+} from "@/components/employee/integrity-lockout-panel";
 
 // Isolated client-only PDF renderer — dynamically imported so pdfjs-dist is
 // never bundled into the SSR pass (fixes "Object.defineProperty called on
@@ -1042,14 +1046,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     setMcqOpen(false);
   }, [isFailed]);
 
-  const renderIntegrityLockout = useCallback(() => {
-    const retakesRemaining = Math.max(0, 2 - retakeCount);
-    const isPendingReview = reviewRequest?.status === "Pending";
-    const isRejectedReview = reviewRequest?.status === "Rejected";
-    const isPermanentlyFailed =
-      dbStatus === "permanently_failed" || retakeCount >= 2;
-
-    const handleSubmitReview = async (e: React.FormEvent) => {
+  const handleSubmitIntegrityReview = useCallback(
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (!explanation.trim()) {
         setReviewError("Please provide an explanation.");
@@ -1078,187 +1076,49 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       } finally {
         setReviewSubmitting(false);
       }
-    };
+    },
+    [
+      explanation,
+      liveWarningCount,
+      module.id,
+      module.title,
+      user?.username,
+    ],
+  );
 
-    return (
-      <div className="training-form-zone pointer-events-auto w-full max-w-md overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)] animate-in fade-in zoom-in-95 duration-300">
-        <BrandPanelHeader
-          eyebrow="Integrity lockout"
-          title={isPermanentlyFailed ? "Assessment Permanently Failed" : "Assessment Failed"}
-          description={
-            isPermanentlyFailed
-              ? "Maximum retake limit reached. This assessment can no longer be retaken."
-              : liveWarningCount >= 3
-                ? "Maximum warning limit reached."
-                : "This attempt was ended before completion."
-          }
-          icon={ShieldAlert}
-          compact
-        />
+  const isPendingIntegrityReview = reviewRequest?.status === "Pending";
+  const isRejectedIntegrityReview = reviewRequest?.status === "Rejected";
+  const isPermanentlyIntegrityFailed =
+    dbStatus === "permanently_failed" || retakeCount >= 2;
 
-        <div className="space-y-4 p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-center gap-2 text-center">
-            {liveWarningCount > 0 && (
-              <span className="inline-flex items-center rounded-md border border-[#f15a24]/25 bg-[#fff7f3] px-2.5 py-1 text-xs font-semibold text-[#f15a24]">
-                Warnings: {Math.min(liveWarningCount, 3)} / 3
-              </span>
-            )}
-            {!isPermanentlyFailed && !isPendingReview && (
-              <span className="inline-flex items-center rounded-md border border-[#2e3192]/15 bg-[#2e3192]/5 px-2.5 py-1 text-xs font-medium text-[#2e3192]">
-                Retakes remaining: {retakesRemaining}
-              </span>
-            )}
-          </div>
-
-          {liveWarningHistory.length > 0 && (
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 px-3 py-3 text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-                Warning history
-              </p>
-              <div className="mt-2 max-h-24 space-y-1.5 overflow-y-auto pr-1">
-                {liveWarningHistory.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between gap-3 border-b border-zinc-100 pb-1 text-[10px] last:border-0"
-                  >
-                    <span className="font-sans text-xs text-zinc-700">{item.reason}</span>
-                    <span className="shrink-0 font-mono tabular-nums text-zinc-500">
-                      {new Date(item.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isPermanentlyFailed && (
-            <div className="rounded-lg border border-[#2e3192]/20 bg-gradient-to-br from-[#2e3192]/8 via-[#2e3192]/5 to-[#f15a24]/8 p-3 text-left">
-              <p className="text-xs font-semibold text-[#2e3192]">Maximum retake limit reached</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
-                You have used all allowed retakes. Please contact your compliance administrator.
-              </p>
-            </div>
-          )}
-
-          {isPendingReview && !isPermanentlyFailed && (
-            <div className="rounded-lg border border-[#2e3192]/20 bg-[#2e3192]/5 p-3 text-left">
-              <p className="text-xs font-semibold text-[#2e3192]">
-                A review request is already under review
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
-                You have already submitted a review request. The compliance administrator will
-                review it.
-              </p>
-            </div>
-          )}
-
-          {isRejectedReview && !isPendingReview && !isPermanentlyFailed && (
-            <div className="rounded-lg border border-[#f15a24]/25 bg-[#fff7f3] p-3 text-left">
-              <p className="text-xs font-semibold text-[#f15a24]">Review request rejected</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-700">
-                Admin comment: &ldquo;{reviewRequest?.adminComment || "No comments provided."}&rdquo;
-              </p>
-              <p className="mt-1 text-[10px] text-zinc-500">
-                You may submit another explanation if you have remaining retakes.
-              </p>
-            </div>
-          )}
-
-          {!isPermanentlyFailed && !isPendingReview && (
-            <div className="space-y-3 pt-0.5">
-              {!showReviewForm ? (
-                <Button
-                  type="button"
-                  variant="accent"
-                  className="w-full cursor-pointer text-xs font-semibold"
-                  onClick={() => {
-                    setReviewError("");
-                    setShowReviewForm(true);
-                  }}
-                >
-                  Request Review
-                </Button>
-              ) : (
-                <form onSubmit={handleSubmitReview} className="space-y-3 text-left">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-zinc-700">
-                      Reason for failure
-                    </label>
-                    <textarea
-                      rows={3}
-                      className="training-form-input w-full cursor-text select-text rounded-md border border-zinc-200 p-2 text-xs text-zinc-900 focus:outline-none focus:ring-1 focus:ring-[#2e3192]"
-                      placeholder="Please explain why the assessment integrity rules were violated. Provide any relevant context or explanation."
-                      value={explanation}
-                      onChange={(e) => setExplanation(e.target.value)}
-                      disabled={reviewSubmitting}
-                    />
-                  </div>
-                  {reviewError && (
-                    <p className="text-xs font-medium text-[#f15a24]">{reviewError}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs"
-                      onClick={() => {
-                        setShowReviewForm(false);
-                        setExplanation("");
-                        setReviewError("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="accent"
-                      size="sm"
-                      className="flex-1 cursor-pointer text-xs"
-                      disabled={reviewSubmitting}
-                    >
-                      {reviewSubmitting ? "Submitting…" : "Submit Request"}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
-
-          {!sessionStarted && (
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full text-xs"
-              onClick={() => {
-                window.location.href = "/dashboard";
-              }}
-            >
-              Back to dashboard
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }, [
-    dbStatus,
-    explanation,
-    liveWarningCount,
-    liveWarningHistory,
-    module.id,
-    module.title,
-    retakeCount,
-    reviewError,
-    reviewRequest,
-    reviewSubmitting,
-    sessionStarted,
-    showReviewForm,
-    user?.username,
-  ]);
+  const integrityLockoutPanel = (
+    <IntegrityLockoutPanel
+      liveWarningCount={liveWarningCount}
+      liveWarningHistory={liveWarningHistory}
+      retakeCount={retakeCount}
+      reviewRequest={reviewRequest}
+      showReviewForm={showReviewForm}
+      explanation={explanation}
+      reviewError={reviewError}
+      reviewSubmitting={reviewSubmitting}
+      isPermanentlyFailed={isPermanentlyIntegrityFailed}
+      isPendingReview={isPendingIntegrityReview}
+      isRejectedReview={isRejectedIntegrityReview}
+      sessionStarted={sessionStarted}
+      labels={ASSESSMENT_LOCKOUT_LABELS}
+      onShowReviewForm={() => {
+        setReviewError("");
+        setShowReviewForm(true);
+      }}
+      onExplanationChange={setExplanation}
+      onCancelReview={() => {
+        setShowReviewForm(false);
+        setExplanation("");
+        setReviewError("");
+      }}
+      onSubmitReview={handleSubmitIntegrityReview}
+    />
+  );
 
   const checkpointProps = {
     moduleId: module.id,
@@ -1286,7 +1146,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     if (isFailed && dbStatus !== "not_started") {
       return (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
-          {renderIntegrityLockout()}
+          {integrityLockoutPanel}
         </div>
       );
     }
@@ -1751,7 +1611,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
         typeof document !== "undefined" &&
         createPortal(
           <div className="pointer-events-auto fixed inset-0 z-[310] flex items-center justify-center bg-zinc-900/80 backdrop-blur-sm p-4">
-            {renderIntegrityLockout()}
+            {integrityLockoutPanel}
           </div>,
           document.body,
         )}
