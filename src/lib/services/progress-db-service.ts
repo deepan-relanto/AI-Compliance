@@ -6,6 +6,7 @@ import {
   countMcqAnswers,
   resolveDisplayScorePercent,
 } from "@/lib/progress-score";
+import { validateMcqSelection } from "@/lib/mcq-multi-select";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -360,7 +361,8 @@ export async function validateAndRecordMcqAnswerDb(
     batchId: string;
     totalSlides: number;
     questionId: string;
-    optionId: string;
+    optionId?: string;
+    optionIds?: string[];
     assignedMcqCount?: number;
   },
 ): Promise<{
@@ -400,7 +402,13 @@ export async function validateAndRecordMcqAnswerDb(
   const correctOptionId = String(rows[0].correct_option_id ?? "")
     .trim()
     .toLowerCase();
-  const correct = params.optionId.trim().toLowerCase() === correctOptionId;
+  const picked =
+    params.optionIds && params.optionIds.length > 0
+      ? params.optionIds
+      : params.optionId
+        ? [params.optionId]
+        : [];
+  const correct = validateMcqSelection(picked, correctOptionId);
   let progressStatus = rows[0].progress_status as string | null;
 
   if (!progressStatus) {

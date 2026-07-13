@@ -1,4 +1,9 @@
-import { getCourseAssetBuffer, readCourseAssetRange } from "@/lib/services/course-asset-service";
+import {
+  getCourseAssetBuffer,
+  getCourseAssetMeta,
+  readCourseAssetRange,
+} from "@/lib/services/course-asset-service";
+import { patchHtmlCourseAsset } from "@/lib/html-embed-patch";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +23,24 @@ function parseRange(rangeHeader: string | null, size: number): { start: number; 
   return { start, end };
 }
 
+function assetHeaders(mimeType: string, length: number, extra?: Record<string, string>) {
+  return {
+    "Content-Type": mimeType,
+    "Content-Length": String(length),
+    "Accept-Ranges": "bytes",
+    "Cache-Control": "public, max-age=3600",
+    ...extra,
+  };
+}
+
+function maybePatchBuffer(buffer: Buffer, filename: string, mimeType: string): Buffer {
+  const isHtml =
+    filename.toLowerCase().endsWith(".html") ||
+    filename.toLowerCase().endsWith(".htm") ||
+    mimeType.includes("html");
+  return isHtml ? patchHtmlCourseAsset(buffer) : buffer;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ filename: string }> },
@@ -30,11 +53,10 @@ export async function GET(
   const assetUrl = `/course-assets/${filename}`;
 
   try {
+    const meta = await getCourseAssetMeta(assetUrl);
     const rangeHeader = req.headers.get("range");
 
     if (rangeHeader) {
-      const { getCourseAssetMeta } = await import("@/lib/services/course-asset-service");
-      const meta = await getCourseAssetMeta(assetUrl);
       const range = parseRange(rangeHeader, meta.size);
       if (!range) {
         return new NextResponse(null, { status: 416 });
@@ -44,27 +66,20 @@ export async function GET(
         range.start,
         range.end,
       );
-      return new NextResponse(new Uint8Array(buffer), {
+      const body = maybePatchBuffer(buffer, filename, mimeType);
+      return new NextResponse(new Uint8Array(body), {
         status: 206,
-        headers: {
-          "Content-Type": mimeType,
-          "Content-Length": String(buffer.length),
+        headers: assetHeaders(mimeType, body.length, {
           "Content-Range": `bytes ${range.start}-${range.end}/${size}`,
-          "Accept-Ranges": "bytes",
-          "Cache-Control": "private, max-age=3600",
-        },
+        }),
       });
     }
 
     const { buffer, mimeType } = await getCourseAssetBuffer(assetUrl);
-    return new NextResponse(new Uint8Array(buffer), {
+    const body = maybePatchBuffer(buffer, filename, mimeType);
+    return new NextResponse(new Uint8Array(body), {
       status: 200,
-      headers: {
-        "Content-Type": mimeType,
-        "Content-Length": String(buffer.length),
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "private, max-age=3600",
-      },
+      headers: assetHeaders(mimeType, body.length),
     });
   } catch {
     return NextResponse.json({ ok: false, message: "Asset not found." }, { status: 404 });

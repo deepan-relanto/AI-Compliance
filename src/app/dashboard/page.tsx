@@ -3,22 +3,33 @@
 import { RouteGuard } from "@/components/auth/route-guard";
 import { ModuleCard } from "@/components/employee/module-card";
 import { EmployeeShell } from "@/components/layout/employee-shell";
+import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/ui/page-section";
 import { StatCard } from "@/components/ui/stat-card";
 import { useAuthStore } from "@/lib/auth-store";
 import type { ServerProgressEntry } from "@/lib/progress-api";
-import { getProgressForUser, mergeServerProgress } from "@/lib/progress-store";
+import { fetchLearnerDashboard } from "@/lib/progress-api";
+import {
+  getProgressForUser,
+  mergeServerProgress,
+  clearStaleLocalProgress,
+  clearAllLocalProgressForUser,
+} from "@/lib/progress-store";
+import { emailsMatch } from "@/lib/training-link";
 import type { ModuleStatus, TrainingModule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
+  AlertTriangle,
   BookOpen,
   CheckCircle2,
   Clock3,
   GraduationCap,
   Loader2,
+  RefreshCw,
   Shield,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type AssessmentFilter = "all" | "completed" | "not_started";
 
@@ -31,94 +42,145 @@ function resolveStatus(
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+  const { data: session, status: sessionStatus, update: updateSession } =
+    useSession();
   const [modules, setModules] = useState<TrainingModule[]>([]);
   const [statusByModule, setStatusByModule] = useState<Record<string, ModuleStatus>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [completedCount, setCompletedCount] = useState(0);
   const [inProgressCount, setInProgressCount] = useState(0);
   const [filter, setFilter] = useState<AssessmentFilter>("all");
+  const sessionRefreshedRef = useRef(false);
+
+  const sessionEmail = session?.user?.email ?? null;
+
+  const authReady =
+    sessionStatus === "authenticated" &&
+    isHydrated &&
+    !!sessionEmail &&
+    !!user?.username &&
+    emailsMatch(sessionEmail, user.username);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || sessionRefreshedRef.current) return;
+    sessionRefreshedRef.current = true;
+    void updateSession();
+  }, [sessionStatus, updateSession]);
 
   const loadModules = useCallback(async () => {
-    if (!user?.batchId) {
-      setModules([]);
-      setStatusByModule({});
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const qs = new URLSearchParams({ batchId: user.batchId });
-      if (user.username) qs.set("userEmail", user.username);
-      const data = await fetch(`/api/learner/dashboard?${qs}`).then((r) => r.json());
-      const serverEntries = Array.isArray(data.progress) ? data.progress : [];
+    if (!authReady || !user?.username) return;
 
-      if (data.ok && Array.isArray(data.modules)) {
-        setModules(data.modules);
-        if (user.username) {
-          if (serverEntries.length > 0) {
-            mergeServerProgress(
-              user.username,
-              (serverEntries as ServerProgressEntry[]).map((e) => ({
-                moduleId: e.moduleId,
-                moduleTitle: e.moduleTitle,
-                batchId: e.batchId,
-                currentSlide: e.currentSlide,
-                totalSlides: e.totalSlides,
-                status: e.status,
-                retakeCount: e.retakeCount,
-                mcqCorrect: e.mcqCorrect,
-                mcqTotal: e.mcqTotal,
-                scorePercent: e.scorePercent,
-                warningCount: e.warningCount,
-                failedReason: e.failedReason,
-                completedAt: e.completedAt,
-              })),
-            );
-          }
-          const progressEntries = getProgressForUser(user.username);
-          const progressMap = Object.fromEntries(
-            progressEntries.map((p) => [p.moduleId, p.status]),
-          );
-          const statusMap: Record<string, ModuleStatus> = {};
-          let completed = 0;
-          let inProgress = 0;
-          for (const m of data.modules) {
-            const entry = progressEntries.find((p) => p.moduleId === m.id);
-            const s = progressMap[m.id] ?? m.status ?? "not_started";
-            const attempted =
-              s === "in_progress" ||
-              s === "failed" ||
-              (entry?.scorePercent != null && s !== "permanently_failed");
-            statusMap[m.id] =
-              s === "failed" && entry?.scorePercent != null ? "in_progress" : s;
-            if (s === "completed") completed++;
-            else if (attempted) inProgress++;
-          }
-          setStatusByModule(statusMap);
-          setCompletedCount(completed);
-          setInProgressCount(inProgress);
-        } else {
-          setStatusByModule({});
-        }
-      } else {
-        setModules([]);
-        setStatusByModule({});
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const result = await fetchLearnerDashboard();
+
+      if (!result.ok) {
+        setLoadError(result.error);
+        return;
       }
+
+      const { profile } = result;
+      if (
+        user?.username !== profile.email ||
+        user?.batchId !== profile.batchId ||
+        user?.displayName !== profile.displayName ||
+        user?.role !== profile.role
+      ) {
+        setUser({
+          username: profile.email,
+          role: profile.role,
+          batchId: profile.batchId,
+          displayName: profile.displayName,
+        });
+      }
+
+      const username = profile.email;
+      const serverEntries = result.progress;
+      setModules(result.modules);
+
+      if (serverEntries.length > 0) {
+        mergeServerProgress(
+          username,
+          serverEntries.map((e: ServerProgressEntry) => ({
+            moduleId: e.moduleId,
+            moduleTitle: e.moduleTitle,
+            batchId: e.batchId,
+            currentSlide: e.currentSlide,
+            totalSlides: e.totalSlides,
+            status: e.status,
+            retakeCount: e.retakeCount,
+            mcqCorrect: e.mcqCorrect,
+            mcqTotal: e.mcqTotal,
+            scorePercent: e.scorePercent,
+            failedReason: e.failedReason,
+            completedAt: e.completedAt,
+            warningCount: e.warningCount,
+          })),
+        );
+        clearStaleLocalProgress(username, {
+          serverModuleIds: serverEntries.map((e) => e.moduleId),
+          assignedModuleIds: result.modules.map((m) => m.id),
+        });
+      } else if (result.modules.length === 0) {
+        clearAllLocalProgressForUser(username);
+      }
+
+      const progressEntries = getProgressForUser(username);
+      const progressMap = Object.fromEntries(
+        progressEntries.map((p) => [p.moduleId, p.status]),
+      );
+      const statusMap: Record<string, ModuleStatus> = {};
+      let completed = 0;
+      let inProgress = 0;
+      for (const m of result.modules) {
+        const entry = progressEntries.find((p) => p.moduleId === m.id);
+        const s = progressMap[m.id] ?? m.status ?? "not_started";
+        const attempted =
+          s === "in_progress" ||
+          s === "failed" ||
+          (entry?.scorePercent != null && s !== "permanently_failed");
+        statusMap[m.id] =
+          s === "failed" && entry?.scorePercent != null ? "in_progress" : s;
+        if (s === "completed") completed++;
+        else if (attempted) inProgress++;
+      }
+      setStatusByModule(statusMap);
+      setCompletedCount(completed);
+      setInProgressCount(inProgress);
     } catch {
-      setModules([]);
-      setStatusByModule({});
+      setLoadError("Something went wrong while loading your training.");
     } finally {
       setLoading(false);
     }
-  }, [user?.batchId, user?.username]);
+  }, [authReady, user, setUser]);
 
   useEffect(() => {
-    loadModules();
-  }, [loadModules]);
+    if (!authReady) {
+      setLoading(true);
+      return;
+    }
+    void loadModules();
+  }, [authReady, loadModules, sessionEmail]);
 
+  useEffect(() => {
+    if (!authReady) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void updateSession().then(() => loadModules());
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [authReady, loadModules, updateSession]);
+
+  const batchId = user?.batchId ?? "";
   const totalMinutes = modules.reduce((acc, m) => acc + m.durationMinutes, 0);
-  const batchLabel = user?.batchId
-    ? user.batchId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  const batchLabel = batchId
+    ? batchId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : "—";
   const completionPct =
     modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
@@ -131,7 +193,6 @@ export default function DashboardPage() {
     [modules, statusByModule],
   );
 
-  /** Outstanding mandatory work — drops to 0 when everything is completed. */
   const assignedCount = useMemo(
     () =>
       modules.filter(
@@ -161,7 +222,7 @@ export default function DashboardPage() {
     <RouteGuard allowedRoles={["user"]}>
       <EmployeeShell
         title="My training"
-        subtitle="Complete mandatory assessments assigned to your batch. Each module includes proctored slides and checkpoint questions."
+        subtitle="Complete mandatory assessments and courses assigned to your batch. Progress is saved automatically."
       >
         <div className="surface-card mb-8 overflow-hidden p-2 sm:p-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch">
@@ -178,10 +239,10 @@ export default function DashboardPage() {
                 </h2>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-600">
                   {inProgressCount > 0
-                    ? `You have ${inProgressCount} assessment${inProgressCount === 1 ? "" : "s"} in progress. Pick up where you left off.`
+                    ? `You have ${inProgressCount} module${inProgressCount === 1 ? "" : "s"} in progress. Pick up where you left off.`
                     : completedCount === modules.length && modules.length > 0
                       ? "You have completed all assigned training for your batch."
-                      : "Complete your mandatory assessments to stay compliant."}
+                      : "Complete your mandatory training to stay compliant."}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2e3192]/15 bg-white/90 px-3 py-1 text-xs font-semibold text-[#2e3192]">
@@ -209,7 +270,7 @@ export default function DashboardPage() {
                 />
               </div>
               <p className="mt-2.5 text-xs text-zinc-500">
-                {completedCount} of {modules.length} assessment
+                {completedCount} of {modules.length} module
                 {modules.length === 1 ? "" : "s"} completed
               </p>
               <div className="mt-4 flex items-center gap-2 border-t border-zinc-200/80 pt-4 text-xs text-zinc-500">
@@ -253,11 +314,11 @@ export default function DashboardPage() {
           title="Your training"
           description={
             modules.length > 0
-              ? "Mandatory compliance and courses assigned to your batch. Progress is saved automatically."
+              ? "Select a module to start or resume. Progress is saved automatically."
               : undefined
           }
           action={
-            !loading && modules.length > 0 ? (
+            !loading && !loadError && modules.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {filterPills.map((pill) => (
                   <button
@@ -291,7 +352,26 @@ export default function DashboardPage() {
           {loading ? (
             <div className="empty-state py-16">
               <Loader2 className="h-6 w-6 animate-spin text-[#2e3192]" />
-              <p className="mt-3 text-sm text-zinc-500">Loading assessments…</p>
+              <p className="mt-3 text-sm text-zinc-500">Loading training…</p>
+            </div>
+          ) : loadError ? (
+            <div className="empty-state py-16">
+              <div className="icon-tile h-12 w-12">
+                <AlertTriangle className="h-6 w-6 text-[#f15a24]" strokeWidth={1.5} />
+              </div>
+              <p className="mt-4 text-sm font-medium text-zinc-800">
+                Could not load your training
+              </p>
+              <p className="mt-1.5 max-w-sm text-sm text-zinc-500">{loadError}</p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-4"
+                onClick={() => void loadModules()}
+              >
+                <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Try again
+              </Button>
             </div>
           ) : modules.length === 0 ? (
             <div className="empty-state">
@@ -299,7 +379,7 @@ export default function DashboardPage() {
                 <BookOpen className="h-6 w-6 text-zinc-400" strokeWidth={1.5} />
               </div>
               <p className="mt-4 text-sm font-medium text-zinc-800">
-                No assessments assigned yet
+                No training assigned yet
               </p>
               <p className="mt-1.5 max-w-sm text-sm text-zinc-500">
                 Your administrator will publish training for your batch. Check back
@@ -309,14 +389,14 @@ export default function DashboardPage() {
           ) : filteredModules.length === 0 ? (
             <div className="empty-state py-12">
               <p className="text-sm font-medium text-zinc-700">
-                No assessments match this filter
+                No modules match this filter
               </p>
               <button
                 type="button"
                 onClick={() => setFilter("all")}
                 className="mt-3 text-sm font-medium text-[#2e3192] hover:underline"
               >
-                Show all assessments
+                Show all modules
               </button>
             </div>
           ) : (

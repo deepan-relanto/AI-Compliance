@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "db:migrate:course": "node scripts/db-migrate-course.mjs",
+    "db:migrate:course-data": "node scripts/db-migrate-course-data.mjs",
     "db:migrate:alter": "node scripts/db-migrate-alter.mjs",
     "db:seed": "node scripts/db-seed.mjs",
     "db:seed:relanto": "node scripts/db-seed-relanto-users.mjs",

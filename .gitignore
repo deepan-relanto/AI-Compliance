@@ -32,6 +32,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# migration backups (may contain production data)
+scripts/migration-backups/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -9,6 +9,11 @@ import {
 } from "@/lib/progress-store";
 import { syncAbandonmentFailure, syncAbandonmentFailureBeacon, syncProctorWarning } from "@/lib/progress-api";
 import {
+  syncCourseAbandonmentFailure,
+  syncCourseAbandonmentFailureBeacon,
+  syncCourseProctorWarning,
+} from "@/lib/course-progress-api";
+import {
   isProctorViolationReason,
   type ProctorViolationReason,
 } from "@/lib/proctor/violations";
@@ -35,6 +40,7 @@ interface UseProctorMonitorOptions {
   totalSlides: number;
   reviewOnlyMode: boolean;
   blockEscape?: boolean;
+  courseMode?: boolean;
   onLockout: () => void;
   onStatusChange?: (status: ModuleStatus) => void;
 }
@@ -49,6 +55,7 @@ export function useProctorMonitor({
   totalSlides,
   reviewOnlyMode,
   blockEscape = false,
+  courseMode = false,
   onLockout,
   onStatusChange,
 }: UseProctorMonitorOptions) {
@@ -99,9 +106,10 @@ export function useProctorMonitor({
 
       const payload = { userEmail: user, moduleId, reason };
       if (options?.beacon) {
-        syncAbandonmentFailureBeacon(payload);
+        if (courseMode) syncCourseAbandonmentFailureBeacon(payload);
+        else syncAbandonmentFailureBeacon(payload);
       } else {
-        void syncAbandonmentFailure(payload);
+        void (courseMode ? syncCourseAbandonmentFailure(payload) : syncAbandonmentFailure(payload));
       }
 
       if (isProctorLocked(updated)) {
@@ -110,7 +118,7 @@ export function useProctorMonitor({
 
       return updated;
     },
-    [moduleId, onLockout, onStatusChange],
+    [courseMode, moduleId, onLockout, onStatusChange],
   );
 
   const syncWarningState = useCallback(
@@ -122,7 +130,8 @@ export function useProctorMonitor({
       onStatusChange?.(updated.status);
 
       if (usernameRef.current) {
-        void syncProctorWarning({
+        const syncWarning = courseMode ? syncCourseProctorWarning : syncProctorWarning;
+        void syncWarning({
           userEmail: usernameRef.current,
           moduleId,
           warningCount: updated.warningCount,

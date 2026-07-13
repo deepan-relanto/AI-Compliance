@@ -1,31 +1,14 @@
 import { requireSessionEmail } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { firstNameFromEmail } from "@/lib/auth-env";
-import { clientPdfUrl } from "@/lib/pdf-url";
-import { listProgressForUser } from "@/lib/services/progress-db-service";
+import { mapTrainingModuleRow } from "@/lib/map-training-module";
+import { listProgressForUser as listCourseProgressForUser } from "@/lib/services/course-progress-db-service";
+import { listProgressForUser as listComplianceProgressForUser } from "@/lib/services/progress-db-service";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-function mapModule(row: Record<string, unknown>, batchIds: string[]) {
-  return {
-    id: row.id as string,
-    title: row.title as string,
-    description: row.description as string,
-    slideCount: row.slide_count as number,
-    durationMinutes: row.duration_minutes as number,
-    status: "not_started" as const,
-    batchIds,
-    pdfUrl: clientPdfUrl(row.pdf_url as string),
-    contentType: (row.content_type as "text" | "pdf") || "text",
-    createdAt: row.created_at
-      ? new Date(row.created_at as string).getTime()
-      : undefined,
-    feedbackRequired: Boolean(row.feedback_required),
-  };
-}
-
-/** GET — modules + progress for the signed-in learner (batch resolved server-side). */
+/** GET — compliance + course modules and progress for the signed-in learner. */
 export async function GET() {
   try {
     const access = await requireSessionEmail(null);
@@ -55,11 +38,14 @@ export async function GET() {
     const role = row.role as string;
 
     if (!batchId) {
-      const progress = await listProgressForUser(sql, userEmail);
+      const [complianceProgress, courseProgress] = await Promise.all([
+        listComplianceProgressForUser(sql, userEmail),
+        listCourseProgressForUser(sql, userEmail),
+      ]);
       return NextResponse.json({
         ok: true,
         modules: [],
-        progress,
+        progress: [...complianceProgress, ...courseProgress],
         batchId: "",
         displayName,
         role,
@@ -67,33 +53,55 @@ export async function GET() {
       });
     }
 
-    const [moduleRows, progress] = await Promise.all([
-      sql`
-        SELECT
-          m.*,
-          ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
-        FROM training_modules m
-        INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
-        LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
-        WHERE mb_filter.batch_id = ${batchId}
-          AND m.mcq_generation_status = 'completed'
-        GROUP BY m.id
-        ORDER BY m.created_at DESC
-      `,
-      listProgressForUser(sql, userEmail),
-    ]);
+    const [complianceModuleRows, courseModuleRows, complianceProgress, courseProgress] =
+      await Promise.all([
+        sql`
+          SELECT
+            m.*,
+            ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
+          FROM training_modules m
+          INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
+          LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
+          WHERE mb_filter.batch_id = ${batchId}
+            AND m.mcq_generation_status = 'completed'
+            AND COALESCE(m.module_kind, 'compliance') = 'compliance'
+          GROUP BY m.id
+          ORDER BY m.created_at DESC
+        `,
+        sql`
+          SELECT
+            m.*,
+            ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
+          FROM course_modules m
+          INNER JOIN course_module_batches mb_filter ON mb_filter.module_id = m.id
+          LEFT JOIN course_module_batches mb_all ON mb_all.module_id = m.id
+          WHERE mb_filter.batch_id = ${batchId}
+            AND m.mcq_generation_status = 'completed'
+          GROUP BY m.id
+          ORDER BY m.created_at DESC
+        `,
+        listComplianceProgressForUser(sql, userEmail),
+        listCourseProgressForUser(sql, userEmail),
+      ]);
 
-    const modules = moduleRows.map((moduleRow) =>
-      mapModule(
+    const complianceModules = complianceModuleRows.map((moduleRow) =>
+      mapTrainingModuleRow(
         moduleRow,
+        ((moduleRow.batch_ids as string[] | null) ?? []).filter(Boolean),
+      ),
+    );
+
+    const courseModules = courseModuleRows.map((moduleRow) =>
+      mapTrainingModuleRow(
+        { ...moduleRow, module_kind: "course" },
         ((moduleRow.batch_ids as string[] | null) ?? []).filter(Boolean),
       ),
     );
 
     return NextResponse.json({
       ok: true,
-      modules,
-      progress,
+      modules: [...complianceModules, ...courseModules],
+      progress: [...complianceProgress, ...courseProgress],
       batchId,
       displayName,
       role,

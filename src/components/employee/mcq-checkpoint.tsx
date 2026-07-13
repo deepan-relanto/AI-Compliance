@@ -5,6 +5,7 @@ import { CheckpointSignal } from "@/components/employee/checkpoint-signal";
 import { Button } from "@/components/ui/button";
 import { POINTS_PER_MCQ } from "@/lib/constants";
 import { formatExplanationLines, normalizeMcqExplanation } from "@/lib/mcq-explanation";
+import { parseCorrectOptionIds } from "@/lib/mcq-multi-select";
 import type { McqQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
@@ -102,7 +103,7 @@ export function MCQCheckpoint({
   onAnswered,
   onContinue,
 }: MCQCheckpointProps) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [wasCorrect, setWasCorrect] = useState(false);
   const [correctOptionId, setCorrectOptionId] = useState<string | null>(null);
@@ -112,7 +113,7 @@ export function MCQCheckpoint({
 
   useEffect(() => {
     if (!open) {
-      setSelected(null);
+      setSelected([]);
       setSubmitted(false);
       setWasCorrect(false);
       setCorrectOptionId(null);
@@ -140,13 +141,19 @@ export function MCQCheckpoint({
       : 0;
   const signalState = submitted ? (wasCorrect ? "success" : "warning") : "active";
 
-  const handleSubmit = async (overrideOptionId?: string) => {
-    const optionToSubmit = overrideOptionId || selected;
-    if (!optionToSubmit || validating || submitted) return;
+  const allowMultiple = Boolean(question.allowMultiple);
+  const correctOptionIds = useMemo(
+    () => new Set(parseCorrectOptionIds(correctOptionId ?? "")),
+    [correctOptionId],
+  );
+
+  const handleSubmit = async (overrideOptionIds?: string[]) => {
+    const optionsToSubmit = overrideOptionIds ?? selected;
+    if (optionsToSubmit.length === 0 || validating || submitted) return;
 
     if (question.id === "gate-fallback") {
       setWasCorrect(true);
-      setCorrectOptionId(optionToSubmit);
+      setCorrectOptionId(optionsToSubmit[0] ?? "");
       setAnswerExplanation(
         "This checkpoint confirms you can continue when no generated question is available.",
       );
@@ -158,13 +165,17 @@ export function MCQCheckpoint({
     setValidating(true);
     setError(null);
     try {
+      const payload =
+        allowMultiple || optionsToSubmit.length > 1
+          ? { optionIds: optionsToSubmit }
+          : { optionId: optionsToSubmit[0] };
       const res = await fetch(
         `/api/modules/${encodeURIComponent(moduleId)}/mcq/${encodeURIComponent(question.id)}/answer`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            optionId: optionToSubmit,
+            ...payload,
             userEmail,
             moduleTitle,
             batchId,
@@ -203,7 +214,7 @@ export function MCQCheckpoint({
 
   const handleContinue = () => {
     onContinue(wasCorrect);
-    setSelected(null);
+    setSelected([]);
     setSubmitted(false);
     setWasCorrect(false);
     setCorrectOptionId(null);
@@ -282,7 +293,9 @@ export function MCQCheckpoint({
       </h2>
       {!submitted && !modalMode && (
         <p className="mt-1.5 text-sm text-zinc-500">
-          Answer this checkpoint to unlock the next step.
+          {allowMultiple
+            ? "Select all that apply, then submit your answer."
+            : "Answer this checkpoint to unlock the next step."}
         </p>
       )}
     </div>
@@ -296,14 +309,14 @@ export function MCQCheckpoint({
       )}
     >
       {displayOptions.map((opt) => {
-        const isSelected = selected === opt.id;
+        const isSelected = selected.includes(opt.id);
         const showCorrect =
-          submitted && correctOptionId !== null && opt.id === correctOptionId;
+          submitted && correctOptionIds.size > 0 && correctOptionIds.has(opt.id);
         const showWrong =
           submitted &&
           isSelected &&
-          correctOptionId !== null &&
-          opt.id !== correctOptionId;
+          correctOptionIds.size > 0 &&
+          !correctOptionIds.has(opt.id);
 
         return (
           <motion.li
@@ -316,7 +329,17 @@ export function MCQCheckpoint({
             <button
               type="button"
               disabled={submitted || validating}
-              onClick={() => setSelected(opt.id)}
+              onClick={() => {
+                if (allowMultiple) {
+                  setSelected((prev) =>
+                    prev.includes(opt.id)
+                      ? prev.filter((id) => id !== opt.id)
+                      : [...prev, opt.id],
+                  );
+                } else {
+                  setSelected([opt.id]);
+                }
+              }}
               className={cn(
                 "relative flex w-full cursor-pointer items-start gap-2.5 overflow-hidden rounded-lg border text-left transition-all duration-150",
                 modalMode
@@ -550,9 +573,9 @@ export function MCQCheckpoint({
           <Button
             variant="primary"
             className="w-full"
-            disabled={!selected || validating}
+            disabled={selected.length === 0 || validating}
             onClick={() => {
-              if (selected && !submitted && !validating) {
+              if (selected.length > 0 && !submitted && !validating) {
                 void handleSubmit(selected);
               }
             }}

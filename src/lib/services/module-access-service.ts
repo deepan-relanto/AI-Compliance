@@ -27,6 +27,45 @@ export async function verifyModuleAccess(
     };
   }
 
+  const courseModuleRows = await sql`
+    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  if (courseModuleRows.length > 0) {
+    const users = await sql`
+      SELECT batch_id FROM users
+      WHERE LOWER(email) = LOWER(${userEmail})
+      LIMIT 1
+    `;
+    if (users.length === 0) {
+      return {
+        ok: false,
+        code: "not_assigned",
+        message: "Your account is not enrolled for this training.",
+      };
+    }
+    const batchId = users[0].batch_id as string | null;
+    if (!batchId) {
+      return {
+        ok: false,
+        code: "not_assigned",
+        message: "You are not assigned to a batch for this training.",
+      };
+    }
+    const assigned = await sql`
+      SELECT 1 FROM course_module_batches
+      WHERE module_id = ${moduleId} AND batch_id = ${batchId}
+      LIMIT 1
+    `;
+    if (assigned.length === 0) {
+      return {
+        ok: false,
+        code: "not_assigned",
+        message: "This training is not assigned to your batch.",
+      };
+    }
+    return { ok: true, batchId };
+  }
+
   const moduleRows = await sql`
     SELECT id FROM training_modules WHERE id = ${moduleId} LIMIT 1
   `;

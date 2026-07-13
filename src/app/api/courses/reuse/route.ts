@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
     const sourceRows = await sql`
-      SELECT title FROM training_modules
-      WHERE id = ${String(sourceModuleId)} AND module_kind = 'course'
+      SELECT title FROM course_modules
+      WHERE id = ${String(sourceModuleId)}
       LIMIT 1
     `;
     if (sourceRows.length === 0) {

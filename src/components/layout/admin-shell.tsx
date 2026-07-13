@@ -43,7 +43,14 @@ const navItems = [
     href: "/admin/monitoring",
     label: "Monitoring",
     icon: ShieldAlert,
-    isActive: (path: string) => path.startsWith("/admin/monitoring"),
+    isActive: (path: string) =>
+      path.startsWith("/admin/monitoring") && !path.startsWith("/admin/course-monitoring"),
+  },
+  {
+    href: "/admin/course-monitoring",
+    label: "Course monitoring",
+    icon: ShieldAlert,
+    isActive: (path: string) => path.startsWith("/admin/course-monitoring"),
   },
   {
     href: "/admin/analytics",

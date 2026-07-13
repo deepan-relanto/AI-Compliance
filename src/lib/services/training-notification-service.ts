@@ -16,6 +16,13 @@ import { trainingLoginUrl } from "@/lib/training-link";
 
 type Sql = ReturnType<typeof getSql>;
 
+async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
+  const rows = await sql`
+    SELECT 1 FROM course_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
 const EMAIL_DURATION_LABEL = "approximately 15 min";
 const ONE_STRETCH_NOTE =
   "To ensure a seamless learning experience, the training should be completed in one uninterrupted session.";
@@ -103,13 +110,22 @@ async function wasNotificationSent(
   userEmail: string,
   type: "invited" | "completed",
 ): Promise<boolean> {
-  const rows = await sql`
-    SELECT 1 FROM training_notifications
-    WHERE module_id = ${moduleId}
-      AND LOWER(user_email) = LOWER(${userEmail})
-      AND notification_type = ${type}
-    LIMIT 1
-  `;
+  const isCourse = await isCourseModule(sql, moduleId);
+  const rows = isCourse
+    ? await sql`
+        SELECT 1 FROM course_notifications
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = LOWER(${userEmail})
+          AND notification_type = ${type}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT 1 FROM training_notifications
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = LOWER(${userEmail})
+          AND notification_type = ${type}
+        LIMIT 1
+      `;
   return rows.length > 0;
 }
 
@@ -119,6 +135,15 @@ async function recordNotification(
   userEmail: string,
   type: "invited" | "completed",
 ): Promise<void> {
+  const isCourse = await isCourseModule(sql, moduleId);
+  if (isCourse) {
+    await sql`
+      INSERT INTO course_notifications (module_id, user_email, notification_type)
+      VALUES (${moduleId}, ${userEmail.toLowerCase()}, ${type})
+      ON CONFLICT (module_id, user_email, notification_type) DO NOTHING
+    `;
+    return;
+  }
   await sql`
     INSERT INTO training_notifications (module_id, user_email, notification_type)
     VALUES (${moduleId}, ${userEmail.toLowerCase()}, ${type})
@@ -161,12 +186,19 @@ export async function sendModuleInvitationEmails(
 
   const modules = await sql`
     SELECT title, duration_minutes, mcq_generation_status
-    FROM training_modules WHERE id = ${moduleId} LIMIT 1
+    FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
-  if (modules.length === 0) {
+  const moduleRows =
+    modules.length > 0
+      ? modules
+      : await sql`
+          SELECT title, duration_minutes, mcq_generation_status
+          FROM training_modules WHERE id = ${moduleId} LIMIT 1
+        `;
+  if (moduleRows.length === 0) {
     return { ok: false, sent: 0, skipped: 0, failed: 0, errors: ["Module not found"], message: "Module not found" };
   }
-  if (modules[0].mcq_generation_status !== "completed") {
+  if (moduleRows[0].mcq_generation_status !== "completed") {
     return {
       ok: false,
       sent: 0,
@@ -177,18 +209,29 @@ export async function sendModuleInvitationEmails(
     };
   }
 
-  const moduleTitle = modules[0].title as string;
+  const moduleTitle = moduleRows[0].title as string;
   const loginBase = cfg.baseUrl;
+  const isCourse = modules.length > 0;
 
-  const learners = await sql`
-    SELECT DISTINCT u.email, u.display_name
-    FROM users u
-    INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
-    WHERE mb.module_id = ${moduleId}
-      AND u.role = 'user'
-      AND u.email IS NOT NULL
-    ORDER BY u.email
-  `;
+  const learners = isCourse
+    ? await sql`
+        SELECT DISTINCT u.email, u.display_name
+        FROM users u
+        INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
+        WHERE mb.module_id = ${moduleId}
+          AND u.role = 'user'
+          AND u.email IS NOT NULL
+        ORDER BY u.email
+      `
+    : await sql`
+        SELECT DISTINCT u.email, u.display_name
+        FROM users u
+        INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
+        WHERE mb.module_id = ${moduleId}
+          AND u.role = 'user'
+          AND u.email IS NOT NULL
+        ORDER BY u.email
+      `;
 
   let sent = 0;
   let skipped = 0;
@@ -293,9 +336,15 @@ export async function sendRetakeApprovalEmail(
 
   const email = userEmail.trim().toLowerCase();
   const modules = await sql`
-    SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+    SELECT title FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
-  if (modules.length === 0) {
+  const moduleRows =
+    modules.length > 0
+      ? modules
+      : await sql`
+          SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+        `;
+  if (moduleRows.length === 0) {
     return { ok: false, message: "Module not found." };
   }
 
@@ -304,7 +353,7 @@ export async function sendRetakeApprovalEmail(
   `;
   const displayName =
     (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
-  const moduleTitle = modules[0].title as string;
+  const moduleTitle = moduleRows[0].title as string;
   const loginUrl = trainingLoginUrl(moduleId, cfg.baseUrl, email);
 
   try {
@@ -337,10 +386,16 @@ export async function sendModuleCompletionEmail(
     return { ok: true, message: "Completion email already sent.", emailSent: true };
   }
 
-  const modules = await sql`
-    SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+  const courseModules = await sql`
+    SELECT title FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
-  if (modules.length === 0) {
+  const moduleRows =
+    courseModules.length > 0
+      ? courseModules
+      : await sql`
+          SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+        `;
+  if (moduleRows.length === 0) {
     return { ok: false, message: "Module not found.", emailSent: false };
   }
 
@@ -349,15 +404,23 @@ export async function sendModuleCompletionEmail(
   `;
   const displayName =
     (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
-  const moduleTitle = modules[0].title as string;
+  const moduleTitle = moduleRows[0].title as string;
 
-  const progressRows = await sql`
-    SELECT score_percent, mcq_correct, mcq_total
-    FROM assessment_progress
-    WHERE module_id = ${moduleId}
-      AND LOWER(user_email) = LOWER(${email})
-    LIMIT 1
-  `;
+  const progressRows = courseModules.length > 0
+    ? await sql`
+        SELECT score_percent, mcq_correct, mcq_total
+        FROM course_progress
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = LOWER(${email})
+        LIMIT 1
+      `
+    : await sql`
+        SELECT score_percent, mcq_correct, mcq_total
+        FROM assessment_progress
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = LOWER(${email})
+        LIMIT 1
+      `;
   const progress = progressRows[0];
   const resultSummary = buildCompletionResultSummary({
     moduleTitle,
