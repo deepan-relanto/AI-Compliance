@@ -28,6 +28,7 @@ const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
 
 const EMBED_SIZE_FIX_CSS = `
 html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
+body.embed { background: #f8f9fb !important; }
 body.embed .deck-shell {
   display: flex !important;
   align-items: center !important;
@@ -36,16 +37,20 @@ body.embed .deck-shell {
   height: 100% !important;
   padding: 0 !important;
   box-sizing: border-box !important;
+  container-type: size !important;
 }
 body.embed .deck-shell > .deck,
 body.embed .deck {
   position: relative !important;
   flex-shrink: 0 !important;
-  width: min(100%, calc(100% * 16 / 9)) !important;
-  height: min(100%, calc(100% * 9 / 16)) !important;
-  max-width: none !important;
+  aspect-ratio: 16 / 9 !important;
+  width: min(100cqw, calc(100cqh * 16 / 9)) !important;
+  height: min(100cqh, calc(100cqw * 9 / 16)) !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  transform: none !important;
   transform-origin: center center !important;
   overflow: hidden !important;
 }
@@ -71,6 +76,7 @@ body.embed .footer { left: 24px !important; right: 24px !important; bottom: 10px
 const EMBED_FIT_SCRIPT = `(function(){
   function isEmbed(){try{return new URLSearchParams(location.search).get("embed")==="1"||document.body.classList.contains("embed");}catch(e){return false;}}
   if(!isEmbed())return;
+  var ASPECT=16/9;
   function fitEmbedDeck(){
     var shell=document.querySelector(".deck-shell");
     var deck=shell&&(shell.querySelector(".deck")||document.querySelector(".deck"));
@@ -82,9 +88,13 @@ const EMBED_FIT_SCRIPT = `(function(){
     });
     var sw=shell.clientWidth,sh=shell.clientHeight;
     if(sw<1||sh<1)return;
-    var dw=deck.offsetWidth,dh=deck.offsetHeight;
-    if(dw<1||dh<1)return;
-    var scale=Math.min(sw/dw,sh/dh,1);
+    var deckW,deckH;
+    if(sw/sh>ASPECT){deckH=sh;deckW=Math.round(sh*ASPECT);}
+    else{deckW=sw;deckH=Math.round(sw/ASPECT);}
+    deck.style.width=deckW+"px";
+    deck.style.height=deckH+"px";
+    deck.style.maxWidth="100%";
+    deck.style.maxHeight="100%";
     var active=deck.querySelector(".slide.active");
     if(active){
       var ch=active.clientHeight;
@@ -97,8 +107,6 @@ const EMBED_FIT_SCRIPT = `(function(){
         }
       }
     }
-    deck.style.transform="scale("+scale+")";
-    deck.style.transformOrigin="center center";
   }
   window.relantoFitEmbedDeck=fitEmbedDeck;
   window.addEventListener("resize",fitEmbedDeck);
@@ -281,22 +289,36 @@ export function CourseStepContent({
       step.config.mimeType === "application/pdf" || url.toLowerCase().endsWith(".pdf");
     if (isPdf) {
       return (
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
-          <PdfPageViewer pdfUrl={url} pageNumber={1} onLoadSuccess={() => undefined} />
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
+          <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
+            <ImageIcon className="h-4 w-4 text-[#f15a24]" />
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
+              Infographic
+            </p>
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-zinc-900">
+            <PdfPageViewer pdfUrl={url} pageNumber={1} onLoadSuccess={() => undefined} />
+          </div>
         </div>
       );
     }
     return (
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
-          Infographic
-        </p>
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto rounded-md bg-zinc-900 p-2">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[min(100%,96vw)] flex-col overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 shadow-2xl">
+        <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 px-4 py-2">
+          <ImageIcon className="h-4 w-4 text-[#f15a24]" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#f15a24]">
+            Infographic
+          </p>
+          {step.config.originalName && (
+            <span className="truncate text-xs text-zinc-400">{step.config.originalName}</span>
+          )}
+        </div>
+        <div className="relative min-h-0 flex-1 bg-zinc-900">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={url}
             alt={step.config.originalName ?? "Infographic"}
-            className="max-h-full max-w-full object-contain"
+            className="absolute inset-0 h-full w-full object-contain"
           />
         </div>
       </div>

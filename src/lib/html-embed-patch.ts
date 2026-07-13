@@ -1,5 +1,6 @@
 const EMBED_PATCH_STYLE = `<style id="relanto-embed-size-fix">
 html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
+body.embed { background: #f8f9fb !important; }
 body.embed .deck-shell {
   display: flex !important;
   align-items: center !important;
@@ -8,16 +9,20 @@ body.embed .deck-shell {
   height: 100% !important;
   padding: 0 !important;
   box-sizing: border-box !important;
+  container-type: size !important;
 }
 body.embed .deck-shell > .deck,
 body.embed .deck {
   position: relative !important;
   flex-shrink: 0 !important;
-  width: min(100%, calc(100% * 16 / 9)) !important;
-  height: min(100%, calc(100% * 9 / 16)) !important;
-  max-width: none !important;
+  aspect-ratio: 16 / 9 !important;
+  width: min(100cqw, calc(100cqh * 16 / 9)) !important;
+  height: min(100cqh, calc(100cqw * 9 / 16)) !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+  transform: none !important;
   transform-origin: center center !important;
   overflow: hidden !important;
 }
@@ -43,6 +48,7 @@ body.embed .footer { left: 24px !important; right: 24px !important; bottom: 10px
 const EMBED_PATCH_SCRIPT = `<script id="relanto-embed-fit">(function(){
   function isEmbed(){try{return new URLSearchParams(location.search).get("embed")==="1"||document.body.classList.contains("embed");}catch(e){return false;}}
   if(!isEmbed())return;
+  var ASPECT=16/9;
   function fitEmbedDeck(){
     var shell=document.querySelector(".deck-shell");
     var deck=shell&&(shell.querySelector(".deck")||document.querySelector(".deck"));
@@ -54,9 +60,13 @@ const EMBED_PATCH_SCRIPT = `<script id="relanto-embed-fit">(function(){
     });
     var sw=shell.clientWidth,sh=shell.clientHeight;
     if(sw<1||sh<1)return;
-    var dw=deck.offsetWidth,dh=deck.offsetHeight;
-    if(dw<1||dh<1)return;
-    var scale=Math.min(sw/dw,sh/dh,1);
+    var deckW,deckH;
+    if(sw/sh>ASPECT){deckH=sh;deckW=Math.round(sh*ASPECT);}
+    else{deckW=sw;deckH=Math.round(sw/ASPECT);}
+    deck.style.width=deckW+"px";
+    deck.style.height=deckH+"px";
+    deck.style.maxWidth="100%";
+    deck.style.maxHeight="100%";
     var active=deck.querySelector(".slide.active");
     if(active){
       var ch=active.clientHeight;
@@ -64,14 +74,11 @@ const EMBED_PATCH_SCRIPT = `<script id="relanto-embed-fit">(function(){
       if(ch>0&&contentH>ch+2){
         var z=Math.max(0.55, ch/contentH);
         active.style.zoom=String(z);
-        // Firefox fallback: zoom unsupported — allow scroll
         if(active.scrollHeight>active.clientHeight+2){
           active.style.overflow="auto";
         }
       }
     }
-    deck.style.transform="scale("+scale+")";
-    deck.style.transformOrigin="center center";
   }
   window.relantoFitEmbedDeck=fitEmbedDeck;
   window.addEventListener("resize",fitEmbedDeck);
