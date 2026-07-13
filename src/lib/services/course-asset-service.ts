@@ -242,6 +242,36 @@ export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   return { buffer: chunk.buffer, mimeType: chunk.mimeType };
 }
 
+async function getDbAssetMeta(filename: string): Promise<{ size: number; mimeType: string } | null> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT length(data)::int AS size, mime_type
+    FROM course_assets
+    WHERE filename = ${filename}
+    LIMIT 1
+  `;
+  if (rows.length === 0 || rows[0].size == null) return null;
+  return {
+    size: Number(rows[0].size),
+    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
+  };
+}
+
+/** Prefer local disk only when the file looks complete (not a OneDrive placeholder). */
+async function shouldUseLocalFile(
+  localPath: string,
+  filename: string,
+): Promise<boolean> {
+  if (!fs.existsSync(localPath)) return false;
+  const stat = fs.statSync(localPath);
+  if (stat.size === 0) return false;
+  const diskMeta = readMeta(filename);
+  if (diskMeta?.sizeBytes && stat.size < diskMeta.sizeBytes * 0.9) return false;
+  const dbMeta = await getDbAssetMeta(filename);
+  if (dbMeta && dbMeta.size > 0 && stat.size < dbMeta.size * 0.9) return false;
+  return true;
+}
+
 export async function getCourseAssetMeta(assetUrl: string): Promise<{
   size: number;
   mimeType: string;
@@ -249,9 +279,9 @@ export async function getCourseAssetMeta(assetUrl: string): Promise<{
   const relative = assetUrl.replace(/^\//, "");
   const publicRoot = path.join(process.cwd(), "public");
   const localPath = path.normalize(path.join(publicRoot, relative));
+  const filename = courseAssetUrlToFilename(assetUrl);
 
-  if (localPath.startsWith(publicRoot) && fs.existsSync(localPath)) {
-    const filename = path.basename(localPath);
+  if (localPath.startsWith(publicRoot) && (await shouldUseLocalFile(localPath, filename))) {
     const meta = readMeta(filename);
     const stat = fs.statSync(localPath);
     return {
@@ -260,21 +290,11 @@ export async function getCourseAssetMeta(assetUrl: string): Promise<{
     };
   }
 
-  const filename = courseAssetUrlToFilename(assetUrl);
-  const sql = getSql();
-  const rows = await sql`
-    SELECT length(data)::int AS size, mime_type
-    FROM course_assets
-    WHERE filename = ${filename}
-    LIMIT 1
-  `;
-  if (rows.length === 0 || rows[0].size == null) {
+  const dbMeta = await getDbAssetMeta(filename);
+  if (!dbMeta) {
     throw new Error("Asset not found.");
   }
-  return {
-    size: Number(rows[0].size),
-    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
-  };
+  return dbMeta;
 }
 
 /** Read a byte range without loading the entire asset when served from Neon. */
@@ -290,9 +310,9 @@ export async function readCourseAssetRange(
   const relative = assetUrl.replace(/^\//, "");
   const publicRoot = path.join(process.cwd(), "public");
   const localPath = path.normalize(path.join(publicRoot, relative));
+  const filename = courseAssetUrlToFilename(assetUrl);
 
-  if (localPath.startsWith(publicRoot) && fs.existsSync(localPath)) {
-    const filename = path.basename(localPath);
+  if (localPath.startsWith(publicRoot) && (await shouldUseLocalFile(localPath, filename))) {
     const meta = readMeta(filename);
     const stat = fs.statSync(localPath);
     const safeEnd = Math.min(end, stat.size - 1);
@@ -311,7 +331,6 @@ export async function readCourseAssetRange(
     }
   }
 
-  const filename = courseAssetUrlToFilename(assetUrl);
   const sql = getSql();
   const length = end - start + 1;
   const rows = await sql`

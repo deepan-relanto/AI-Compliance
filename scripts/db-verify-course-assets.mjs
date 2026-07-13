@@ -43,11 +43,10 @@ for (const a of assets) {
 }
 
 const steps = await sql`
-  SELECT tm.id AS module_id, tm.title, ms.step_type, ms.config->>'assetUrl' AS asset_url
-  FROM module_steps ms
-  JOIN training_modules tm ON tm.id = ms.module_id
-  WHERE tm.module_kind = 'course'
-    AND ms.config->>'assetUrl' IS NOT NULL
+  SELECT cm.id AS module_id, cm.title, cms.step_type, cms.config->>'assetUrl' AS asset_url
+  FROM course_module_steps cms
+  JOIN course_modules cm ON cm.id = cms.module_id
+  WHERE cms.config->>'assetUrl' IS NOT NULL
 `;
 
 console.log("\n=== course step assets (must exist in Neon) ===");

@@ -12,19 +12,30 @@ export const maxDuration = 120;
 const ASSET_FILENAME =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/i;
 
-/** Neon HTTP SQL cannot return multi‑MB blobs in one query — stream instead. */
+/** Neon HTTP SQL cannot return multi‑MB blobs in one query — stream/cap instead. */
 const LARGE_STREAM_BYTES = 4 * 1024 * 1024;
 const STREAM_CHUNK_BYTES = 2 * 1024 * 1024;
 
 function parseRange(rangeHeader: string | null, size: number): { start: number; end: number } | null {
   if (!rangeHeader?.startsWith("bytes=")) return null;
-  const [startStr, endStr] = rangeHeader.replace("bytes=", "").split("-");
-  const start = Number(startStr);
-  const end = endStr ? Number(endStr) : size - 1;
+  // Only first range; browsers rarely send multiparts for video.
+  const spec = rangeHeader.replace("bytes=", "").split(",")[0]?.trim() ?? "";
+  const [startStr, endStr] = spec.split("-");
+  const start = startStr === "" ? NaN : Number(startStr);
+  const end = endStr === "" || endStr == null ? size - 1 : Number(endStr);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end >= size || start > end) {
     return null;
   }
   return { start, end };
+}
+
+/**
+ * Cap a single Range body so Neon substring stays under HTTP SQL limits.
+ * Returning a smaller 206 than requested is valid HTTP progressive download.
+ */
+function capRange(range: { start: number; end: number }): { start: number; end: number } {
+  const maxEnd = range.start + STREAM_CHUNK_BYTES - 1;
+  return { start: range.start, end: Math.min(range.end, maxEnd) };
 }
 
 function assetHeaders(mimeType: string, length: number, extra?: Record<string, string>) {
@@ -80,12 +91,16 @@ async function serveAsset(req: NextRequest, filename: string) {
     const rangeHeader = req.headers.get("range");
 
     if (rangeHeader) {
-      const range = parseRange(rangeHeader, meta.size);
-      if (!range) {
-        return new NextResponse(null, { status: 416 });
+      const parsed = parseRange(rangeHeader, meta.size);
+      if (!parsed) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { "Content-Range": `bytes */${meta.size}` },
+        });
       }
+      const range = capRange(parsed);
+      const length = range.end - range.start + 1;
       if (isHead) {
-        const length = range.end - range.start + 1;
         return new NextResponse(null, {
           status: 206,
           headers: assetHeaders(meta.mimeType, length, {
