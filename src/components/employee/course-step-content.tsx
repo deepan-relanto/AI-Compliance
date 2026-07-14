@@ -7,7 +7,7 @@ import {
   type CourseStepType,
 } from "@/lib/course-step-types";
 import { clientCourseAssetUrl } from "@/lib/course-asset-url";
-import { withEmbedQuery } from "@/lib/course-embed";
+import { withEmbedQuery, courseEmbedVersion } from "@/lib/course-embed";
 import { MindMapPlayground } from "@/components/employee/mind-map-playground";
 import { FileCode2, FileText, GraduationCap, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -171,6 +171,7 @@ function HtmlEmbed({
   chrome = true,
   iframeRef,
   surface = "dark",
+  version,
 }: {
   url: string;
   title?: string;
@@ -178,8 +179,9 @@ function HtmlEmbed({
   chrome?: boolean;
   iframeRef?: React.Ref<HTMLIFrameElement>;
   surface?: "dark" | "light";
+  version?: string | number | null;
 }) {
-  const embedUrl = withEmbedQuery(url) ?? url;
+  const embedUrl = withEmbedQuery(url, true, version) ?? url;
   const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
     injectEmbedSizeFix(e.currentTarget);
   };
@@ -265,6 +267,7 @@ export function CourseStepContent({
           }
           chrome={false}
           iframeRef={htmlIframeRef}
+          version={courseEmbedVersion(step.config)}
         />
       );
     }
@@ -308,6 +311,7 @@ export function CourseStepContent({
           eyebrow="Interactive mind map"
           chrome={false}
           surface="light"
+          version={courseEmbedVersion(step.config)}
         />
       );
     }

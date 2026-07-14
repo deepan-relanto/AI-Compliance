@@ -21,12 +21,34 @@ export type CourseEmbedCommand =
 export function withEmbedQuery(
   url: string | undefined,
   embed = true,
+  version?: string | number | null,
 ): string | undefined {
   if (!url) return undefined;
-  if (!embed) return url;
-  if (url.includes("embed=1")) return url;
-  const join = url.includes("?") ? "&" : "?";
-  return `${url}${join}embed=1`;
+  let next = url;
+  if (embed && !next.includes("embed=1")) {
+    const join = next.includes("?") ? "&" : "?";
+    next = `${next}${join}embed=1`;
+  }
+  if (version != null && String(version).length > 0) {
+    const v = encodeURIComponent(String(version));
+    if (!next.includes(`v=${v}`) && !/[?&]v=/.test(next)) {
+      const join = next.includes("?") ? "&" : "?";
+      next = `${next}${join}v=${v}`;
+    }
+  }
+  return next;
+}
+
+/** Build a cache-bust token from step config so iframe remounts when HTML changes. */
+export function courseEmbedVersion(config: {
+  contentRevision?: number | null;
+  sizeBytes?: number | null;
+  pageCount?: number | null;
+}): string {
+  const rev = config.contentRevision ?? 0;
+  const size = config.sizeBytes ?? 0;
+  const pages = config.pageCount ?? 0;
+  return `${rev}-${size}-${pages}`;
 }
 
 export function isCourseEmbedState(data: unknown): data is CourseEmbedState & {

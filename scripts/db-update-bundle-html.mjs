@@ -183,6 +183,8 @@ await upsertAsset(
   mindmapBuffer,
   "text/html",
 );
+const contentRevision = Date.now();
+
 if (scenariosFilename && scenariosBuffer && scenariosStep) {
   await upsertAsset(
     scenariosFilename,
@@ -195,12 +197,15 @@ if (scenariosFilename && scenariosBuffer && scenariosStep) {
     pageCount: 7,
     mimeType: "text/html",
     originalName: "relanto_ai_scenarios_interactive.html",
+    sizeBytes: scenariosBuffer.length,
+    contentRevision,
   };
   await sql`
     UPDATE course_module_steps
     SET config = ${JSON.stringify(scenariosConfig)}::jsonb, updated_at = NOW()
     WHERE module_id = ${MODULE_ID} AND step_type = 'scenarios'
   `;
+  console.log(`  scen.   → config revision ${contentRevision}`);
 }
 
 const lessonConfig = {
@@ -208,12 +213,28 @@ const lessonConfig = {
   pageCount: slideCount,
   mimeType: "text/html",
   originalName: "relanto_ai_fundamentals_interactive.html",
+  sizeBytes: lessonBuffer.length,
+  contentRevision,
 };
 
 await sql`
   UPDATE course_module_steps
   SET config = ${JSON.stringify(lessonConfig)}::jsonb, updated_at = NOW()
   WHERE module_id = ${MODULE_ID} AND step_type = 'pdf'
+`;
+
+const mindmapConfig = {
+  ...mindmapStep.config,
+  mimeType: "text/html",
+  originalName: "mindmap-01.html",
+  sizeBytes: mindmapBuffer.length,
+  contentRevision,
+};
+
+await sql`
+  UPDATE course_module_steps
+  SET config = ${JSON.stringify(mindmapConfig)}::jsonb, updated_at = NOW()
+  WHERE module_id = ${MODULE_ID} AND step_type = 'mindmap'
 `;
 
 await sql`
@@ -224,4 +245,4 @@ await sql`
 
 await pool.end();
 
-console.log("Done. Disk + Neon HTML assets and pageCount updated.");
+console.log(`Done. Disk + Neon HTML assets updated (contentRevision=${contentRevision}).`);
