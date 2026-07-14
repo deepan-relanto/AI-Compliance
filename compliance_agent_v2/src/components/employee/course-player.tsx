@@ -584,7 +584,8 @@ export function CoursePlayer({
   const handleBeginSession = async () => {
     setSessionStartError(null);
     if (user?.username) {
-      const locked = isProctorLocked(user.username, module.id);
+      const prog = getProgress(user.username, module.id);
+      const locked = prog ? isProctorLocked(prog) : false;
       if (locked && reviewRequest?.status !== "Approved") {
         setSessionStartError(
           "This attempt is locked. Request administrator review to retake.",
