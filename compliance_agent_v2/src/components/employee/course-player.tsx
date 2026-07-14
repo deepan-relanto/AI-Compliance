@@ -222,7 +222,8 @@ export function CoursePlayer({
 
   const currentContentStep = contentSteps[contentStepIndex];
   const isHtmlLessonStep =
-    currentContentStep?.stepType === "pdf" &&
+    (currentContentStep?.stepType === "pdf" ||
+      currentContentStep?.stepType === "scenarios") &&
     isHtmlCourseAsset(
       currentContentStep.config.mimeType,
       currentContentStep.config.assetUrl,
@@ -902,7 +903,7 @@ export function CoursePlayer({
   useEffect(() => {
     const onEmbedMessage = (event: MessageEvent) => {
       if (!isCourseEmbedState(event.data) || event.data.type !== COURSE_EMBED_EVENT) return;
-      if (event.data.kind !== "lesson") return;
+      if (event.data.kind !== "lesson" && event.data.kind !== "scenarios") return;
       setHtmlEmbedState({
         kind: event.data.kind,
         slideIndex: event.data.slideIndex,

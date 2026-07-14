@@ -1,6 +1,7 @@
 /** Ordered steps in a mandatory course bundle. */
 export type CourseStepType =
   | "pdf"
+  | "scenarios"
   | "video"
   | "mindmap"
   | "infographic"
@@ -8,6 +9,7 @@ export type CourseStepType =
 
 export const COURSE_STEP_ORDER: CourseStepType[] = [
   "pdf",
+  "scenarios",
   "video",
   "mindmap",
   "infographic",
@@ -16,6 +18,7 @@ export const COURSE_STEP_ORDER: CourseStepType[] = [
 
 export const COURSE_STEP_LABELS: Record<CourseStepType, string> = {
   pdf: "Interactive HTML lesson",
+  scenarios: "Scenario-based learning",
   video: "Training video",
   mindmap: "Interactive HTML mind map",
   infographic: "Infographics",

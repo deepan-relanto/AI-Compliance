@@ -10,9 +10,9 @@ export const maxDuration = 120;
 
 const MAX_BYTES = 100 * 1024 * 1024;
 
-const KINDS = new Set<CourseAssetKind>(["lesson", "video", "mindmap", "infographic"]);
+const KINDS = new Set<CourseAssetKind>(["lesson", "scenarios", "video", "mindmap", "infographic"]);
 
-/** POST multipart: kind=lesson|video|mindmap|infographic, file=... */
+/** POST multipart: kind=lesson|scenarios|video|mindmap|infographic, file=... */
 export async function POST(req: NextRequest) {
   let formData: FormData;
   try {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          message: "kind must be lesson, video, mindmap, or infographic.",
+          message: "kind must be lesson, scenarios, video, mindmap, or infographic.",
         },
         { status: 400 },
       );

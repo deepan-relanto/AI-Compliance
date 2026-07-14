@@ -3,7 +3,7 @@
 export const COURSE_EMBED_EVENT = "relanto-course-embed";
 export const COURSE_EMBED_COMMAND = "relanto-course-command";
 
-export type CourseEmbedKind = "lesson" | "mindmap";
+export type CourseEmbedKind = "lesson" | "scenarios" | "mindmap";
 
 export type CourseEmbedState = {
   kind: CourseEmbedKind;
@@ -36,7 +36,7 @@ export function isCourseEmbedState(data: unknown): data is CourseEmbedState & {
   const d = data as Record<string, unknown>;
   return (
     d.type === COURSE_EMBED_EVENT &&
-    (d.kind === "lesson" || d.kind === "mindmap") &&
+    (d.kind === "lesson" || d.kind === "scenarios" || d.kind === "mindmap") &&
     typeof d.slideIndex === "number" &&
     typeof d.slideCount === "number" &&
     typeof d.atEnd === "boolean" &&
