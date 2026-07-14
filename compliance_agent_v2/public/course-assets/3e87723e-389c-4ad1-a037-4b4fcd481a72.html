@@ -240,9 +240,9 @@
 
       .link {
         fill: none;
-        stroke: url(#linkGradient);
-        stroke-width: 1.75;
-        opacity: 0.88;
+        stroke: #2e3192;
+        stroke-width: 2.25;
+        opacity: 1;
         marker-end: url(#arrowEnd);
       }
 
@@ -853,7 +853,7 @@
         arrowEnd.setAttribute("orient", "auto");
         arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
         arrowEnd.innerHTML = `
-          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.65"/>
+          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.95"/>
         `;
 
         defs.appendChild(rootFill);

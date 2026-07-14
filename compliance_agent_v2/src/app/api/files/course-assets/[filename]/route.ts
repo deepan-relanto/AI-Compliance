@@ -38,12 +38,29 @@ function capRange(range: { start: number; end: number }): { start: number; end: 
   return { start: range.start, end: Math.min(range.end, maxEnd) };
 }
 
-function assetHeaders(mimeType: string, length: number, extra?: Record<string, string>) {
+function isHtmlAsset(filename: string, mimeType: string): boolean {
+  const lower = filename.toLowerCase();
+  return (
+    lower.endsWith(".html") ||
+    lower.endsWith(".htm") ||
+    mimeType.toLowerCase().includes("html")
+  );
+}
+
+function assetHeaders(
+  mimeType: string,
+  length: number,
+  filename: string,
+  extra?: Record<string, string>,
+) {
+  const cacheControl = isHtmlAsset(filename, mimeType)
+    ? "private, no-cache, must-revalidate"
+    : "public, max-age=3600";
   return {
     "Content-Type": mimeType,
     "Content-Length": String(length),
     "Accept-Ranges": "bytes",
-    "Cache-Control": "public, max-age=3600",
+    "Cache-Control": cacheControl,
     ...extra,
   };
 }
@@ -56,7 +73,7 @@ function maybePatchBuffer(buffer: Buffer, filename: string, mimeType: string): B
   return isHtml ? patchHtmlCourseAsset(buffer) : buffer;
 }
 
-function streamAssetResponse(assetUrl: string, mimeType: string, size: number) {
+function streamAssetResponse(assetUrl: string, mimeType: string, size: number, filename: string) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
@@ -74,7 +91,7 @@ function streamAssetResponse(assetUrl: string, mimeType: string, size: number) {
 
   return new NextResponse(stream, {
     status: 200,
-    headers: assetHeaders(mimeType, size),
+    headers: assetHeaders(mimeType, size, filename),
   });
 }
 
@@ -103,7 +120,7 @@ async function serveAsset(req: NextRequest, filename: string) {
       if (isHead) {
         return new NextResponse(null, {
           status: 206,
-          headers: assetHeaders(meta.mimeType, length, {
+          headers: assetHeaders(meta.mimeType, length, filename, {
             "Content-Range": `bytes ${range.start}-${range.end}/${meta.size}`,
           }),
         });
@@ -116,7 +133,7 @@ async function serveAsset(req: NextRequest, filename: string) {
       const body = maybePatchBuffer(buffer, filename, mimeType);
       return new NextResponse(new Uint8Array(body), {
         status: 206,
-        headers: assetHeaders(mimeType, body.length, {
+        headers: assetHeaders(mimeType, body.length, filename, {
           "Content-Range": `bytes ${range.start}-${range.end}/${size}`,
         }),
       });
@@ -126,10 +143,10 @@ async function serveAsset(req: NextRequest, filename: string) {
       if (isHead) {
         return new NextResponse(null, {
           status: 200,
-          headers: assetHeaders(meta.mimeType, meta.size),
+          headers: assetHeaders(meta.mimeType, meta.size, filename),
         });
       }
-      return streamAssetResponse(assetUrl, meta.mimeType, meta.size);
+      return streamAssetResponse(assetUrl, meta.mimeType, meta.size, filename);
     }
 
     const { buffer, mimeType } = await getCourseAssetBuffer(assetUrl);
@@ -137,12 +154,12 @@ async function serveAsset(req: NextRequest, filename: string) {
     if (isHead) {
       return new NextResponse(null, {
         status: 200,
-        headers: assetHeaders(mimeType, body.length),
+        headers: assetHeaders(mimeType, body.length, filename),
       });
     }
     return new NextResponse(new Uint8Array(body), {
       status: 200,
-      headers: assetHeaders(mimeType, body.length),
+      headers: assetHeaders(mimeType, body.length, filename),
     });
   } catch {
     return NextResponse.json({ ok: false, message: "Asset not found." }, { status: 404 });

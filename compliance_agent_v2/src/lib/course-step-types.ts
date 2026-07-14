@@ -45,6 +45,10 @@ export type CourseStepConfig = {
   mimeType?: string;
   pageCount?: number;
   questionCount?: number;
+  /** Byte size of the HTML/media asset — used to cache-bust iframe URLs. */
+  sizeBytes?: number;
+  /** Bumped on every content-kit sync so learners never see stale HTML. */
+  contentRevision?: number;
 };
 
 export type CourseStepRow = {
