@@ -103,10 +103,12 @@ function FilterPill({
 }
 
 export function FeedbackTable() {
+  const [track, setTrack] = useState<"compliance" | "course">("compliance");
   const [batchFilter, setBatchFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: fbData, isLoading: fbLoading, mutate: mutateFb } = useSWR("/api/feedback", fetcher);
+  const feedbackUrl = track === "course" ? "/api/course-feedback" : "/api/feedback";
+  const { data: fbData, isLoading: fbLoading, mutate: mutateFb } = useSWR(feedbackUrl, fetcher);
   const { data: batchData, isLoading: batchLoading } = useSWR("/api/batches", fetcher);
 
   const batches: BatchOption[] =
@@ -171,18 +173,38 @@ export function FeedbackTable() {
 
   if (rows.length === 0) {
     return (
-      <div className="empty-state mx-auto max-w-md">
-        <MessageSquare className="h-10 w-10 text-zinc-300" strokeWidth={1.5} />
-        <p className="mt-4 text-sm font-medium text-zinc-600">No feedback submitted yet</p>
-        <p className="mt-1 text-xs text-zinc-400">
-          Feedback appears here after learners complete assessments and submit their responses.
-        </p>
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterPill active={track === "compliance"} onClick={() => setTrack("compliance")}>
+            Security Compliance
+          </FilterPill>
+          <FilterPill active={track === "course"} onClick={() => setTrack("course")}>
+            AI-course
+          </FilterPill>
+        </div>
+        <div className="empty-state mx-auto max-w-md">
+          <MessageSquare className="h-10 w-10 text-zinc-300" strokeWidth={1.5} />
+          <p className="mt-4 text-sm font-medium text-zinc-600">No feedback submitted yet</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            Feedback appears here after learners complete{" "}
+            {track === "course" ? "AI courses" : "assessments"} and submit their responses.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterPill active={track === "compliance"} onClick={() => setTrack("compliance")}>
+          Security Compliance
+        </FilterPill>
+        <FilterPill active={track === "course"} onClick={() => setTrack("course")}>
+          AI-course
+        </FilterPill>
+      </div>
+
       {/* Summary */}
       <section className="grid gap-4 sm:grid-cols-3">
         <MetricCard

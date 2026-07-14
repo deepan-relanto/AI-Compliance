@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { submitFeedback } from "@/lib/feedback-store";
+import { submitCourseFeedback, submitFeedback } from "@/lib/feedback-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -20,6 +20,8 @@ interface FinalQaFormProps {
   messageRequired?: boolean;
   /** When true, learner must select a 1–5 star rating before submitting. */
   ratingRequired?: boolean;
+  /** Persist into course_feedback_entries when "course". */
+  track?: "compliance" | "course";
 }
 
 export function FinalQaForm({
@@ -31,6 +33,7 @@ export function FinalQaForm({
   deferSuccessToParent = false,
   messageRequired = true,
   ratingRequired = false,
+  track = "compliance",
 }: FinalQaFormProps) {
   const large = size === "large";
   const batchId = useAuthStore((s) => s.user?.batchId);
@@ -47,7 +50,12 @@ export function FinalQaForm({
     if (!canSubmit) return;
 
     const ratingPrefix = rating > 0 ? `[Rating: ${rating}/5] ` : "";
-    submitFeedback(userId, moduleId, moduleTitle, ratingPrefix + message.trim(), batchId);
+    const text = ratingPrefix + message.trim();
+    if (track === "course") {
+      submitCourseFeedback(userId, moduleId, moduleTitle, text, batchId);
+    } else {
+      submitFeedback(userId, moduleId, moduleTitle, text, batchId);
+    }
     setSubmitted(true);
     if (onSuccess) {
       onSuccess();

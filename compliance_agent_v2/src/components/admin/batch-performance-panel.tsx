@@ -90,9 +90,13 @@ const STATUS_LABELS: Record<string, string> = {
 
 interface BatchPerformancePanelProps {
   data: BatchPerformancePayload;
+  track?: "compliance" | "course";
 }
 
-export function BatchPerformancePanel({ data }: BatchPerformancePanelProps) {
+export function BatchPerformancePanel({
+  data,
+  track = "compliance",
+}: BatchPerformancePanelProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
@@ -213,7 +217,7 @@ export function BatchPerformancePanel({ data }: BatchPerformancePanelProps) {
           label="Members"
           value={String(batch.memberCount)}
           icon={Users}
-          trend={`${summary.modulesAssigned} assessment${summary.modulesAssigned !== 1 ? "s" : ""} assigned`}
+          trend={`${summary.modulesAssigned} ${track === "course" ? "course" : "assessment"}${summary.modulesAssigned !== 1 ? "s" : ""} assigned`}
         />
         <MetricCard
           label="Started"
@@ -341,9 +345,13 @@ export function BatchPerformancePanel({ data }: BatchPerformancePanelProps) {
         <CardContent className="p-0">
           {data.modules.length === 0 ? (
             <div className="empty-state mx-6 my-10 border-dashed py-12">
-              <p className="text-sm font-medium text-zinc-600">No assessments assigned</p>
+              <p className="text-sm font-medium text-zinc-600">
+                {track === "course" ? "No courses assigned" : "No assessments assigned"}
+              </p>
               <p className="mt-1 text-xs text-zinc-400">
-                Publish training to this batch from Upload to see marks here.
+                {track === "course"
+                  ? "Publish a course bundle to this batch from Courses / Content Library to see marks here."
+                  : "Publish training to this batch from Upload to see marks here."}
               </p>
             </div>
           ) : filtered.length === 0 ? (

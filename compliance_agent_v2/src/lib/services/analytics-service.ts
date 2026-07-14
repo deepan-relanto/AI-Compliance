@@ -68,7 +68,13 @@ function fillTimeSeries(
   return points;
 }
 
-export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+export async function getAnalytics(
+  sql: Sql,
+  track: "compliance" | "course" = "compliance",
+): Promise<AnalyticsPayload> {
+  if (track === "course") {
+    return getCourseAnalytics(sql);
+  }
   // Reconcile functions intentionally removed from read path — see comment above.
 
   const [summaryRows, batchRows, seriesRows, moduleRows, statusRows, historyRows] =
@@ -180,6 +186,144 @@ export async function getAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       `,
     ]);
 
+  return mapAnalyticsRows(
+    summaryRows,
+    batchRows,
+    seriesRows,
+    moduleRows,
+    statusRows,
+    historyRows,
+  );
+}
+
+async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+  const [summaryRows, batchRows, seriesRows, moduleRows, statusRows, historyRows] =
+    await Promise.all([
+      sql`
+        SELECT
+          (SELECT COALESCE(SUM(member_count), 0)::int FROM batches) AS total_learners,
+          (SELECT COUNT(*)::int FROM batches) AS total_batches,
+          (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
+          (SELECT COUNT(*)::int FROM course_progress) AS total_attempts,
+          (SELECT COUNT(*)::int FROM course_progress WHERE status = 'completed') AS completed_count,
+          (SELECT COUNT(*)::int FROM course_progress WHERE status IN ('failed', 'permanently_failed')) AS failed_count,
+          (SELECT COUNT(*)::int FROM course_progress WHERE status = 'in_progress') AS in_progress_count,
+          (SELECT ROUND(AVG(LEAST(score_percent, 100)))::int FROM course_progress WHERE score_percent IS NOT NULL) AS avg_score,
+          (SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+            / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
+          )::int FROM course_progress) AS pass_rate,
+          (SELECT COALESCE(SUM(warning_count), 0)::int FROM course_progress) AS total_warnings,
+          (SELECT COALESCE(SUM(retake_count), 0)::int FROM course_progress) AS total_retakes
+      `,
+      sql`
+        SELECT
+          b.id,
+          b.label,
+          b.member_count,
+          COUNT(ap.id)::int AS total_attempts,
+          COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
+          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
+          COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
+          COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
+          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+          ROUND(
+            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+          )::int AS pass_rate,
+          ROUND(
+            100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
+            / NULLIF(COUNT(ap.id), 0)
+          )::int AS compliance
+        FROM batches b
+        LEFT JOIN course_progress ap ON ap.batch_id = b.id
+        GROUP BY b.id, b.label, b.member_count
+        ORDER BY b.label
+      `,
+      sql`
+        SELECT
+          TO_CHAR(day::date, 'YYYY-MM-DD') AS date,
+          completions::int,
+          failures::int
+        FROM (
+          SELECT
+            DATE(COALESCE(completed_at, updated_at)) AS day,
+            COUNT(*) FILTER (WHERE status = 'completed') AS completions,
+            COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed')) AS failures
+          FROM course_progress
+          WHERE COALESCE(completed_at, updated_at) >= NOW() - INTERVAL '30 days'
+            AND status IN ('completed', 'failed', 'permanently_failed')
+          GROUP BY DATE(COALESCE(completed_at, updated_at))
+        ) sub
+        ORDER BY day
+      `,
+      sql`
+        SELECT
+          ap.module_id,
+          ap.module_title,
+          COUNT(*)::int AS attempt_count,
+          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
+          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+          ROUND(
+            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+          )::int AS pass_rate
+        FROM course_progress ap
+        GROUP BY ap.module_id, ap.module_title
+        ORDER BY attempt_count DESC, ap.module_title
+      `,
+      sql`
+        SELECT status, COUNT(*)::int AS count
+        FROM course_progress
+        GROUP BY status
+        ORDER BY count DESC
+      `,
+      sql`
+        SELECT
+          ap.user_email,
+          ap.module_id,
+          ap.module_title,
+          ap.batch_id,
+          COALESCE(b.label, ub.label) AS batch_label,
+          ap.status,
+          LEAST(ap.score_percent, 100) AS score_percent,
+          ap.mcq_correct,
+          ap.mcq_total,
+          ap.retake_count,
+          ap.acknowledgement,
+          ap.completed_at,
+          ap.updated_at,
+          ap.last_accessed_at,
+          ap.current_slide,
+          ap.warning_count,
+          ap.mcq_answers
+        FROM course_progress ap
+        LEFT JOIN batches b ON b.id = ap.batch_id
+        LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
+        LEFT JOIN batches ub ON ub.id = u.batch_id
+        ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC
+        LIMIT 500
+      `,
+    ]);
+
+  return mapAnalyticsRows(
+    summaryRows,
+    batchRows,
+    seriesRows,
+    moduleRows,
+    statusRows,
+    historyRows,
+  );
+}
+
+function mapAnalyticsRows(
+  summaryRows: Record<string, unknown>[],
+  batchRows: Record<string, unknown>[],
+  seriesRows: Record<string, unknown>[],
+  moduleRows: Record<string, unknown>[],
+  statusRows: Record<string, unknown>[],
+  historyRows: Record<string, unknown>[],
+): AnalyticsPayload {
   const s = summaryRows[0];
   const summary: AnalyticsSummary = {
     totalLearners: Number(s.total_learners ?? 0),
