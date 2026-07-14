@@ -240,10 +240,13 @@
 
       .link {
         fill: none;
-        stroke: url(#linkGradient);
-        stroke-width: 1.75;
-        opacity: 0.88;
+        stroke: #2e3192;
+        stroke-width: 2.25;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.92;
         marker-end: url(#arrowEnd);
+        vector-effect: non-scaling-stroke;
       }
 
       .node { cursor: pointer; }
@@ -670,8 +673,8 @@
 
       /* Horizontal (left → right) layout — matches NotebookLM screenshots */
       const NODE_H = 40;
-      const NODE_GAP_Y = 18;
-      const COLUMN_GAP = 48;
+      const NODE_GAP_Y = 22;
+      const COLUMN_GAP = 72;
       const H_PAD = 16;
       const CHAR_W = 7.6;
       const TOGGLE_R = 9;
@@ -852,14 +855,14 @@
 
         const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
         arrowEnd.id = "arrowEnd";
-        arrowEnd.setAttribute("markerWidth", "10");
-        arrowEnd.setAttribute("markerHeight", "10");
-        arrowEnd.setAttribute("refX", "9");
-        arrowEnd.setAttribute("refY", "5");
+        arrowEnd.setAttribute("markerWidth", "12");
+        arrowEnd.setAttribute("markerHeight", "12");
+        arrowEnd.setAttribute("refX", "10");
+        arrowEnd.setAttribute("refY", "6");
         arrowEnd.setAttribute("orient", "auto");
         arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
         arrowEnd.innerHTML = `
-          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.65"/>
+          <path d="M0,1 L10,6 L0,11 Z" fill="#2e3192" fill-opacity="0.9"/>
         `;
 
         defs.appendChild(rootFill);
@@ -874,23 +877,15 @@
       }
 
       function drawCurve(x1, y1, x2, y2) {
-        if (x2 <= x1 + 8) {
-          // Fallback stub when spacing is still tight
-          const midY = (y1 + y2) / 2;
-          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-          path.setAttribute(
-            "d",
-            `M ${x1} ${y1} L ${x1 + 12} ${y1} L ${x1 + 12} ${midY} L ${x2} ${y2}`,
-          );
-          path.setAttribute("class", "link");
-          svg.appendChild(path);
-          return;
-        }
-        const dx = Math.max(36, (x2 - x1) * 0.45);
+        // Always leave enough horizontal run so extreme top/bottom branches (1 and 3)
+        // still show a continuous stroke — SVG gradient strokes vanish on tall thin bboxes.
+        const minRun = 48;
+        const endX = Math.max(x2, x1 + minRun);
+        const dx = Math.max(40, (endX - x1) * 0.5);
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute(
           "d",
-          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
+          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${endX - dx} ${y2}, ${endX} ${y2}`,
         );
         path.setAttribute("class", "link");
         svg.appendChild(path);
@@ -965,9 +960,9 @@
         const parentSize = sizes.get(node.id);
         if (!parent || !parentSize) return;
 
-        // Align link origin with the orange toggle center (same as drawNode).
+        // Start just outside the orange toggle so steep branches still connect visually.
         const x1 = hasChildren(node)
-          ? parent.x + parentSize.w + TOGGLE_R + 4
+          ? parent.x + parentSize.w + TOGGLE_R * 2 + 4
           : parent.x + parentSize.w + 4;
         const y1 = parent.y + parentSize.h / 2;
 
@@ -975,7 +970,7 @@
           const childPos = positions.get(child.id);
           const childSize = sizes.get(child.id);
           if (!childPos || !childSize) continue;
-          const x2 = childPos.x;
+          const x2 = childPos.x - 2;
           const y2 = childPos.y + childSize.h / 2;
           drawCurve(x1, y1, x2, y2);
           renderLinks(child, positions, sizes);
