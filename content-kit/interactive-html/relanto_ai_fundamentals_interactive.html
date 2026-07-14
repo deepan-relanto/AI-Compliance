@@ -92,23 +92,15 @@
     body.embed .subtitle { margin-top: 6px; font-size: 13px; }
     body.embed .kicker { margin-bottom: 4px; }
     body.embed .footer { left: 22px; right: 22px; bottom: 10px; font-size: 10px; padding-top: 0; }
-    body.embed .cover-body,
-    body.embed .cover-stage {
-      gap: 24px;
-      padding: 0;
-      width: 100%;
-    }
-    body.embed .cover-rail,
-    body.embed .cover-stats {
-      flex: 0 0 200px;
-      width: 200px;
-      max-width: 200px;
-      gap: 8px;
-    }
+    body.embed .cover-hero { gap: 12px; }
+    body.embed .cover-stats { gap: 10px; }
+    body.embed .cover-stat { padding: 10px 12px; }
+    body.embed .cover-stat .stat-value { font-size: 14px; }
+    body.embed .cover-stat .stat-value .num { font-size: 24px; }
     body.embed .cover-brand { margin-bottom: 0; }
-    body.embed .cover-title { font-size: clamp(26px, 3.8vw, 42px); }
+    body.embed .cover-title { font-size: clamp(34px, 5.2vw, 64px); }
     body.embed .slide.cover {
-      padding: 16px 20px 36px !important;
+      padding: 16px 22px 30px !important;
       gap: 14px;
       overflow: hidden !important;
     }
@@ -539,90 +531,89 @@
       text-transform: uppercase;
     }
 
-    .cover-body,
-    .cover-stage {
+    /* Hero: big title block, fills the middle, left aligned */
+    .cover-hero {
       flex: 1 1 auto;
       min-height: 0;
       width: 100%;
       display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 28px;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 14px;
       position: relative;
       z-index: 1;
     }
-
-    .cover-main,
-    .cover-copy {
-      flex: 1 1 auto;
-      min-width: 0;
-      max-width: none;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding-right: 12px;
-    }
-
-    .cover-title {
-      font-size: clamp(30px, 4vw, 48px);
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      max-width: 640px;
-      color: #fff;
-    }
-    .cover-main .subtitle,
-    .cover-copy .subtitle {
-      margin-top: 14px;
-      font-size: clamp(14px, 1.5vw, 17px);
-      color: rgba(255,255,255,0.82) !important;
-      max-width: 480px;
-    }
-    .cover-rail,
-    .cover-stats {
-      position: relative !important;
-      right: auto !important;
-      top: auto !important;
-      left: auto !important;
-      transform: none !important;
-      flex: 0 0 220px;
-      width: 220px;
-      max-width: 220px;
-      display: flex;
-      flex-direction: column;
+    .cover-eyebrow {
+      display: inline-flex;
+      align-items: center;
       gap: 10px;
-      align-content: stretch;
-      align-self: center;
+      color: #fdba8c;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
     }
-    .cover-rail .card,
-    .cover-stats .cover-stat {
+    .cover-eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: var(--orange);
+      display: block;
+    }
+    .cover-title {
+      font-size: clamp(44px, 6.2vw, 84px);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      font-weight: 820;
+      color: #fff;
+      margin: 0;
+      max-width: 100%;
+    }
+    .cover-hero .subtitle {
+      margin-top: 2px;
+      font-size: clamp(15px, 1.7vw, 20px);
+      color: rgba(255,255,255,0.82) !important;
+      max-width: 620px;
+    }
+
+    /* Stats: horizontal row pinned at the bottom — cannot overflow vertically */
+    .cover-stats {
+      flex: 0 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
       padding: 14px 16px;
       border-radius: 14px;
-      background: rgba(255,255,255,0.14) !important;
-      border: 1px solid rgba(255,255,255,0.22) !important;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
-      color: #fff !important;
-      opacity: 1 !important;
-      transform: none !important;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+      backdrop-filter: blur(6px);
     }
-    .cover-rail .tag,
-    .cover-stats .tag {
-      background: rgba(255,255,255,0.16) !important;
-      color: #fdba8c !important;
+    .cover-stat .tag {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.14);
+      color: #fdba8c;
       border: 1px solid rgba(253,186,140,0.35);
     }
-    .cover-rail .metric,
-    .cover-stats .metric {
-      color: #fdba8c !important;
-      margin-top: 8px;
-      font-size: 32px;
+    .cover-stat .stat-value {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.2;
     }
-    .cover-rail p,
-    .cover-stats p {
-      color: rgba(255,255,255,0.92) !important;
-      font-size: 15px;
-      font-weight: 700;
-      margin-top: 8px;
+    .cover-stat .stat-value .num {
+      color: #fdba8c;
+      font-size: 28px;
+      margin-right: 6px;
     }
     .module-badge {
       display: inline-flex;
@@ -1147,22 +1138,8 @@
       .deck { width: 100vw; height: 56.25vw; border-radius: 0; }
       .slide { padding: 20px 20px 48px; }
       h1 { font-size: 24px; }
-      .cover-main,
-      .cover-copy { max-width: 100%; }
-      .cover-body,
-      .cover-stage {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .cover-rail,
-      .cover-stats {
-        flex: 0 0 auto;
-        width: 100%;
-        max-width: none;
-        flex-direction: row;
-      }
-      .cover-rail .card,
-      .cover-stats .cover-stat { flex: 1; }
+      .cover-title { font-size: clamp(32px, 8vw, 46px); }
+      .cover-stats { grid-template-columns: 1fr; gap: 8px; }
       .objectives { grid-template-columns: repeat(2, 1fr); }
       .function-grid { grid-template-columns: repeat(6, 1fr); }
       .function { grid-column: span 2; }
@@ -1183,26 +1160,24 @@
           </div>
           <span class="module-badge">MODULE 1 OF 5</span>
         </div>
-        <div class="cover-stage">
-          <div class="cover-copy">
-            <h1 class="cover-title">AI Fundamentals<br />&amp; Terminology</h1>
-            <p class="subtitle">Enterprise AI Awareness Training Series</p>
+        <div class="cover-hero">
+          <span class="cover-eyebrow">Enterprise AI Awareness</span>
+          <h1 class="cover-title">AI Fundamentals<br />&amp; Terminology</h1>
+          <p class="subtitle">A 60-minute foundation for every employee - no technical background required.</p>
+        </div>
+        <div class="cover-stats" aria-label="Course details">
+          <div class="cover-stat">
+            <div class="tag">Duration</div>
+            <div class="stat-value"><span class="num">60</span>Minutes</div>
           </div>
-          <aside class="cover-stats" aria-label="Course details">
-            <div class="cover-stat">
-              <div class="tag">Duration</div>
-              <div class="metric">60</div>
-              <p>Minutes</p>
-            </div>
-            <div class="cover-stat">
-              <div class="tag">Audience</div>
-              <p>All Employees</p>
-            </div>
-            <div class="cover-stat">
-              <div class="tag">Level</div>
-              <p>No Technical Background Required</p>
-            </div>
-          </aside>
+          <div class="cover-stat">
+            <div class="tag">Audience</div>
+            <div class="stat-value">All Employees</div>
+          </div>
+          <div class="cover-stat">
+            <div class="tag">Level</div>
+            <div class="stat-value">No Technical Background Required</div>
+          </div>
         </div>
         <div class="footer"><span>Confidential | Relanto Academy</span><span>Relanto AI Fundamentals</span></div>
       </section>
