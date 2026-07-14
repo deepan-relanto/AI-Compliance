@@ -9,7 +9,7 @@ import {
 import { clientCourseAssetUrl } from "@/lib/course-asset-url";
 import { withEmbedQuery } from "@/lib/course-embed";
 import { MindMapPlayground } from "@/components/employee/mind-map-playground";
-import { FileCode2, FileText, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
+import { FileCode2, FileText, GraduationCap, Loader2, Network, Video, Image as ImageIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
@@ -20,6 +20,7 @@ const PdfPageViewer = dynamic(
 
 const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
   pdf: FileCode2,
+  scenarios: GraduationCap,
   video: Video,
   mindmap: Network,
   infographic: ImageIcon,
@@ -251,16 +252,27 @@ export function CourseStepContent({
     step.config.originalName,
   );
 
-  if (step.stepType === "pdf" && url) {
+  if ((step.stepType === "pdf" || step.stepType === "scenarios") && url) {
     if (htmlAsset) {
       return (
         <HtmlEmbed
           url={url}
           title={step.config.originalName ?? moduleTitle}
-          eyebrow="Interactive lesson"
+          eyebrow={
+            step.stepType === "scenarios"
+              ? "Scenario-based learning"
+              : "Interactive lesson"
+          }
           chrome={false}
           iframeRef={htmlIframeRef}
         />
+      );
+    }
+    if (step.stepType === "scenarios") {
+      return (
+        <div className="flex h-full items-center justify-center text-sm text-zinc-400">
+          Scenario module unavailable.
+        </div>
       );
     }
     return (

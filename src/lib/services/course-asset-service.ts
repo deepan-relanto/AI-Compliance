@@ -27,10 +27,11 @@ async function getWsPool(): Promise<Pool> {
 const ASSET_FILENAME =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/i;
 
-export type CourseAssetKind = "lesson" | "video" | "mindmap" | "infographic";
+export type CourseAssetKind = "lesson" | "scenarios" | "video" | "mindmap" | "infographic";
 
 const ALLOWED: Record<CourseAssetKind, string[]> = {
   lesson: ["text/html", "application/xhtml+xml"],
+  scenarios: ["text/html", "application/xhtml+xml"],
   video: ["video/mp4", "video/webm", "video/quicktime"],
   mindmap: ["text/html", "application/xhtml+xml", "application/json"],
   infographic: ["image/png", "image/jpeg", "image/webp", "application/pdf"],
@@ -135,6 +136,7 @@ export function isAllowedCourseAsset(
   if (allowed.includes(mimeType)) return true;
 
   if (kind === "lesson" && [".html", ".htm"].includes(ext)) return true;
+  if (kind === "scenarios" && [".html", ".htm"].includes(ext)) return true;
   if (kind === "mindmap" && [".html", ".htm", ".json"].includes(ext)) return true;
   if (kind === "infographic" && [".png", ".jpg", ".jpeg", ".webp", ".pdf"].includes(ext)) {
     return true;

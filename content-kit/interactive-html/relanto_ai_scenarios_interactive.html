@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto AI Fundamentals — Scenario-Based Learning</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+    body.embed { background: #0a0a0a; }
+    body.embed .deck-shell {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      container-type: size;
+    }
+    body.embed .deck {
+      flex-shrink: 0;
+      transform: none;
+      transform-origin: center center;
+      aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    body.embed .slide { padding: 16px 22px 36px; overflow: hidden; gap: 10px; }
+    body.embed .nav,
+    body.embed .help,
+    body.embed .progress,
+    body.embed .overview { display: none !important; }
+    body.embed h1 { font-size: clamp(18px, 2.5vw, 28px); }
+    body.embed .footer { left: 22px; right: 22px; bottom: 10px; font-size: 10px; }
+    body.embed .dept-grid { gap: 8px; margin-top: 8px; }
+    body.embed .dept-card { padding: 10px 12px; min-height: 0; }
+    body.embed .dept-card .dept-name { font-size: 13px; }
+    body.embed .dept-card .dept-hint { font-size: 11px; }
+    body.embed .phase-body { font-size: 14px; line-height: 1.4; }
+    body.embed .takeaway-box { padding: 14px 16px; font-size: 15px; }
+    body.embed .cover-hero { gap: 12px; }
+    body.embed .cover-title { font-size: clamp(28px, 4.5vw, 48px); }
+
+    .deck-shell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      position: relative;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      background: var(--paper-2);
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 28px 36px 52px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0;
+      transform: translateX(14px) scale(0.995);
+      box-sizing: border-box;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+    @keyframes slideIn {
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .slide.cover {
+      justify-content: space-between;
+      padding: 22px 28px 44px;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+      color: var(--white);
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .slide.cover.active { animation: none !important; }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      height: 22px;
+      flex-shrink: 0;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .cover .kicker { color: #fdba8c; }
+    .kicker::before {
+      content: "";
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      display: block;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 2.6vw, 34px);
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+      font-weight: 760;
+    }
+    p { margin: 0; line-height: 1.4; font-size: 14px; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; max-width: 52ch; }
+    .cover .subtitle { color: rgba(255,255,255,0.78); }
+
+    .footer {
+      position: absolute;
+      left: 36px;
+      right: 36px;
+      bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+    .cover .footer {
+      border-top-color: rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.65);
+    }
+
+    .cover-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .cover-brand img { height: 28px; width: auto; }
+    .cover-brand span {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+    }
+    .cover-hero { display: flex; flex-direction: column; gap: 16px; flex: 1; justify-content: center; min-height: 0; }
+    .cover-title {
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1.05;
+      font-weight: 780;
+      letter-spacing: -0.02em;
+      max-width: 14ch;
+    }
+    .cover-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 560px;
+    }
+    .cover-stat {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .cover-stat .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 4px;
+    }
+    .cover-stat .stat-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .cover-stat .stat-value .num {
+      font-size: 22px;
+      color: #fdba8c;
+      margin-right: 4px;
+    }
+
+    .dept-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+      flex: 1;
+      min-height: 0;
+      align-content: stretch;
+    }
+    .dept-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      padding: 14px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+      font: inherit;
+      color: inherit;
+      min-height: 0;
+    }
+    .dept-card:hover,
+    .dept-card:focus-visible {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 10px 28px rgba(46, 49, 146, 0.12);
+      transform: translateY(-1px);
+    }
+    .dept-card.selected {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 2px rgba(241, 90, 36, 0.25);
+    }
+    .dept-card .dept-num {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--orange);
+    }
+    .dept-card .dept-name {
+      font-size: 15px;
+      font-weight: 740;
+      color: var(--navy);
+      line-height: 1.2;
+    }
+    .dept-card .dept-hint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    .picker-note {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .picker-note.pulse {
+      color: var(--orange);
+      font-weight: 700;
+      animation: pulseHint 900ms ease;
+    }
+    @keyframes pulseHint {
+      0%, 100% { opacity: 1; }
+      40% { opacity: 0.45; }
+    }
+
+    .phase-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .phase-chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: #ececf8;
+      color: var(--blue);
+    }
+    .phase-chip.on { background: var(--blue); color: #fff; }
+    .phase-chip.done { background: rgba(46, 49, 146, 0.12); color: var(--navy); }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .dept-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(241, 90, 36, 0.1);
+      color: var(--orange);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .change-dept {
+      border: 0;
+      background: transparent;
+      color: var(--blue);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 0;
+    }
+
+    .phase-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .phase-panel[data-phase="situation"] { border-top: 3px solid var(--blue); }
+    .phase-panel[data-phase="challenge"] { border-top: 3px solid var(--amber); }
+    .phase-panel[data-phase="recommended"] { border-top: 3px solid var(--cyan); }
+    .phase-panel[data-phase="explanation"] { border-top: 3px solid var(--plum); }
+    .phase-panel[data-phase="takeaway"] { border-top: 3px solid var(--orange); }
+
+    .phase-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .phase-panel[data-phase="challenge"] .phase-label { color: var(--amber); }
+    .phase-panel[data-phase="recommended"] .phase-label { color: var(--cyan); }
+    .phase-panel[data-phase="explanation"] .phase-label { color: var(--plum); }
+    .phase-panel[data-phase="takeaway"] .phase-label { color: var(--orange); }
+
+    .phase-title {
+      margin: 0;
+      font-size: clamp(18px, 2.2vw, 26px);
+      font-weight: 760;
+      line-height: 1.2;
+      color: var(--navy);
+      max-width: 36ch;
+    }
+    .phase-body {
+      font-size: 15px;
+      line-height: 1.45;
+      color: #3f3f46;
+      max-width: 68ch;
+    }
+
+    .takeaway-box {
+      margin-top: auto;
+      padding: 16px 18px;
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, rgba(241, 90, 36, 0.12), rgba(46, 49, 146, 0.08));
+      border: 1px solid rgba(241, 90, 36, 0.22);
+      color: var(--navy);
+      font-size: 16px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
+    .takeaway-box span {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 6px;
+    }
+
+    .nav {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      display: flex;
+      gap: 8px;
+      z-index: 20;
+    }
+    .nav button, .help {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: #fff;
+      color: var(--navy);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+    }
+    .help {
+      position: fixed;
+      left: 24px;
+      bottom: 24px;
+      z-index: 20;
+      opacity: 0.85;
+    }
+    .progress {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 3px;
+      width: 100%;
+      background: rgba(46, 49, 146, 0.12);
+      z-index: 30;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--blue), var(--orange));
+      transition: width 240ms ease;
+    }
+    .overview {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 20, 0.72);
+      z-index: 40;
+      padding: 40px;
+      overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      max-width: 960px;
+      margin: 40px auto;
+    }
+    .thumb {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: left;
+      background: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .thumb b { display: block; color: var(--orange); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-title="Cover" data-fixed="1">
+        <div class="cover-brand">
+          <img src="relanto-logo.png" alt="Relanto" />
+          <span>AI Fundamentals</span>
+        </div>
+        <div class="cover-hero">
+          <div class="kicker">Practice module</div>
+          <h1 class="cover-title">Scenario-Based Learning</h1>
+          <p class="subtitle">
+            Pick the department that fits your work. You’ll walk one real situation through
+            challenge, recommended approach, explanation, and takeaway — then continue to the video.
+          </p>
+          <div class="cover-stats">
+            <div class="cover-stat">
+              <div class="stat-label">Departments</div>
+              <div class="stat-value"><span class="num">9</span> paths</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Per path</div>
+              <div class="stat-value"><span class="num">5</span> slides</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Focus</div>
+              <div class="stat-value">Apply AI concepts</div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Relanto · AI Fundamentals</span>
+          <span id="counter">1 / 2</span>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Choose department" data-fixed="1" id="pickerSlide">
+        <div class="kicker">Your context</div>
+        <h1>Which department describes your work best?</h1>
+        <p class="picker-note" id="pickerNote">Select one path. You’ll see that scenario only — about five short slides.</p>
+        <div class="dept-grid" id="deptGrid" role="list"></div>
+        <div class="footer">
+          <span>Relanto · Scenario-Based Learning</span>
+          <span>Choose to continue</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button type="button" id="prevBtn">Prev</button>
+    <button type="button" id="overviewBtn">Overview</button>
+    <button type="button" id="nextBtn">Next</button>
+  </div>
+  <div class="help">← → · Space · O</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const urlParams = new URLSearchParams(window.location.search);
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = embedMode || urlParams.get("clean") === "1";
+
+    const PHASES = [
+      { key: "situation", label: "Situation" },
+      { key: "challenge", label: "Challenge" },
+      { key: "recommended", label: "Recommended" },
+      { key: "explanation", label: "Explanation" },
+      { key: "takeaway", label: "Takeaway" },
+    ];
+
+    const SCENARIOS = [
+      {
+        id: "hr",
+        name: "Human Resources",
+        short: "HR",
+        hint: "Job descriptions & hiring content",
+        title: "The Job Description Draft",
+        situation:
+          "Priya in HR needs to publish a job description for a new logistics coordinator role by tomorrow. She asks an AI assistant: “Write a job description for a logistics coordinator.” The output looks polished but lists requirements that don't match the actual role and mentions benefits the company doesn't offer.",
+        challenge:
+          "The draft is fluent and professional-looking, which makes its inaccuracies easy to miss under deadline pressure.",
+        recommended:
+          "Priya should treat the output as a generic template, not a finished product. A better prompt provides context: the actual responsibilities, required experience, location, and the company's real benefits. She then reviews the revised draft line by line against the approved role profile before publishing.",
+        explanation:
+          "The assistant had no context about the specific role, so it generated a plausible generic description — a normal LLM behavior, not a malfunction. Providing context turns generic output into useful output; human review catches what remains.",
+        takeaway: "AI without context produces plausible generics. Provide specifics, then verify.",
+      },
+      {
+        id: "sales",
+        name: "Sales",
+        short: "Sales",
+        hint: "Prospect research & call prep",
+        title: "The Prospect Research Shortcut",
+        situation:
+          "Marco is preparing for a call with a prospective client. He asks an AI assistant for the prospect company's latest revenue figures and the names of its executives. The assistant produces specific numbers and names with confident phrasing.",
+        challenge:
+          "Some of these details may be hallucinated or outdated due to the model's training-data cutoff — and quoting a wrong executive name on a sales call is embarrassing and damaging.",
+        recommended:
+          "Marco verifies every factual claim against the company's website, annual report, or a current news search before the call. If his AI tool can search the web, he asks it to cite sources and then checks them. He uses the AI for what it does well: structuring his call plan and suggesting discovery questions.",
+        explanation:
+          "Specific facts about named organizations are exactly where hallucination and stale training data are most likely. The right division of labor is: AI for structure and drafting, verified sources for facts.",
+        takeaway: "Never take names, numbers, or dates from AI on trust. Verify before you quote.",
+      },
+      {
+        id: "marketing",
+        name: "Marketing",
+        short: "Marketing",
+        hint: "Campaign ideas & brand copy",
+        title: "Twenty Slogans in Two Minutes",
+        situation:
+          "Aisha needs campaign slogan ideas for a new eco-friendly product line. She asks an AI assistant for 20 options, picks three she likes, and is tempted to send them straight to the design team.",
+        challenge:
+          "AI-generated slogans may unintentionally resemble existing brands' taglines, and the tone may not match brand guidelines.",
+        recommended:
+          "Aisha uses the AI output as raw brainstorming material — exactly the right use case. Before shortlisting, she checks candidates against brand guidelines, searches whether similar slogans are already in use by competitors, and routes the final choice through the normal brand-approval process.",
+        explanation:
+          "Generative AI excels at producing volume and variety of ideas quickly. But it cannot check trademark conflicts or brand fit. The human workflow around the AI output is what makes it safe to use.",
+        takeaway: "AI is excellent for idea generation; standard approval and originality checks still apply.",
+      },
+      {
+        id: "operations",
+        name: "Operations",
+        short: "Ops",
+        hint: "Process design & tooling choices",
+        title: "Automation or AI?",
+        situation:
+          "An operations team wants to improve invoice handling. Task A: forward every invoice received at a shared mailbox to the finance system. Task B: read free-text customer complaints and route each to the right department with a short summary.",
+        challenge:
+          "The team is considering an “AI solution” for both tasks because AI is the current buzzword.",
+        recommended:
+          "Task A is a fixed, rule-based process — classic automation, no AI needed; a simple mail rule or workflow tool is cheaper and 100% predictable. Task B involves understanding varied human language — a genuine AI use case, ideally with periodic human spot-checks of routing accuracy.",
+        explanation:
+          "Choosing the right tool prevents over-engineering. Automation gives identical results every time and never hallucinates; AI handles ambiguity but introduces variability that needs monitoring.",
+        takeaway: "Rule-based and repeatable: automate. Language, variation, judgement: consider AI with oversight.",
+      },
+      {
+        id: "pm",
+        name: "Project Management",
+        short: "PM",
+        hint: "Status reports & summaries",
+        title: "The Status Report Generator",
+        situation:
+          "Daniel manages a software rollout. Every Friday he pastes his team's raw stand-up notes into an AI assistant and asks for a one-page status report for the steering committee. One week, the AI's report states a milestone as “completed” when the notes only said testing had started.",
+        challenge:
+          "The AI filled a gap with a plausible-sounding conclusion — a subtle hallucination inside an otherwise accurate report.",
+        recommended:
+          "Daniel keeps using AI for formatting and summarization but adds a verification step: he checks every status claim (Completed / In Progress / At Risk) against the project tracker before sending. He also improves his prompt: “Only state what is explicitly in the notes. If status is unclear, write ‘status unclear — to be confirmed’.”",
+        explanation:
+          "Summarization is a strong AI use case, but models tend to smooth over ambiguity. Instructing the model to flag uncertainty, plus a targeted human check on the highest-stakes claims, captures the time savings without the risk.",
+        takeaway: "In summaries, verify status words and numbers — that's where quiet errors hide.",
+      },
+      {
+        id: "support",
+        name: "Customer Support",
+        short: "Support",
+        hint: "Product facts & customer answers",
+        title: "The Confident Wrong Answer",
+        situation:
+          "A support agent, Lena, asks an AI assistant whether the company's premium plan includes weekend phone support. The assistant answers “Yes, premium includes 24/7 phone support” — fluently and without hesitation. Lena is new and isn't sure.",
+        challenge:
+          "The model was never trained on the company's current plan details; it produced a plausible answer based on what premium plans typically include elsewhere.",
+        recommended:
+          "Lena treats internal product questions as off-limits for a general AI assistant unless the assistant is connected to current internal documentation. She checks the official plan comparison page, and tells the customer the verified answer. If her team's assistant supports document upload, she can paste the official plan sheet and then ask.",
+        explanation:
+          "This is the training-data and context limitation in action: the model cannot know company-specific facts it was never given. Grounding the assistant in real documents transforms reliability.",
+        takeaway: "For company-specific facts, the AI must be given the source — or you must check the source yourself.",
+      },
+      {
+        id: "leadership",
+        name: "Leadership",
+        short: "Leadership",
+        hint: "Vendor claims & AI decisions",
+        title: "Evaluating a Vendor's “AI-Powered” Pitch",
+        situation:
+          "A department head, Sofia, receives a vendor pitch claiming their “AI-powered platform eliminates forecasting errors.” The demo looks impressive and the sales deck is full of AI terminology.",
+        challenge:
+          "Distinguishing genuine AI capability from marketing language, and setting realistic expectations for the organization.",
+        recommended:
+          "Sofia asks grounded questions: What data does the model learn from? How accurate is it on our kind of data, measured how? What happens when it's wrong, and how would we know? What human review does it assume? “Eliminates errors” is a red flag — probabilistic systems reduce, not eliminate, errors.",
+        explanation:
+          "Basic AI literacy lets leaders probe claims without being data scientists. Any vendor unable to discuss accuracy measurement, failure modes, and human oversight has not earned trust.",
+        takeaway: "Healthy skepticism plus a few standard questions beats being dazzled by terminology.",
+      },
+      {
+        id: "finance",
+        name: "Finance",
+        short: "Finance",
+        hint: "Numbers, variance & commentary",
+        title: "The Spreadsheet Calculation Trap",
+        situation:
+          "Tomás asks an AI assistant to “calculate the quarterly variance percentages” from a table of figures he pastes in. The assistant returns a tidy table, but two of the twelve percentages are wrong.",
+        challenge:
+          "LLMs generate text token by token; they are not calculators, and arithmetic slips are common — especially in tables of many numbers.",
+        recommended:
+          "Tomás performs calculations in a spreadsheet, where formulas are exact and auditable. He uses the AI for what it's good at: explaining what the variances mean, drafting the commentary paragraph, and suggesting how to present the findings.",
+        explanation:
+          "Knowing how a tool works tells you where to trust it. Text prediction is great for language tasks and unreliable for precise multi-step arithmetic. Some AI tools can run real calculations through code or spreadsheet features — but the user should know which mode they're in.",
+        takeaway: "Spreadsheets for numbers, AI for narrative. Verify any number AI produces.",
+      },
+      {
+        id: "general",
+        name: "General Office",
+        short: "General",
+        hint: "Day-to-day AI conversations",
+        title: "The Overlong Conversation",
+        situation:
+          "Ravi has been working with an AI assistant in one long conversation all day — drafting an email, then planning an event, then editing a report. Late in the day, the assistant starts “forgetting” details he provided that morning and mixing up the two projects.",
+        challenge:
+          "The conversation has grown beyond what the model can reliably keep in working memory (the context window), and unrelated topics are interfering with each other.",
+        recommended:
+          "Ravi starts a fresh conversation for each distinct task, and re-supplies the key facts each time (or pastes the relevant document). For long projects, he keeps a short “briefing note” he can paste at the start of any new session.",
+        explanation:
+          "Context is finite and topic mixing degrades quality. One task per conversation, with relevant context provided up front, is a simple habit that markedly improves results.",
+        takeaway: "New task, new conversation — and restate the essentials.",
+      },
+    ];
+
+    const deck = document.getElementById("deck");
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    const deptGrid = document.getElementById("deptGrid");
+    const pickerNote = document.getElementById("pickerNote");
+
+    let slides = [];
+    let index = 0;
+    let selectedId = null;
+
+    function refreshSlides() {
+      slides = Array.from(deck.querySelectorAll(".slide"));
+    }
+
+    function clearPathSlides() {
+      deck.querySelectorAll(".slide[data-path='1']").forEach((el) => el.remove());
+      selectedId = null;
+      deptGrid.querySelectorAll(".dept-card").forEach((btn) => btn.classList.remove("selected"));
+    }
+
+    function phaseChipsHtml(activeIdx) {
+      return PHASES.map((p, i) => {
+        const cls = i === activeIdx ? "on" : i < activeIdx ? "done" : "";
+        return `<span class="phase-chip ${cls}">${p.label}</span>`;
+      }).join("");
+    }
+
+    function buildPathSlides(scenario) {
+      clearPathSlides();
+      selectedId = scenario.id;
+      PHASES.forEach((phase, i) => {
+        const section = document.createElement("section");
+        section.className = "slide";
+        section.dataset.title = `${scenario.short}: ${phase.label}`;
+        section.dataset.path = "1";
+        const body = scenario[phase.key];
+        const takeawayBlock =
+          phase.key === "takeaway"
+            ? `<div class="takeaway-box"><span>Key takeaway</span>${escapeHtml(body)}</div>`
+            : `<p class="phase-body">${escapeHtml(body)}</p>`;
+        section.innerHTML = `
+          <div class="meta-row">
+            <span class="dept-badge">${escapeHtml(scenario.name)}</span>
+            <button type="button" class="change-dept" data-action="change">Change department</button>
+          </div>
+          <div class="phase-bar">${phaseChipsHtml(i)}</div>
+          <div class="phase-panel" data-phase="${phase.key}">
+            <div class="phase-label">${phase.label}</div>
+            <h2 class="phase-title">${escapeHtml(scenario.title)}</h2>
+            ${takeawayBlock}
+          </div>
+          <div class="footer">
+            <span>Relanto · ${escapeHtml(scenario.short)} scenario</span>
+            <span>Step ${i + 1} of ${PHASES.length}</span>
+          </div>
+        `;
+        deck.appendChild(section);
+      });
+      refreshSlides();
+      buildOverview();
+      const firstPath = slides.findIndex((s) => s.dataset.path === "1");
+      showSlide(firstPath >= 0 ? firstPath : 0);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderDeptGrid() {
+      deptGrid.innerHTML = "";
+      SCENARIOS.forEach((s, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dept-card";
+        btn.setAttribute("role", "listitem");
+        btn.dataset.id = s.id;
+        btn.innerHTML = `
+          <span class="dept-num">0${i + 1}</span>
+          <span class="dept-name">${escapeHtml(s.name)}</span>
+          <span class="dept-hint">${escapeHtml(s.hint)}</span>
+        `;
+        btn.addEventListener("click", () => {
+          deptGrid.querySelectorAll(".dept-card").forEach((el) => el.classList.remove("selected"));
+          btn.classList.add("selected");
+          buildPathSlides(s);
+        });
+        deptGrid.appendChild(btn);
+      });
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deckEl = shell?.querySelector(".deck");
+      if (!shell || !deckEl) return;
+      deckEl.style.transform = "none";
+      slides.forEach((s) => {
+        s.style.zoom = "";
+        s.style.transform = "";
+      });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW;
+      let deckH;
+      if (sw / sh > ASPECT) {
+        deckH = sh;
+        deckW = Math.round(sh * ASPECT);
+      } else {
+        deckW = sw;
+        deckH = Math.round(sw / ASPECT);
+      }
+      deckEl.style.width = `${deckW}px`;
+      deckEl.style.height = `${deckH}px`;
+      deckEl.style.maxWidth = "100%";
+      deckEl.style.maxHeight = "100%";
+      const active = deckEl.querySelector(".slide.active");
+      if (active) {
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) {
+            active.style.overflow = "auto";
+          }
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    function onPickerSlide() {
+      return slides[index]?.id === "pickerSlide" || slides[index]?.dataset.title === "Choose department";
+    }
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = Boolean(selectedId) && index >= slides.length - 1;
+      const atStart = index <= 0;
+      window.parent.postMessage(
+        {
+          type: EMBED_EVENT,
+          kind: "scenarios",
+          slideIndex: index,
+          slideCount: slides.length,
+          atEnd,
+          atStart,
+        },
+        "*",
+      );
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => {
+        slide.classList.toggle("active", i === index);
+      });
+      if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function next() {
+      if (onPickerSlide() && !selectedId) {
+        pickerNote.classList.remove("pulse");
+        void pickerNote.offsetWidth;
+        pickerNote.classList.add("pulse");
+        pickerNote.textContent = "Select a department above to continue.";
+        publishEmbedState();
+        return;
+      }
+      showSlide(index + 1);
+    }
+
+    function prev() {
+      showSlide(index - 1);
+    }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          if (slide.dataset.path === "1" && !selectedId) return;
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    deck.addEventListener("click", (event) => {
+      const t = event.target;
+      if (t && t.matches && t.matches("[data-action='change']")) {
+        clearPathSlides();
+        refreshSlides();
+        buildOverview();
+        const pickerIdx = slides.findIndex((s) => s.id === "pickerSlide");
+        showSlide(pickerIdx >= 0 ? pickerIdx : 1);
+        pickerNote.classList.remove("pulse");
+        pickerNote.textContent = "Select one path. You’ll see that scenario only — about five short slides.";
+      }
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") {
+        overview.classList.toggle("open");
+        return;
+      }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open");
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault();
+        next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) {
+          showSlide(Number(data.index));
+        }
+      });
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") {
+          new ResizeObserver(fitEmbedDeck).observe(shell);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    renderDeptGrid();
+    refreshSlides();
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>

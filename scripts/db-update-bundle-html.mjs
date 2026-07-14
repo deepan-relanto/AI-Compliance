@@ -1,7 +1,7 @@
 /**
- * Push updated lesson + mindmap HTML into disk (public/course-assets) AND Neon.
+ * Push updated lesson + scenarios + mindmap HTML into disk (public/course-assets) AND Neon.
  * The API serves disk first, so Neon-only upserts never reach assigned learners.
- * Also updates lesson pageCount to match slide count.
+ * Also updates lesson/scenarios pageCount to match slide count.
  *
  * Usage: node scripts/db-update-bundle-html.mjs [moduleId]
  */
@@ -46,6 +46,12 @@ const LESSON_PATH = path.join(
   "content-kit",
   "interactive-html",
   "relanto_ai_fundamentals_interactive.html",
+);
+const SCENARIOS_PATH = path.join(
+  root,
+  "content-kit",
+  "interactive-html",
+  "relanto_ai_scenarios_interactive.html",
 );
 const MINDMAP_PATH = path.join(root, "content-kit", "mindmap-html", "mindmap-01.html");
 
@@ -107,6 +113,7 @@ const steps = await sql`
 `;
 
 const lessonStep = steps.find((s) => s.step_type === "pdf");
+const scenariosStep = steps.find((s) => s.step_type === "scenarios");
 const mindmapStep = steps.find((s) => s.step_type === "mindmap");
 const videoStep = steps.find((s) => s.step_type === "video");
 const infographicStep = steps.find((s) => s.step_type === "infographic");
@@ -127,6 +134,18 @@ const slideCount = slideCountFromLesson(lessonHtml);
 console.log(`Updating bundle ${MODULE_ID}`);
 console.log(`  lesson  → ${lessonFilename} (${slideCount} slides, ${lessonBuffer.length} bytes)`);
 console.log(`  mindmap → ${mindmapFilename} (${mindmapBuffer.length} bytes)`);
+
+let scenariosFilename = null;
+let scenariosBuffer = null;
+if (scenariosStep?.config?.assetUrl && fs.existsSync(SCENARIOS_PATH)) {
+  scenariosFilename = String(scenariosStep.config.assetUrl).split("/").pop();
+  const scenariosHtml = fs.readFileSync(SCENARIOS_PATH, "utf8");
+  scenariosBuffer = Buffer.from(scenariosHtml, "utf8");
+  console.log(`  scen.   → ${scenariosFilename} (${scenariosBuffer.length} bytes)`);
+} else if (!scenariosStep) {
+  console.log("  scen.   → (no scenarios step yet — run db-wire-scenarios-step.mjs)");
+}
+
 if (videoStep?.config?.assetUrl) {
   console.log(`  video   → ${String(videoStep.config.assetUrl).split("/").pop()} (unchanged)`);
 }
@@ -143,6 +162,14 @@ writeDiskAsset(
   "relanto_ai_fundamentals_interactive.html",
 );
 writeDiskAsset(mindmapFilename, mindmapBuffer, "text/html", "mindmap-01.html");
+if (scenariosFilename && scenariosBuffer) {
+  writeDiskAsset(
+    scenariosFilename,
+    scenariosBuffer,
+    "text/html",
+    "relanto_ai_scenarios_interactive.html",
+  );
+}
 
 await upsertAsset(
   lessonFilename,
@@ -156,6 +183,25 @@ await upsertAsset(
   mindmapBuffer,
   "text/html",
 );
+if (scenariosFilename && scenariosBuffer && scenariosStep) {
+  await upsertAsset(
+    scenariosFilename,
+    scenariosStep.config.assetUrl,
+    scenariosBuffer,
+    "text/html",
+  );
+  const scenariosConfig = {
+    ...scenariosStep.config,
+    pageCount: 7,
+    mimeType: "text/html",
+    originalName: "relanto_ai_scenarios_interactive.html",
+  };
+  await sql`
+    UPDATE course_module_steps
+    SET config = ${JSON.stringify(scenariosConfig)}::jsonb, updated_at = NOW()
+    WHERE module_id = ${MODULE_ID} AND step_type = 'scenarios'
+  `;
+}
 
 const lessonConfig = {
   ...lessonStep.config,

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const STEP_TYPES = new Set(["pdf", "video", "mindmap", "infographic", "quiz"]);
+const STEP_TYPES = new Set(["pdf", "scenarios", "video", "mindmap", "infographic", "quiz"]);
 
 /** GET — list steps for a course bundle */
 export async function GET(

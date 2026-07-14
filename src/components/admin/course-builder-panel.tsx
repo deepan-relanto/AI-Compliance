@@ -30,7 +30,7 @@ import {
 import { useCallback, useMemo, useState } from "react";
 
 type WizardStep = "info" | CourseStepType | "publish" | "done";
-type MediaKind = "lesson" | "video" | "mindmap" | "infographic";
+type MediaKind = "lesson" | "scenarios" | "video" | "mindmap" | "infographic";
 
 const WIZARD_STEPS: WizardStep[] = [
   "info",
@@ -40,6 +40,7 @@ const WIZARD_STEPS: WizardStep[] = [
 
 const STEP_ICONS: Record<CourseStepType, typeof FileCode2> = {
   pdf: FileCode2,
+  scenarios: GraduationCap,
   video: Video,
   mindmap: Network,
   infographic: Image,
@@ -48,6 +49,7 @@ const STEP_ICONS: Record<CourseStepType, typeof FileCode2> = {
 
 const MEDIA_KIND: Partial<Record<CourseStepType, MediaKind>> = {
   pdf: "lesson",
+  scenarios: "scenarios",
   video: "video",
   mindmap: "mindmap",
   infographic: "infographic",
@@ -55,6 +57,7 @@ const MEDIA_KIND: Partial<Record<CourseStepType, MediaKind>> = {
 
 const ACCEPT_BY_STEP: Partial<Record<CourseStepType, string>> = {
   pdf: ".html,.htm,text/html",
+  scenarios: ".html,.htm,text/html",
   video: ".mp4,.webm,.mov,video/*",
   mindmap: ".html,.htm,text/html",
   infographic: ".png,.jpg,.jpeg,.webp,.pdf,image/*,application/pdf",
@@ -138,7 +141,7 @@ export function CourseBuilderPanel() {
   };
 
   const handleUploadMedia = async (
-    stepType: "pdf" | "video" | "mindmap" | "infographic",
+    stepType: "pdf" | "scenarios" | "video" | "mindmap" | "infographic",
   ) => {
     const kind = MEDIA_KIND[stepType];
     if (!uploadFile || !kind) {
@@ -432,6 +435,7 @@ export function CourseBuilderPanel() {
 
           {currentContentStep &&
             (currentContentStep === "pdf" ||
+              currentContentStep === "scenarios" ||
               currentContentStep === "video" ||
               currentContentStep === "mindmap" ||
               currentContentStep === "infographic") && (
@@ -442,22 +446,28 @@ export function CourseBuilderPanel() {
                   hint={
                     currentContentStep === "pdf"
                       ? "Self-contained .html lesson (interactive slides). Stored in course assets."
-                      : currentContentStep === "video"
-                        ? "MP4, WebM, or MOV (max 100 MB). Stored locally on the server."
-                        : currentContentStep === "mindmap"
-                          ? "Interactive .html mind map (e.g. mindmap-01.html). Stored in course assets."
-                          : "PNG, JPEG, WebP, or PDF infographic (max 100 MB)."
+                      : currentContentStep === "scenarios"
+                        ? "Self-contained .html scenario module (department picker + slides). Stored in course assets."
+                        : currentContentStep === "video"
+                          ? "MP4, WebM, or MOV (max 100 MB). Stored locally on the server."
+                          : currentContentStep === "mindmap"
+                            ? "Interactive .html mind map (e.g. mindmap-01.html). Stored in course assets."
+                            : "PNG, JPEG, WebP, or PDF infographic (max 100 MB)."
                   }
                   accept={ACCEPT_BY_STEP[currentContentStep]!}
                   file={uploadFile}
                   onFile={
-                    currentContentStep === "pdf" || currentContentStep === "mindmap"
+                    currentContentStep === "pdf" ||
+                    currentContentStep === "scenarios" ||
+                    currentContentStep === "mindmap"
                       ? handleUploadFile
                       : setUploadFile
                   }
                   disabled={loading}
                 />
-                {(currentContentStep === "pdf" || currentContentStep === "mindmap") && (
+                {(currentContentStep === "pdf" ||
+                  currentContentStep === "scenarios" ||
+                  currentContentStep === "mindmap") && (
                   <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
                     <div className="border-b border-zinc-100 px-4 py-2">
                       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
@@ -604,7 +614,7 @@ export function CourseBuilderPanel() {
               <h3 className="text-lg font-semibold text-zinc-900">Course bundle published</h3>
               <p className="max-w-md text-sm text-zinc-600">
                 {successMsg ??
-                  `Learners in the selected batches will see this course under My training. The full bundle (HTML lesson, video, HTML mind map, infographic, ${questionCount || "quiz"} questions) is stored and available for reuse.`}
+                  `Learners in the selected batches will see this course under My training. The full bundle (HTML lesson, scenarios, video, HTML mind map, infographic, ${questionCount || "quiz"} questions) is stored and available for reuse.`}
               </p>
               <InviteResultBanner invites={publishInvites} />
               <Button variant="secondary" onClick={resetForm}>

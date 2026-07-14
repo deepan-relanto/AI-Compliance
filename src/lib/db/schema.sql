@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS module_steps (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   module_id   TEXT NOT NULL REFERENCES training_modules(id) ON DELETE CASCADE,
   step_order  INTEGER NOT NULL,
-  step_type   TEXT NOT NULL CHECK (step_type IN ('pdf', 'video', 'mindmap', 'infographic', 'quiz')),
+  step_type   TEXT NOT NULL CHECK (step_type IN ('pdf', 'scenarios', 'video', 'mindmap', 'infographic', 'quiz')),
   title       TEXT NOT NULL DEFAULT '',
   config      JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),

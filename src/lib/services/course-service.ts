@@ -287,7 +287,7 @@ export async function publishCourseModuleDb(
 
   if (!isCourseBundleComplete(steps, questionCount)) {
     throw new Error(
-      "Complete all bundle steps (HTML lesson, video, HTML mind map, infographic, quiz) before publishing.",
+      "Complete all bundle steps (HTML lesson, scenarios, video, HTML mind map, infographic, quiz) before publishing.",
     );
   }
 
