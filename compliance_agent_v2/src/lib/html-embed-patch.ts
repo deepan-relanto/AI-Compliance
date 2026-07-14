@@ -1,6 +1,8 @@
 const EMBED_PATCH_STYLE = `<style id="relanto-embed-size-fix">
 html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
-body.embed { background: #0a0a0a !important; }
+/* Black gutters only for slide decks — mind maps keep their light canvas */
+body.embed:has(.deck) { background: #0a0a0a !important; }
+body.embed:has(#viewport) { background: #f8f9fb !important; }
 body.embed .deck-shell {
   display: flex !important;
   align-items: center !important;

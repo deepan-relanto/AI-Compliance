@@ -28,7 +28,9 @@ const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
 
 const EMBED_SIZE_FIX_CSS = `
 html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
-body.embed { background: #0a0a0a !important; }
+/* Black gutters only for slide decks — mind maps keep their light canvas */
+body.embed:has(.deck) { background: #0a0a0a !important; }
+body.embed:has(#viewport) { background: #f8f9fb !important; }
 body.embed .deck-shell {
   display: flex !important;
   align-items: center !important;
@@ -155,21 +157,24 @@ function HtmlEmbed({
   eyebrow,
   chrome = true,
   iframeRef,
+  surface = "dark",
 }: {
   url: string;
   title?: string;
   eyebrow: string;
   chrome?: boolean;
   iframeRef?: React.Ref<HTMLIFrameElement>;
+  surface?: "dark" | "light";
 }) {
   const embedUrl = withEmbedQuery(url) ?? url;
   const handleIframeLoad = (e: React.SyntheticEvent<HTMLIFrameElement>) => {
     injectEmbedSizeFix(e.currentTarget);
   };
+  const surfaceClass = surface === "light" ? "bg-[#f8f9fb]" : "bg-[#0a0a0a]";
 
   if (!chrome) {
     return (
-      <div className="relative mx-auto flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
+      <div className={`relative mx-auto flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden ${surfaceClass}`}>
         <iframe
           ref={iframeRef}
           key={embedUrl}
@@ -278,6 +283,7 @@ export function CourseStepContent({
           title={step.config.originalName}
           eyebrow="Interactive mind map"
           chrome={false}
+          surface="light"
         />
       );
     }

@@ -240,13 +240,10 @@
 
       .link {
         fill: none;
-        stroke: #2e3192;
-        stroke-width: 2.25;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        opacity: 0.92;
+        stroke: url(#linkGradient);
+        stroke-width: 1.75;
+        opacity: 0.88;
         marker-end: url(#arrowEnd);
-        vector-effect: non-scaling-stroke;
       }
 
       .node { cursor: pointer; }
@@ -265,8 +262,8 @@
       }
 
       .node-rect.mid {
-        fill: rgba(46, 49, 146, 0.05);
-        stroke: rgba(46, 49, 146, 0.16);
+        fill: #ffffff;
+        stroke: rgba(46, 49, 146, 0.18);
         stroke-width: 1.15;
       }
 
@@ -319,12 +316,14 @@
       }
 
       .toggle-fill {
-        fill: #f15a24;
+        fill: #ffffff;
+        stroke: #f15a24;
+        stroke-width: 1.6;
       }
 
       .toggle-chevron {
         fill: none;
-        stroke: #fff;
+        stroke: #f15a24;
         stroke-width: 1.8;
         stroke-linecap: round;
         stroke-linejoin: round;
@@ -673,11 +672,11 @@
 
       /* Horizontal (left → right) layout — matches NotebookLM screenshots */
       const NODE_H = 40;
-      const NODE_GAP_Y = 22;
-      const COLUMN_GAP = 72;
+      const NODE_GAP_Y = 18;
+      const COLUMN_GAP = 48;
       const H_PAD = 16;
       const CHAR_W = 7.6;
-      const TOGGLE_R = 9;
+      const TOGGLE_R = 7;
       const TOGGLE_FOOTPRINT = TOGGLE_R * 2 + 12;
 
       const collapsed = new Map();
@@ -701,15 +700,6 @@
 
       function hasChildren(node) {
         return Array.isArray(node.children) && node.children.length > 0;
-      }
-
-      function findNodeById(node, id) {
-        if (node.id === id) return node;
-        for (const child of node.children || []) {
-          const found = findNodeById(child, id);
-          if (found) return found;
-        }
-        return null;
       }
 
       function isCollapsed(id) {
@@ -800,8 +790,7 @@
         let maxX = -Infinity;
         for (const [id, p] of positions) {
           const s = sizes.get(id);
-          const node = findNodeById(MINDMAP_DATA, id);
-          const extent = nodeExtentRight(s.w, node ? hasChildren(node) : false);
+          const extent = nodeExtentRight(s.w, true);
           minX = Math.min(minX, p.x);
           maxX = Math.max(maxX, p.x + extent);
         }
@@ -855,14 +844,14 @@
 
         const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
         arrowEnd.id = "arrowEnd";
-        arrowEnd.setAttribute("markerWidth", "12");
-        arrowEnd.setAttribute("markerHeight", "12");
-        arrowEnd.setAttribute("refX", "10");
-        arrowEnd.setAttribute("refY", "6");
+        arrowEnd.setAttribute("markerWidth", "10");
+        arrowEnd.setAttribute("markerHeight", "10");
+        arrowEnd.setAttribute("refX", "9");
+        arrowEnd.setAttribute("refY", "5");
         arrowEnd.setAttribute("orient", "auto");
         arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
         arrowEnd.innerHTML = `
-          <path d="M0,1 L10,6 L0,11 Z" fill="#2e3192" fill-opacity="0.9"/>
+          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.65"/>
         `;
 
         defs.appendChild(rootFill);
@@ -877,15 +866,23 @@
       }
 
       function drawCurve(x1, y1, x2, y2) {
-        // Always leave enough horizontal run so extreme top/bottom branches (1 and 3)
-        // still show a continuous stroke — SVG gradient strokes vanish on tall thin bboxes.
-        const minRun = 48;
-        const endX = Math.max(x2, x1 + minRun);
-        const dx = Math.max(40, (endX - x1) * 0.5);
+        if (x2 <= x1 + 8) {
+          // Fallback stub when spacing is still tight
+          const midY = (y1 + y2) / 2;
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute(
+            "d",
+            `M ${x1} ${y1} L ${x1 + 12} ${y1} L ${x1 + 12} ${midY} L ${x2} ${y2}`,
+          );
+          path.setAttribute("class", "link");
+          svg.appendChild(path);
+          return;
+        }
+        const dx = Math.max(36, (x2 - x1) * 0.45);
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute(
           "d",
-          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${endX - dx} ${y2}, ${endX} ${y2}`,
+          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
         );
         path.setAttribute("class", "link");
         svg.appendChild(path);
@@ -948,7 +945,6 @@
           if (!hasChildren(node)) return;
           collapsed.set(node.id, !isCollapsed(node.id));
           render();
-          requestAnimationFrame(fitToScreen);
         });
 
         svg.appendChild(g);
@@ -960,17 +956,14 @@
         const parentSize = sizes.get(node.id);
         if (!parent || !parentSize) return;
 
-        // Start just outside the orange toggle so steep branches still connect visually.
-        const x1 = hasChildren(node)
-          ? parent.x + parentSize.w + TOGGLE_R * 2 + 4
-          : parent.x + parentSize.w + 4;
+        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 10 : 4);
         const y1 = parent.y + parentSize.h / 2;
 
         for (const child of kids) {
           const childPos = positions.get(child.id);
           const childSize = sizes.get(child.id);
           if (!childPos || !childSize) continue;
-          const x2 = childPos.x - 2;
+          const x2 = childPos.x - 10;
           const y2 = childPos.y + childSize.h / 2;
           drawCurve(x1, y1, x2, y2);
           renderLinks(child, positions, sizes);
@@ -1031,7 +1024,6 @@
           expandIds.forEach((id) => collapsed.set(id, false));
         }
         render();
-        requestAnimationFrame(fitToScreen);
       }
 
       function collapseAll() {
@@ -1040,37 +1032,31 @@
           (node.children || []).forEach(walk);
         }
         walk(MINDMAP_DATA);
-        // Start with root only expanded — depth-1 branches visible but collapsed.
         collapsed.set("root", false);
         (MINDMAP_DATA.children || []).forEach((branch) => {
-          collapsed.set(branch.id, true);
+          collapsed.set(branch.id, false);
+          (branch.children || []).forEach((mid) => collapsed.set(mid.id, true));
         });
         render();
-        requestAnimationFrame(fitToScreen);
       }
 
       function expandAll() {
         collapsed.clear();
         render();
-        requestAnimationFrame(fitToScreen);
       }
 
       function fitToScreen() {
         const rect = viewport.getBoundingClientRect();
-        if (rect.width < 1 || rect.height < 1) return;
         const mapW = Number(svg.getAttribute("width") || 1200);
         const mapH = Number(svg.getAttribute("height") || 700);
-        const pad = embedMode ? 16 : 40;
-        const fitZoom = Math.min((rect.width - pad) / mapW, (rect.height - pad) / mapH);
-        // In embed mode fill the iframe; otherwise keep a modest cap for standalone.
         const nextZoom = Math.min(
-          embedMode ? MAX_ZOOM : 1.15,
-          Math.max(MIN_ZOOM, fitZoom),
+          1.05,
+          Math.max(0.35, Math.min((rect.width - 40) / mapW, (rect.height - 40) / mapH)),
         );
         zoom = nextZoom;
         pan = {
           x: (rect.width - mapW * zoom) / 2,
-          y: Math.max(8, (rect.height - mapH * zoom) / 2),
+          y: Math.max(12, (rect.height - mapH * zoom) / 2),
         };
         applyTransform();
       }
@@ -1138,10 +1124,6 @@
       collapseAll();
       applyTransform();
       requestAnimationFrame(fitToScreen);
-      window.addEventListener("resize", () => requestAnimationFrame(fitToScreen));
-      if (typeof ResizeObserver !== "undefined") {
-        new ResizeObserver(() => requestAnimationFrame(fitToScreen)).observe(viewport);
-      }
     </script>
   </body>
 </html>
