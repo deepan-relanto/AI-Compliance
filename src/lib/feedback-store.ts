@@ -42,6 +42,35 @@ export function submitFeedback(
   feedbackText: string,
   batchId?: string,
 ): FeedbackEntry {
+  return persistFeedback(userId, assessmentId, assessmentName, feedbackText, batchId, "/api/feedback");
+}
+
+/** Persist feedback for AI course modules into course_feedback_entries. */
+export function submitCourseFeedback(
+  userId: string,
+  assessmentId: string,
+  assessmentName: string,
+  feedbackText: string,
+  batchId?: string,
+): FeedbackEntry {
+  return persistFeedback(
+    userId,
+    assessmentId,
+    assessmentName,
+    feedbackText,
+    batchId,
+    "/api/course-feedback",
+  );
+}
+
+function persistFeedback(
+  userId: string,
+  assessmentId: string,
+  assessmentName: string,
+  feedbackText: string,
+  batchId: string | undefined,
+  apiPath: string,
+): FeedbackEntry {
   const entry: FeedbackEntry = {
     id: generateId(),
     userId,
@@ -56,8 +85,7 @@ export function submitFeedback(
   const existing = readAll();
   writeAll([entry, ...existing]);
 
-  // Fire-and-forget DB sync
-  fetch("/api/feedback", {
+  fetch(apiPath, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

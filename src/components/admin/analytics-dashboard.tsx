@@ -346,7 +346,11 @@ type StatusFilter =
   | "completed";
 
 export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) {
-  const { data: rawData, error: rawError, isLoading, mutate, isValidating } = useSWR("/api/analytics", fetcher);
+  const [track, setTrack] = useState<"compliance" | "course">("compliance");
+  const { data: rawData, error: rawError, isLoading, mutate, isValidating } = useSWR(
+    `/api/analytics?track=${track}`,
+    fetcher,
+  );
   
   const [batchFilter, setBatchFilter] = useState<string>(initialBatchId ?? "all");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
@@ -481,13 +485,23 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterPill active={track === "compliance"} onClick={() => setTrack("compliance")}>
+          Security Compliance
+        </FilterPill>
+        <FilterPill active={track === "course"} onClick={() => setTrack("course")}>
+          AI-course
+        </FilterPill>
+      </div>
+
       {/* Export hub */}
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div>
             <p className="section-label">Export hub</p>
             <p className="mt-1 text-sm text-zinc-600">
-              Download organization-wide compliance data for audits and reviews.
+              Download organization-wide{" "}
+              {track === "course" ? "AI-course" : "compliance"} data for audits and reviews.
             </p>
             <p className="mt-0.5 text-xs text-zinc-400">
               Last updated {new Date(data.generatedAt).toLocaleString()}

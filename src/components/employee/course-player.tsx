@@ -11,6 +11,7 @@ import { CompletionNotice } from "@/components/employee/completion-notice";
 import { EncouragementRetakeNotice } from "@/components/employee/encouragement-retake-notice";
 import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
+import { CourseContentOverview } from "@/components/employee/course-content-overview";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -48,6 +49,7 @@ import {
   clearLocalModuleProgressIfServerAbsent,
   clearStaleLocalProgress,
   clearAllLocalProgressForUser,
+  failAssessmentForAbandonment,
 } from "@/lib/progress-store";
 import {
   syncCourseAcknowledgement,
@@ -56,6 +58,7 @@ import {
   finalizeCourseAssessmentScore,
   requestCourseScoreRetake,
   fetchCourseUserProgress,
+  syncCourseAbandonmentFailure,
 } from "@/lib/course-progress-api";
 import type { ServerProgressEntry } from "@/lib/progress-api";
 import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ, isPassingScore } from "@/lib/constants";
@@ -199,6 +202,8 @@ export function CoursePlayer({
   const [showExitModal, setShowExitModal] = useState(false);
   const [showProctorRules, setShowProctorRules] = useState(!autoStartSession);
   const [sessionStarted, setSessionStarted] = useState(autoStartSession);
+  const [showContentOverview, setShowContentOverview] = useState(false);
+  const [sessionStartError, setSessionStartError] = useState<string | null>(null);
   const [sessionStartMs, setSessionStartMs] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [showScoreResult, setShowScoreResult] = useState(false);
@@ -576,13 +581,58 @@ export function CoursePlayer({
     return () => window.clearInterval(id);
   }, [sessionStarted, sessionStartMs]);
 
-  const handleBeginSession = () => {
+  const handleBeginSession = async () => {
+    setSessionStartError(null);
+    if (user?.username) {
+      const locked = isProctorLocked(user.username, module.id);
+      if (locked && reviewRequest?.status !== "Approved") {
+        setSessionStartError(
+          "This attempt is locked. Request administrator review to retake.",
+        );
+        setIsFailed(true);
+        return;
+      }
+
+      const isFullRetake =
+        (getProgress(user.username, module.id)?.retakeCount ?? retakeCount) > 0 &&
+        !quizOnlyModeFromModule;
+
+      const sync = await syncCourseProgressStart({
+        userEmail: user.username,
+        moduleId: module.id,
+        moduleTitle: module.title,
+        batchId: user.batchId,
+        totalSlides,
+        assignedMcqCount: moduleMcqs.length,
+        freshStart: isFullRetake || freshStart,
+      });
+      if (!sync.ok) {
+        setSessionStartError(
+          sync.message ?? "Could not start session. Request a retake if you have failed.",
+        );
+        return;
+      }
+
+      markInProgress(
+        user.username,
+        module.id,
+        module.title,
+        user.batchId,
+        totalSlides,
+      );
+    }
+
     setShowProctorRules(false);
     setSessionStarted(true);
     setSessionStartMs(Date.now());
     enterFullscreen();
     if (contentSteps.length === 0 && !quizOnlyMode) {
       startQuizPhase();
+      setShowContentOverview(false);
+    } else if (!quizOnlyMode && !ackPendingMode) {
+      setShowContentOverview(true);
+    } else {
+      setShowContentOverview(false);
     }
   };
 
@@ -590,6 +640,7 @@ export function CoursePlayer({
     if (!autoStartSession) return;
     setShowProctorRules(false);
     setSessionStarted(true);
+    setShowContentOverview(false);
     if (sessionStartMs === null) {
       setSessionStartMs(Date.now());
     }
@@ -603,21 +654,21 @@ export function CoursePlayer({
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  // Progress start is deferred until handleBeginSession (or auto-start special modes).
   useEffect(() => {
-    if (user?.username) {
-      markInProgress(user.username, module.id, module.title, user.batchId, totalSlides);
-      void syncCourseProgressStart({
-        userEmail: user.username,
-        moduleId: module.id,
-        moduleTitle: module.title,
-        batchId: user.batchId,
-        totalSlides,
-        assignedMcqCount: moduleMcqs.length,
-        freshStart,
-      });
-    }
+    if (!autoStartSession || !user?.username) return;
+    markInProgress(user.username, module.id, module.title, user.batchId, totalSlides);
+    void syncCourseProgressStart({
+      userEmail: user.username,
+      moduleId: module.id,
+      moduleTitle: module.title,
+      batchId: user.batchId,
+      totalSlides,
+      assignedMcqCount: moduleMcqs.length,
+      freshStart,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, module.id, moduleMcqs.length, freshStart]);
+  }, [autoStartSession, user?.username, module.id]);
 
   const handleFinishAttempt = useCallback(async () => {
     if (!user?.username) {
@@ -1072,17 +1123,60 @@ export function CoursePlayer({
   };
 
   if (!sessionStarted) {
+    if (isFailed && dbStatus !== "not_started") {
+      return (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
+          <CourseProctorFailOverlay
+            liveWarningCount={liveWarningCount}
+            liveWarningHistory={liveWarningHistory}
+            retakeCount={retakeCount}
+            dbStatus={dbStatus}
+            reviewRequest={reviewRequest}
+            showReviewForm={showReviewForm}
+            explanation={explanation}
+            reviewError={reviewError}
+            reviewSubmitting={reviewSubmitting}
+            restartLoading={proctorRestartLoading}
+            onShowReviewForm={() => {
+              setReviewError("");
+              setShowReviewForm(true);
+            }}
+            onExplanation={setExplanation}
+            onCancelReview={() => {
+              setShowReviewForm(false);
+              setExplanation("");
+              setReviewError("");
+            }}
+            onSubmitReview={handleSubmitReview}
+            onRestartCourse={() => void handleProctorRetakeRestart()}
+            onExitToDashboard={() => {
+              isExitingRef.current = true;
+              window.location.href = "/dashboard";
+            }}
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100">
+      <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-zinc-100 p-4">
+        {sessionStartError && (
+          <p className="max-w-md rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-700">
+            {sessionStartError}
+          </p>
+        )}
         <ProctorRulesModal
           open={showProctorRules}
           moduleTitle={module.title}
           eyebrow="Proctored course training"
-          onAccept={handleBeginSession}
+          onAccept={() => void handleBeginSession()}
         />
       </div>
     );
   }
+
+  const showingOverview =
+    showContentOverview && phase === "content" && !quizOnlyMode;
 
   return (
     <div className="training-interactive fixed inset-0 z-30 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-900">
@@ -1106,7 +1200,10 @@ export function CoursePlayer({
               Warnings: {liveWarningCount} / 3
             </span>
           )}
-          {phase === "content" && !quizOnlyMode && contentSteps.length > 0 && (
+          {phase === "content" &&
+            !quizOnlyMode &&
+            !showingOverview &&
+            contentSteps.length > 0 && (
             <span className="font-mono text-xs text-zinc-400">
               {isHtmlLessonStep && htmlEmbedState
                 ? `Slide ${htmlEmbedState.slideIndex + 1} / ${htmlEmbedState.slideCount}`
@@ -1142,6 +1239,17 @@ export function CoursePlayer({
         </div>
       </header>
 
+      {showingOverview ? (
+        <CourseContentOverview
+          moduleTitle={module.title}
+          moduleDescription={module.description}
+          durationMinutes={module.durationMinutes}
+          steps={contentSteps}
+          questionCount={moduleMcqs.length}
+          onBegin={() => setShowContentOverview(false)}
+        />
+      ) : (
+        <>
       {!showAcknowledgement && !showFinalQa && !showScoreResult && (
         <div className="grid shrink-0 gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3 sm:grid-cols-[minmax(160px,1fr)_auto_auto] sm:items-center">
           <ProgressBar value={progressPercent} />
@@ -1250,6 +1358,7 @@ export function CoursePlayer({
                   moduleTitle={module.title}
                   moduleId={module.id}
                   userId={user?.username ?? ""}
+                  track="course"
                   deferSuccessToParent
                   messageRequired
                   ratingRequired
@@ -1302,6 +1411,8 @@ export function CoursePlayer({
             </Button>
           </footer>
         )}
+        </>
+      )}
 
       <MCQCheckpoint {...checkpointProps} variant="modal" />
 
@@ -1376,14 +1487,26 @@ export function CoursePlayer({
           onCancel={() => setShowExitModal(false)}
           onConfirm={() => {
             void (async () => {
-              isExitingRef.current = true;
               if (user?.username && sessionStarted) {
-                proctorHook.recordAbandonmentFailure(
-                  activeWarningReason
-                    ? "Assessment abandoned after exiting fullscreen"
-                    : "Assessment abandoned",
+                const reason = activeWarningReason
+                  ? "Assessment abandoned after exiting fullscreen"
+                  : "Assessment abandoned";
+                const updated = failAssessmentForAbandonment(
+                  user.username,
+                  module.id,
+                  reason,
                 );
+                if (updated) {
+                  setIsFailed(true);
+                  setDbStatus(updated.status);
+                  await syncCourseAbandonmentFailure({
+                    userEmail: user.username,
+                    moduleId: module.id,
+                    reason: updated.failedReason ?? reason,
+                  });
+                }
               }
+              isExitingRef.current = true;
               if (document.fullscreenElement) {
                 await document.exitFullscreen().catch(() => undefined);
               }

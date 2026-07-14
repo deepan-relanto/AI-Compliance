@@ -112,10 +112,12 @@ export function CourseExitModal({
           <p className="font-semibold text-zinc-600">If you exit now:</p>
           <ul className="list-disc space-y-1 pl-4">
             <li>
-              This attempt may be marked as{" "}
+              This attempt will be marked as{" "}
               <span className="font-semibold text-red-600">Failed</span>.
             </li>
-            <li>You will need to start again from the beginning (or request a retake if eligible).</li>
+            <li>
+              You will need to request administrator review before you can retake (if eligible).
+            </li>
           </ul>
           <p className="mt-2 font-medium">Do you want to proceed?</p>
         </div>

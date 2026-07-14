@@ -108,5 +108,5 @@ export const CACHE_KEYS = {
   courseMonitoringAudit: (page: number, actionFilter: string) =>
     `course-monitoring:audit:${page}:${actionFilter}`,
   courseMonitoringSummary: "course-monitoring:summary",
-  batchPerformance: (id: string) => `batch:perf:${id}`,
+  batchPerformance: (id: string, track = "compliance") => `batch:perf:${id}:${track}`,
 } as const;

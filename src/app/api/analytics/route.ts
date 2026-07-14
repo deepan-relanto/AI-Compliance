@@ -1,27 +1,29 @@
 import { getSql } from "@/lib/db";
 import { getAnalytics } from "@/lib/services/analytics-service";
 import { cacheGet, cacheSet, CACHE_KEYS } from "@/lib/api-cache";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 /** GET — organization-wide analytics for admin dashboard */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    // Serve from cache when available (45 s TTL)
-    const cached = cacheGet<object>(CACHE_KEYS.analytics);
+    const trackParam = req.nextUrl.searchParams.get("track");
+    const track = trackParam === "course" ? "course" : "compliance";
+    const cacheKey = `${CACHE_KEYS.analytics}:${track}`;
+    const cached = cacheGet<object>(cacheKey);
     if (cached) {
       return NextResponse.json(
-        { ok: true, ...cached, _cached: true },
+        { ok: true, ...cached, track, _cached: true },
         { headers: { "X-Cache": "HIT" } },
       );
     }
 
     const sql = getSql();
-    const data = await getAnalytics(sql);
-    cacheSet(CACHE_KEYS.analytics, data, 45);
+    const data = await getAnalytics(sql, track);
+    cacheSet(cacheKey, data, 45);
     return NextResponse.json(
-      { ok: true, ...data },
+      { ok: true, ...data, track },
       { headers: { "X-Cache": "MISS" } },
     );
   } catch (err) {
