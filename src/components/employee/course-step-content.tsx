@@ -28,7 +28,7 @@ const STEP_ICONS: Record<CourseStepType, typeof FileText> = {
 
 const EMBED_SIZE_FIX_CSS = `
 html, body { height: 100% !important; margin: 0 !important; overflow: hidden !important; }
-body.embed { background: #f8f9fb !important; }
+body.embed { background: #0a0a0a !important; }
 body.embed .deck-shell {
   display: flex !important;
   align-items: center !important;
@@ -169,7 +169,7 @@ function HtmlEmbed({
 
   if (!chrome) {
     return (
-      <div className="relative mx-auto flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#f8f9fb]">
+      <div className="relative mx-auto flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
         <iframe
           ref={iframeRef}
           key={embedUrl}
