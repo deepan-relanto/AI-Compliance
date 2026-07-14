@@ -823,13 +823,15 @@
 
         const linkGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
         linkGradient.id = "linkGradient";
-        linkGradient.setAttribute("x1", "0%");
-        linkGradient.setAttribute("y1", "0%");
-        linkGradient.setAttribute("x2", "100%");
-        linkGradient.setAttribute("y2", "0%");
+        /* userSpaceOnUse avoids zero-height objectBoundingBox failure on flat edges */
+        linkGradient.setAttribute("gradientUnits", "userSpaceOnUse");
+        linkGradient.setAttribute("x1", "0");
+        linkGradient.setAttribute("y1", "0");
+        linkGradient.setAttribute("x2", "1200");
+        linkGradient.setAttribute("y2", "0");
         linkGradient.innerHTML = `
-          <stop offset="0%" stop-color="#2e3192" stop-opacity="0.4"/>
-          <stop offset="100%" stop-color="#f15a24" stop-opacity="0.35"/>
+          <stop offset="0%" stop-color="#2e3192" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#f15a24" stop-opacity="0.45"/>
         `;
 
         const nodeShadow = document.createElementNS("http://www.w3.org/2000/svg", "filter");
@@ -866,25 +868,30 @@
       }
 
       function drawCurve(x1, y1, x2, y2) {
-        if (x2 <= x1 + 8) {
-          // Fallback stub when spacing is still tight
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("class", "link");
+        const span = x2 - x1;
+        if (span <= 8) {
           const midY = (y1 + y2) / 2;
-          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
           path.setAttribute(
             "d",
             `M ${x1} ${y1} L ${x1 + 12} ${y1} L ${x1 + 12} ${midY} L ${x2} ${y2}`,
           );
-          path.setAttribute("class", "link");
           svg.appendChild(path);
           return;
         }
-        const dx = Math.max(36, (x2 - x1) * 0.45);
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute(
-          "d",
-          `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`,
-        );
-        path.setAttribute("class", "link");
+        const dy = Math.abs(y2 - y1);
+        let d;
+        if (dy < 2) {
+          /* Middle-of-3 / single-child: force vertical arc so stroke paints */
+          const midX = (x1 + x2) / 2;
+          const bump = Math.max(14, Math.min(22, span * 0.35));
+          d = `M ${x1} ${y1} C ${midX} ${y1 - bump}, ${midX} ${y2 + bump}, ${x2} ${y2}`;
+        } else {
+          const dx = Math.min(Math.max(12, span * 0.4), span * 0.42);
+          d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        }
+        path.setAttribute("d", d);
         svg.appendChild(path);
       }
 
@@ -1032,10 +1039,10 @@
           (node.children || []).forEach(walk);
         }
         walk(MINDMAP_DATA);
+        /* Root open + 6 branches visible; depth-2+ hidden until expanded */
         collapsed.set("root", false);
         (MINDMAP_DATA.children || []).forEach((branch) => {
-          collapsed.set(branch.id, false);
-          (branch.children || []).forEach((mid) => collapsed.set(mid.id, true));
+          collapsed.set(branch.id, true);
         });
         render();
       }
