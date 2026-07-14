@@ -92,11 +92,26 @@
     body.embed .subtitle { margin-top: 6px; font-size: 13px; }
     body.embed .kicker { margin-bottom: 4px; }
     body.embed .footer { left: 22px; right: 22px; bottom: 10px; font-size: 10px; padding-top: 0; }
-    body.embed .cover-body { gap: 18px; padding: 4px 0 8px; }
-    body.embed .cover-rail { width: auto; gap: 8px; }
+    body.embed .cover-body,
+    body.embed .cover-stage {
+      gap: 24px;
+      padding: 0;
+      width: 100%;
+    }
+    body.embed .cover-rail,
+    body.embed .cover-stats {
+      flex: 0 0 200px;
+      width: 200px;
+      max-width: 200px;
+      gap: 8px;
+    }
     body.embed .cover-brand { margin-bottom: 0; }
-    body.embed .cover-title { font-size: clamp(28px, 4.2vw, 46px); }
-    body.embed .slide.cover { padding-top: 14px; gap: 10px; }
+    body.embed .cover-title { font-size: clamp(26px, 3.8vw, 42px); }
+    body.embed .slide.cover {
+      padding: 16px 20px 36px !important;
+      gap: 14px;
+      overflow: hidden !important;
+    }
     body.embed .executive-map { margin-top: 8px; }
     body.embed .exec-card { min-height: 0; }
     body.embed .risk-triangle { margin-top: 8px; }
@@ -167,17 +182,21 @@
       animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
     }
 
-    .slide:has(.cover-header) {
-      justify-content: flex-start;
-      gap: 0;
-      padding-top: 28px;
+    .slide:has(.cover-header),
+    .slide.cover {
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 28px 44px;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      overflow: hidden !important;
     }
 
-    .slide.cover {
-      justify-content: flex-start;
-      gap: 14px;
-      padding-top: 26px;
-      padding-bottom: 52px;
+    .slide.cover.active {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
     }
 
     .slide.dark {
@@ -473,14 +492,16 @@
     .thumb b { display: block; font-size: 12px; color: #fdba8c; margin-bottom: 8px; }
     .thumb:hover { background: rgba(255,255,255,.14); }
 
-    .cover-header {
+    .cover-header,
+    .cover-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       width: 100%;
-      flex-shrink: 0;
-      z-index: 2;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 3;
     }
 
     .cover-brand {
@@ -488,18 +509,20 @@
       align-items: center;
       gap: 12px;
       margin-bottom: 0;
+      min-width: 0;
     }
     .cover-brand img {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
       object-fit: contain;
       border-radius: 10px;
       background: rgba(255,255,255,0.96);
       padding: 5px;
       box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      flex-shrink: 0;
     }
     .cover-brand .brand-word {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 750;
       letter-spacing: -0.02em;
       color: #fff;
@@ -516,66 +539,87 @@
       text-transform: uppercase;
     }
 
-    .cover-body {
+    .cover-body,
+    .cover-stage {
       flex: 1 1 auto;
       min-height: 0;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
-      gap: 28px;
-      align-items: center;
       width: 100%;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      position: relative;
+      z-index: 1;
     }
 
-    .cover-main {
+    .cover-main,
+    .cover-copy {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      max-width: 760px;
-      min-height: 0;
-      padding-right: 8px;
+      padding-right: 12px;
     }
 
     .cover-title {
-      font-size: clamp(34px, 4.4vw, 54px);
-      line-height: 1.02;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.05;
       letter-spacing: -0.02em;
-      max-width: 760px;
-    }
-    .cover-main .subtitle {
-      margin-top: 14px;
-      font-size: clamp(15px, 1.6vw, 18px);
-      color: rgba(255,255,255,0.82);
-      max-width: 520px;
-    }
-    .cover-rail {
-      position: relative;
-      right: auto;
-      top: auto;
-      transform: none;
-      width: 100%;
-      display: grid;
-      gap: 12px;
-      align-content: center;
-    }
-    .cover-rail .card {
-      padding: 14px 16px;
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.22);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      max-width: 640px;
       color: #fff;
     }
-    .cover-rail .tag {
-      background: rgba(255,255,255,0.16);
-      color: #fdba8c;
+    .cover-main .subtitle,
+    .cover-copy .subtitle {
+      margin-top: 14px;
+      font-size: clamp(14px, 1.5vw, 17px);
+      color: rgba(255,255,255,0.82) !important;
+      max-width: 480px;
+    }
+    .cover-rail,
+    .cover-stats {
+      position: relative !important;
+      right: auto !important;
+      top: auto !important;
+      left: auto !important;
+      transform: none !important;
+      flex: 0 0 220px;
+      width: 220px;
+      max-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-content: stretch;
+      align-self: center;
+    }
+    .cover-rail .card,
+    .cover-stats .cover-stat {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.14) !important;
+      border: 1px solid rgba(255,255,255,0.22) !important;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      color: #fff !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .cover-rail .tag,
+    .cover-stats .tag {
+      background: rgba(255,255,255,0.16) !important;
+      color: #fdba8c !important;
       border: 1px solid rgba(253,186,140,0.35);
     }
-    .cover-rail .metric {
-      color: #fdba8c;
+    .cover-rail .metric,
+    .cover-stats .metric {
+      color: #fdba8c !important;
       margin-top: 8px;
-      font-size: 34px;
+      font-size: 32px;
     }
-    .cover-rail p {
-      color: rgba(255,255,255,0.92);
+    .cover-rail p,
+    .cover-stats p {
+      color: rgba(255,255,255,0.92) !important;
       font-size: 15px;
       font-weight: 700;
       margin-top: 8px;
@@ -588,11 +632,13 @@
       border: 1px solid rgba(255,255,255,.35);
       border-radius: 999px;
       color: #fdba8c;
-      background: rgba(18, 20, 58, 0.35);
+      background: rgba(18, 20, 58, 0.45);
       font-size: 11px;
       font-weight: 800;
       letter-spacing: .12em;
       flex-shrink: 0;
+      position: relative;
+      z-index: 4;
     }
 
     .executive-map {
@@ -1101,9 +1147,22 @@
       .deck { width: 100vw; height: 56.25vw; border-radius: 0; }
       .slide { padding: 20px 20px 48px; }
       h1 { font-size: 24px; }
-      .cover-main { max-width: 100%; }
-      .cover-body { grid-template-columns: 1fr; }
-      .cover-rail { display: grid; grid-template-columns: repeat(3, 1fr); }
+      .cover-main,
+      .cover-copy { max-width: 100%; }
+      .cover-body,
+      .cover-stage {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .cover-rail,
+      .cover-stats {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: none;
+        flex-direction: row;
+      }
+      .cover-rail .card,
+      .cover-stats .cover-stat { flex: 1; }
       .objectives { grid-template-columns: repeat(2, 1fr); }
       .function-grid { grid-template-columns: repeat(6, 1fr); }
       .function { grid-column: span 2; }
@@ -1116,34 +1175,34 @@
   <div class="deck-shell">
     <main class="deck" id="deck">
       <section class="slide active dark cover" data-title="AI Fundamentals & Terminology">
-        <div class="cover-header">
+        <div class="cover-bar">
           <div class="cover-brand">
-            <img src="./relanto-logo.png" alt="Relanto" width="44" height="44" />
+            <img src="./relanto-logo.png" alt="Relanto" width="40" height="40" />
             <span class="brand-word">Relanto</span>
             <span class="brand-tag">Course</span>
           </div>
           <span class="module-badge">MODULE 1 OF 5</span>
         </div>
-        <div class="cover-body">
-          <div class="cover-main">
+        <div class="cover-stage">
+          <div class="cover-copy">
             <h1 class="cover-title">AI Fundamentals<br />&amp; Terminology</h1>
             <p class="subtitle">Enterprise AI Awareness Training Series</p>
           </div>
-          <div class="cover-rail">
-            <div class="card fragment">
+          <aside class="cover-stats" aria-label="Course details">
+            <div class="cover-stat">
               <div class="tag">Duration</div>
               <div class="metric">60</div>
               <p>Minutes</p>
             </div>
-            <div class="card fragment">
+            <div class="cover-stat">
               <div class="tag">Audience</div>
               <p>All Employees</p>
             </div>
-            <div class="card fragment">
+            <div class="cover-stat">
               <div class="tag">Level</div>
               <p>No Technical Background Required</p>
             </div>
-          </div>
+          </aside>
         </div>
         <div class="footer"><span>Confidential | Relanto Academy</span><span>Relanto AI Fundamentals</span></div>
       </section>
@@ -1567,6 +1626,12 @@
       deck.style.maxHeight = "100%";
       const active = deck.querySelector(".slide.active");
       if (active) {
+        /* Cover must never be zoom-squeezed — that shoved content to one side in the player */
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
         const ch = active.clientHeight;
         const contentH = active.scrollHeight;
         if (ch > 0 && contentH > ch + 2) {

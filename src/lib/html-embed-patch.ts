@@ -33,6 +33,13 @@ body.embed .slide {
   box-sizing: border-box !important;
   padding: 18px 24px 36px !important;
 }
+body.embed .slide.cover {
+  overflow: hidden !important;
+  padding: 16px 20px 36px !important;
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
 body.embed .flow { margin-top: 10px !important; gap: 6px !important; }
 body.embed .flow-step { min-height: 0 !important; padding: 8px 10px !important; font-size: 13px !important; }
 body.embed .content { margin-top: 8px !important; }
@@ -71,6 +78,11 @@ const EMBED_PATCH_SCRIPT = `<script id="relanto-embed-fit">(function(){
     deck.style.maxHeight="100%";
     var active=deck.querySelector(".slide.active");
     if(active){
+      if(active.classList.contains("cover")){
+        active.style.zoom="";
+        active.style.overflow="hidden";
+        return;
+      }
       var ch=active.clientHeight;
       var contentH=active.scrollHeight;
       if(ch>0&&contentH>ch+2){
