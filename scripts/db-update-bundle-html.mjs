@@ -1,6 +1,7 @@
 /**
- * Push updated lesson + mindmap HTML into Neon course_assets for the AI basics bundle.
- * Updates lesson pageCount to match slide count.
+ * Push updated lesson + mindmap HTML into disk (public/course-assets) AND Neon.
+ * The API serves disk first, so Neon-only upserts never reach assigned learners.
+ * Also updates lesson pageCount to match slide count.
  *
  * Usage: node scripts/db-update-bundle-html.mjs [moduleId]
  */
@@ -12,6 +13,7 @@ import ws from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
+const ASSETS_DIR = path.join(root, "public", "course-assets");
 
 function loadEnv() {
   const envPath = path.join(root, ".env");
@@ -50,6 +52,21 @@ const MINDMAP_PATH = path.join(root, "content-kit", "mindmap-html", "mindmap-01.
 function slideCountFromLesson(html) {
   const matches = html.match(/<section\s+class="slide/gi);
   return matches?.length ?? 1;
+}
+
+function writeDiskAsset(filename, buffer, mimeType, originalName) {
+  if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
+  const filePath = path.join(ASSETS_DIR, filename);
+  fs.writeFileSync(filePath, buffer);
+  fs.writeFileSync(
+    path.join(ASSETS_DIR, `${filename}.meta.json`),
+    JSON.stringify({
+      mimeType,
+      originalName,
+      sizeBytes: buffer.length,
+    }),
+  );
+  console.log(`  disk   → ${filePath} (${buffer.length} bytes)`);
 }
 
 async function upsertAsset(filename, assetUrl, buffer, mimeType) {
@@ -91,6 +108,8 @@ const steps = await sql`
 
 const lessonStep = steps.find((s) => s.step_type === "pdf");
 const mindmapStep = steps.find((s) => s.step_type === "mindmap");
+const videoStep = steps.find((s) => s.step_type === "video");
+const infographicStep = steps.find((s) => s.step_type === "infographic");
 
 if (!lessonStep?.config?.assetUrl || !mindmapStep?.config?.assetUrl) {
   console.error("Bundle is missing lesson or mindmap step.");
@@ -108,6 +127,22 @@ const slideCount = slideCountFromLesson(lessonHtml);
 console.log(`Updating bundle ${MODULE_ID}`);
 console.log(`  lesson  → ${lessonFilename} (${slideCount} slides, ${lessonBuffer.length} bytes)`);
 console.log(`  mindmap → ${mindmapFilename} (${mindmapBuffer.length} bytes)`);
+if (videoStep?.config?.assetUrl) {
+  console.log(`  video   → ${String(videoStep.config.assetUrl).split("/").pop()} (unchanged)`);
+}
+if (infographicStep?.config?.assetUrl) {
+  console.log(
+    `  info    → ${String(infographicStep.config.assetUrl).split("/").pop()} (unchanged)`,
+  );
+}
+
+writeDiskAsset(
+  lessonFilename,
+  lessonBuffer,
+  "text/html",
+  "relanto_ai_fundamentals_interactive.html",
+);
+writeDiskAsset(mindmapFilename, mindmapBuffer, "text/html", "mindmap-01.html");
 
 await upsertAsset(
   lessonFilename,
@@ -143,4 +178,4 @@ await sql`
 
 await pool.end();
 
-console.log("Done. HTML assets and pageCount updated in Neon.");
+console.log("Done. Disk + Neon HTML assets and pageCount updated.");
