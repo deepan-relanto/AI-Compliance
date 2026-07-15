@@ -39,13 +39,25 @@ function courseDurationLabel(minutes: number | null | undefined): string {
   return `approximately ${mins} min`;
 }
 
-/** Outlook-safe compact CTA — table + white text; no MSO ghost spacers (they inflate the button). */
+/** Compact rounded CTA — CSS pill for modern clients; VML roundrect for Outlook. */
 function ctaButtonHtml(loginUrl: string, label: string): string {
+  const safeLabel = escapeHtml(label);
+  // Approximate width for Outlook VML (padding-based sizing is unreliable there).
+  const vmlWidth =
+    label.length <= 12 ? 128 : label.length <= 14 ? 140 : 152;
   return `
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0">
     <tr>
-      <td bgcolor="#2e3192" style="background-color:#2e3192;border-radius:6px;">
-        <a href="${loginUrl}" target="_blank" style="display:inline-block;padding:10px 18px;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1;font-weight:700;color:#ffffff !important;text-decoration:none;">${label}</a>
+      <td>
+        <!--[if mso]>
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${loginUrl}" style="height:36px;v-text-anchor:middle;width:${vmlWidth}px;" arcsize="50%" strokecolor="#25277a" strokeweight="1px" fillcolor="#2e3192">
+          <w:anchorlock/>
+          <center style="color:#ffffff;font-family:Segoe UI,Arial,sans-serif;font-size:14px;font-weight:bold;">${safeLabel}</center>
+        </v:roundrect>
+        <![endif]-->
+        <!--[if !mso]><!-- -->
+        <a href="${loginUrl}" target="_blank" style="background-color:#2e3192;border:1px solid #25277a;border-radius:999px;color:#ffffff !important;display:inline-block;font-family:Segoe UI,Arial,sans-serif;font-size:14px;font-weight:600;letter-spacing:0.01em;line-height:1.15;padding:11px 22px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;">${safeLabel}</a>
+        <!--<![endif]-->
       </td>
     </tr>
   </table>`;
