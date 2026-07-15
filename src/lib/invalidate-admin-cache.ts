@@ -4,6 +4,7 @@ import { invalidateCache } from "@/lib/api-cache";
 export function invalidateAdminCaches(): void {
   invalidateCache("analytics:");
   invalidateCache("batches:");
+  invalidateCache("batch:perf:");
   invalidateCache("content:course-library");
   invalidateCache("content:compliance-library");
 }
