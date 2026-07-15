@@ -39,17 +39,13 @@ function courseDurationLabel(minutes: number | null | undefined): string {
   return `approximately ${mins} min`;
 }
 
-/** Outlook-safe solid CTA — table + white text avoids pink/inverted link colors. */
+/** Outlook-safe compact CTA — table + white text; no MSO ghost spacers (they inflate the button). */
 function ctaButtonHtml(loginUrl: string, label: string): string {
   return `
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0">
     <tr>
-      <td bgcolor="#2e3192" style="background-color:#2e3192;border-radius:8px;mso-padding-alt:14px 28px;">
-        <a href="${loginUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Segoe UI,Arial,sans-serif;font-size:16px;line-height:1.25;font-weight:700;color:#ffffff !important;text-decoration:none;mso-line-height-rule:exactly;">
-          <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%;mso-text-raise:21pt">&nbsp;</i><![endif]-->
-          <span style="color:#ffffff !important;text-decoration:none;">${label}</span>
-          <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%">&nbsp;</i><![endif]-->
-        </a>
+      <td bgcolor="#2e3192" style="background-color:#2e3192;border-radius:6px;">
+        <a href="${loginUrl}" target="_blank" style="display:inline-block;padding:10px 18px;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:1;font-weight:700;color:#ffffff !important;text-decoration:none;">${label}</a>
       </td>
     </tr>
   </table>`;
