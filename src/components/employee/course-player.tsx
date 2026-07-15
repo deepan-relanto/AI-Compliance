@@ -1403,11 +1403,7 @@ export function CoursePlayer({
               onClick={tryAdvanceContent}
               className="cursor-pointer bg-[#f15a24] text-white hover:bg-[#d94e1f] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {isLastContentUnit
-                ? "Start quiz"
-                : isHtmlLessonStep && htmlEmbedState && !htmlEmbedState.atEnd
-                  ? "Next slide"
-                  : "Next"}
+              {isLastContentUnit ? "Start quiz" : "Next"}
               <ChevronRight className="h-4 w-4" />
             </Button>
           </footer>

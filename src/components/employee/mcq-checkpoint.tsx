@@ -591,7 +591,7 @@ export function MCQCheckpoint({
           </Button>
         ) : (
           <Button variant="primary" className="w-full" onClick={handleContinue}>
-            Continue to next slide
+            Continue to next question
           </Button>
         )}
       </div>

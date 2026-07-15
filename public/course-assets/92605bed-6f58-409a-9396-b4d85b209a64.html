@@ -228,9 +228,13 @@
         radial-gradient(circle at 50% 0%, rgba(241,90,36,0.18), transparent 45%),
         linear-gradient(160deg, #fff7f3, #f4f4ff);
     }
-    .scene-art { width: 100%; max-width: 220px; height: auto; }
+    .scene-art {
+      width: 100%; max-width: 100%; height: auto; max-height: min(42vh, 320px);
+      object-fit: cover; border-radius: 14px; display: block;
+      box-shadow: 0 10px 28px rgba(24, 24, 39, 0.1);
+    }
     .scene-caption {
-      font-size: 12px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.3; max-width: 22ch;
+      font-size: 12px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.3; max-width: 28ch;
     }
     .quote-chip {
       margin-top: 4px; padding: 8px 10px; border-radius: 10px; width: 100%;
@@ -333,6 +337,30 @@
       display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em;
       text-transform: uppercase; color: var(--orange); margin-bottom: 6px;
     }
+    .practice-box {
+      margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+      border: 1px dashed rgba(46, 49, 146, 0.35);
+      background: linear-gradient(180deg, #fbfbff, #fff);
+    }
+    .practice-box .practice-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 6px;
+    }
+    .practice-box .practice-title {
+      margin: 0 0 6px; font-size: 14px; font-weight: 760; color: var(--navy); line-height: 1.25;
+    }
+    .practice-box .practice-prompt {
+      margin: 0; font-size: 13px; line-height: 1.4; color: #3f3f46;
+    }
+    .practice-box .practice-hint {
+      margin: 8px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted);
+    }
+    .practice-check {
+      margin-top: 10px; display: flex; align-items: center; gap: 8px;
+      font-size: 12.5px; font-weight: 700; color: var(--navy); cursor: pointer; user-select: none;
+    }
+    .practice-check input { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+    .practice-check.done { color: var(--green); }
 
     .nav {
       position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px; z-index: 20;
@@ -447,25 +475,11 @@
       general: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H8l-4 3V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>`,
     };
 
-    function sceneSvg(id, phase) {
-      const accent = phase === "challenge" ? "#d88a1f" : phase === "takeaway" ? "#f15a24" : "#2e3192";
-      const icon = ICONS[id] || ICONS.general;
-      return `
-        <svg class="scene-art" viewBox="0 0 220 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <defs>
-            <linearGradient id="sg-${id}-${phase}" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#2e3192" stop-opacity="0.9"/>
-              <stop offset="100%" stop-color="#f15a24" stop-opacity="0.85"/>
-            </linearGradient>
-          </defs>
-          <rect x="18" y="28" width="184" height="124" rx="18" fill="#fff" stroke="${accent}" stroke-opacity="0.25" stroke-width="1.5"/>
-          <circle cx="110" cy="78" r="36" fill="url(#sg-${id}-${phase})" opacity="0.15"/>
-          <g transform="translate(86,54) scale(2)" stroke-linecap="round" stroke-linejoin="round" color="${accent}">
-            ${icon}
-          </g>
-          <rect x="48" y="128" width="124" height="10" rx="5" fill="${accent}" opacity="0.18"/>
-          <rect x="64" y="144" width="92" height="8" rx="4" fill="${accent}" opacity="0.1"/>
-        </svg>`;
+    function sceneArtHtml(id, name) {
+      const file = `scene-${id}.webp`;
+      const primary = `/course-assets/scenario-scenes/${file}`;
+      const local = `scenario-scenes/${file}`;
+      return `<img class="scene-art" src="${primary}" data-fallback="${local}" alt="${escapeHtml(name)} workplace scene" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';}" />`;
     }
 
     const SCENARIOS = [
@@ -479,6 +493,9 @@
         recommended: "Priya should treat the output as a generic template, not a finished product. A better prompt provides context: the actual responsibilities, required experience, location, and the company's real benefits. She then reviews the revised draft line by line against the approved role profile before publishing.",
         explanation: "The assistant had no context about the specific role, so it generated a plausible generic description — a normal LLM behavior, not a malfunction. Providing context turns generic output into useful output; human review catches what remains.",
         takeaway: "AI without context produces plausible generics. Provide specifics, then verify.",
+        practiceTitle: "Draft with your own facts",
+        practicePrompt: "Pick a real role you know. Write 3 true bullets (responsibilities, must-have experience, location/benefits). Ask an AI for a job description using only those bullets, then compare every line to your facts.",
+        practiceHint: "If the AI invents benefits or requirements you never gave it, that is the lesson.",
         choices: [
           { label: "Publish it — it reads professionally and the deadline is tomorrow.", good: false, feedback: "Fluency is not accuracy. A wrong JD can mislead candidates and create compliance risk." },
           { label: "Treat it as a draft: add role context, then verify line by line.", good: true, feedback: "Right call. Context + human review turns a generic template into a usable JD." },
@@ -505,6 +522,9 @@
         recommended: "Marco verifies every factual claim against the company's website, annual report, or a current news search before the call. If his AI tool can search the web, he asks it to cite sources and then checks them. He uses the AI for what it does well: structuring his call plan and suggesting discovery questions.",
         explanation: "Specific facts about named organizations are exactly where hallucination and stale training data are most likely. The right division of labor is: AI for structure and drafting, verified sources for facts.",
         takeaway: "Never take names, numbers, or dates from AI on trust. Verify before you quote.",
+        practiceTitle: "Verify before you quote",
+        practicePrompt: "Ask an AI for a real company's latest revenue and two executive names. Then check the company website or a recent filing before you would ever use those details.",
+        practiceHint: "Cross out anything you cannot confirm from a primary source.",
         choices: [
           { label: "Use the names and numbers on the call — AI sounded sure.", good: false, feedback: "Confidence is a style, not a guarantee. Wrong names damage trust fast." },
           { label: "Verify every fact, then use AI for call structure and questions.", good: true, feedback: "Perfect split: verified sources for facts, AI for prep and framing." },
@@ -531,6 +551,9 @@
         recommended: "Aisha uses the AI output as raw brainstorming material — exactly the right use case. Before shortlisting, she checks candidates against brand guidelines, searches whether similar slogans are already in use by competitors, and routes the final choice through the normal brand-approval process.",
         explanation: "Generative AI excels at producing volume and variety of ideas quickly. But it cannot check trademark conflicts or brand fit. The human workflow around the AI output is what makes it safe to use.",
         takeaway: "AI is excellent for idea generation; standard approval and originality checks still apply.",
+        practiceTitle: "Ideas, then originality checks",
+        practicePrompt: "Ask an AI for 5 slogans for a product you know. Pick your favorite two and run a quick originality/brand check (search + brand voice) before sharing with design.",
+        practiceHint: "Treat AI output as a brainstorm board, not final campaign copy.",
         choices: [
           { label: "Send the top three straight to design.", good: false, feedback: "Skipping originality and brand checks risks lookalike slogans and off-brand tone." },
           { label: "Use them as brainstorm fuel, then run brand + originality checks.", good: true, feedback: "That’s the sweet spot — volume from AI, judgment from the team." },
@@ -557,6 +580,9 @@
         recommended: "Task A is a fixed, rule-based process — classic automation, no AI needed; a simple mail rule or workflow tool is cheaper and 100% predictable. Task B involves understanding varied human language — a genuine AI use case, ideally with periodic human spot-checks of routing accuracy.",
         explanation: "Choosing the right tool prevents over-engineering. Automation gives identical results every time and never hallucinates; AI handles ambiguity but introduces variability that needs monitoring.",
         takeaway: "Rule-based and repeatable: automate. Language, variation, judgement: consider AI with oversight.",
+        practiceTitle: "Automate vs oversee",
+        practicePrompt: "List one repetitive, rule-based task and one judgment-heavy task from your week. Decide which is safer to automate with AI and which needs human oversight.",
+        practiceHint: "If the task needs nuance, exceptions, or accountability, keep a human in the loop.",
         choices: [
           { label: "Buy one AI platform for both Task A and Task B.", good: false, feedback: "Task A doesn’t need AI — you’d over-engineer a predictable mail rule." },
           { label: "Automate Task A; use AI (+ spot-checks) for Task B.", good: true, feedback: "Right tool for each job — predictable rules vs language understanding." },
@@ -583,6 +609,9 @@
         recommended: "Daniel keeps using AI for formatting and summarization but adds a verification step: he checks every status claim (Completed / In Progress / At Risk) against the project tracker before sending. He also improves his prompt: “Only state what is explicitly in the notes. If status is unclear, write ‘status unclear — to be confirmed’.”",
         explanation: "Summarization is a strong AI use case, but models tend to smooth over ambiguity. Instructing the model to flag uncertainty, plus a targeted human check on the highest-stakes claims, captures the time savings without the risk.",
         takeaway: "In summaries, verify status words and numbers — that's where quiet errors hide.",
+        practiceTitle: "Hunt the quiet error",
+        practicePrompt: "Paste a short project update into AI and ask for a status summary — but include one wrong date or percentage on purpose. See whether you catch it in the summary.",
+        practiceHint: "Status words and numbers are where quiet errors hide.",
         choices: [
           { label: "Send the polished report — it looks complete.", good: false, feedback: "“Completed” may be invented. Status words are high-stakes." },
           { label: "Check every status claim against the tracker; prompt for uncertainty.", good: true, feedback: "Keep the speed, remove the quiet hallucination risk." },
@@ -609,6 +638,9 @@
         recommended: "Lena treats internal product questions as off-limits for a general AI assistant unless the assistant is connected to current internal documentation. She checks the official plan comparison page, and tells the customer the verified answer. If her team's assistant supports document upload, she can paste the official plan sheet and then ask.",
         explanation: "This is the training-data and context limitation in action: the model cannot know company-specific facts it was never given. Grounding the assistant in real documents transforms reliability.",
         takeaway: "For company-specific facts, the AI must be given the source — or you must check the source yourself.",
+        practiceTitle: "Ground the answer",
+        practicePrompt: "Ask an AI a company-specific policy question with no source. Then ask again after pasting a short FAQ excerpt. Compare the two answers.",
+        practiceHint: "Company facts need a source — either you provide it, or you verify it.",
         choices: [
           { label: "Tell the customer yes — the assistant was confident.", good: false, feedback: "You’d risk misinforming a customer about your own product." },
           { label: "Check the official plan page (or ground AI in that doc) first.", good: true, feedback: "Company facts need company sources — confidence isn’t evidence." },
@@ -635,6 +667,9 @@
         recommended: "Sofia asks grounded questions: What data does the model learn from? How accurate is it on our kind of data, measured how? What happens when it's wrong, and how would we know? What human review does it assume? “Eliminates errors” is a red flag — probabilistic systems reduce, not eliminate, errors.",
         explanation: "Basic AI literacy lets leaders probe claims without being data scientists. Any vendor unable to discuss accuracy measurement, failure modes, and human oversight has not earned trust.",
         takeaway: "Healthy skepticism plus a few standard questions beats being dazzled by terminology.",
+        practiceTitle: "Ask three skepticism questions",
+        practicePrompt: "Before acting on an AI-tool claim at work, write three questions you would ask (proof, risk, owner). Use them the next time someone pitches \"AI will fix it.\"",
+        practiceHint: "Healthy skepticism beats being dazzled by terminology.",
         choices: [
           { label: "Greenlight — the demo and terminology look strong.", good: false, feedback: "“Eliminates errors” is a red flag. Probe measurement and failure modes." },
           { label: "Ask about data, accuracy measurement, failure modes, and oversight.", good: true, feedback: "That’s AI literacy in action — skepticism with a checklist." },
@@ -661,6 +696,9 @@
         recommended: "Tomás performs calculations in a spreadsheet, where formulas are exact and auditable. He uses the AI for what it's good at: explaining what the variances mean, drafting the commentary paragraph, and suggesting how to present the findings.",
         explanation: "Knowing how a tool works tells you where to trust it. Text prediction is great for language tasks and unreliable for precise multi-step arithmetic. Some AI tools can run real calculations through code or spreadsheet features — but the user should know which mode they're in.",
         takeaway: "Spreadsheets for numbers, AI for narrative. Verify any number AI produces.",
+        practiceTitle: "Numbers first, narrative second",
+        practicePrompt: "Give an AI a tiny table of 4–5 numbers you control, ask it to write a short KPI narrative, then verify every figure it mentions against your table.",
+        practiceHint: "Spreadsheets for numbers, AI for wording — never the other way around.",
         choices: [
           { label: "Paste the AI percentages into the board pack.", good: false, feedback: "Two of twelve were wrong — tidy tables can still hide arithmetic slips." },
           { label: "Calculate in a spreadsheet; use AI for commentary.", good: true, feedback: "Exact formulas for numbers, language model for narrative." },
@@ -687,6 +725,9 @@
         recommended: "Ravi starts a fresh conversation for each distinct task, and re-supplies the key facts each time (or pastes the relevant document). For long projects, he keeps a short “briefing note” he can paste at the start of any new session.",
         explanation: "Context is finite and topic mixing degrades quality. One task per conversation, with relevant context provided up front, is a simple habit that markedly improves results.",
         takeaway: "New task, new conversation — and restate the essentials.",
+        practiceTitle: "Fresh chat, short briefing",
+        practicePrompt: "Close a long AI thread. Start a new chat with a 3-line briefing for one task only (goal, constraints, must-keep facts). Notice whether the answer stays on topic.",
+        practiceHint: "New task, new conversation — and restate the essentials.",
         choices: [
           { label: "Keep going in the same chat — the history should help.", good: false, feedback: "Long mixed threads cause forgetting and cross-project bleed." },
           { label: "New chat per task; paste a short briefing each time.", good: true, feedback: "Finite context + clean threads = better, more reliable answers." },
@@ -788,7 +829,19 @@
               <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
             </div>` : ""}`;
       }
-      return `<div class="takeaway-hero"><span>Key takeaway</span>${escapeHtml(scenario.takeaway)}</div>`;
+      return `
+          <div class="takeaway-hero"><span>Key takeaway</span>${escapeHtml(scenario.takeaway)}</div>
+          ${scenario.practicePrompt ? `
+            <div class="practice-box">
+              <div class="practice-label">Try it yourself</div>
+              <h3 class="practice-title">${escapeHtml(scenario.practiceTitle || "Practice")}</h3>
+              <p class="practice-prompt">${escapeHtml(scenario.practicePrompt)}</p>
+              ${scenario.practiceHint ? `<p class="practice-hint">${escapeHtml(scenario.practiceHint)}</p>` : ""}
+              <label class="practice-check">
+                <input type="checkbox" data-practice-check />
+                <span>I tried this</span>
+              </label>
+            </div>` : ""}`;
     }
 
     function buildPathSlides(scenario) {
@@ -807,7 +860,7 @@
           <div class="phase-bar">${phaseChipsHtml(i)}</div>
           <div class="path-layout">
             <aside class="scene-panel" data-phase="${phase.key}">
-              ${sceneSvg(scenario.id, phase.key)}
+              ${sceneArtHtml(scenario.id, scenario.name)}
               <div class="scene-caption">${escapeHtml(scenario.sceneCaption || scenario.title)}</div>
               ${phase.key === "situation" || phase.key === "challenge"
                 ? `<div class="quote-chip">${escapeHtml(scenario.quote || "")}</div>`
@@ -829,6 +882,7 @@
       refreshSlides();
       buildOverview();
       wireChoiceHandlers();
+      wirePracticeChecks();
       const firstPath = slides.findIndex((s) => s.dataset.path === "1");
       showSlide(firstPath >= 0 ? firstPath : 0);
     }
@@ -850,6 +904,15 @@
             }
             list.querySelectorAll(".choice-btn").forEach((b) => { b.disabled = false; });
           });
+        });
+      });
+    }
+
+    function wirePracticeChecks() {
+      deck.querySelectorAll("[data-practice-check]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const label = input.closest(".practice-check");
+          if (label) label.classList.toggle("done", input.checked);
         });
       });
     }

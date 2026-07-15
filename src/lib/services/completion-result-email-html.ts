@@ -25,9 +25,13 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function motivationalMessage(scorePercent: number): string {
+type MailKind = "compliance" | "course";
+
+function motivationalMessage(scorePercent: number, kind: MailKind): string {
   if (scorePercent >= 90) {
-    return "Outstanding performance. You demonstrated expert compliance judgment.";
+    return kind === "course"
+      ? "Outstanding performance. You demonstrated strong AI fluency."
+      : "Outstanding performance. You demonstrated expert compliance judgment.";
   }
   if (scorePercent >= 80) {
     return "Excellent work. Your answers show strong understanding of the material.";
@@ -35,16 +39,21 @@ function motivationalMessage(scorePercent: number): string {
   if (scorePercent >= PASS_THRESHOLD_PERCENT) {
     return "Good job. You met the required passing threshold.";
   }
-  return "More review is needed. Revisit the material and attempt the assessment again.";
+  return kind === "course"
+    ? "More review is needed. Revisit the material and attempt the course again."
+    : "More review is needed. Revisit the material and attempt the assessment again.";
 }
 
-function earnedBadgesForEmail(summary: CompletionResultSummary): EmailBadge[] {
+function earnedBadgesForEmail(
+  summary: CompletionResultSummary,
+  kind: MailKind,
+): EmailBadge[] {
   const badges: EmailBadge[] = [];
   const { scorePercent, mcqCorrect, mcqTotal } = summary;
 
   if (mcqCorrect > 0) {
     badges.push({
-      name: "Compliance Starter",
+      name: kind === "course" ? "AI Course Starter" : "Compliance Starter",
       description: "First checkpoint completed.",
     });
   }
@@ -54,13 +63,16 @@ function earnedBadgesForEmail(summary: CompletionResultSummary): EmailBadge[] {
   if (progressPercent >= 50) {
     badges.push({
       name: "50% Milestone",
-      description: "You're halfway through this training module.",
+      description:
+        kind === "course"
+          ? "You're halfway through this AI course."
+          : "You're halfway through this training module.",
     });
   }
 
   if (scorePercent >= 80) {
     badges.push({
-      name: "Compliance Champion",
+      name: kind === "course" ? "AI Course Champion" : "Compliance Champion",
       description: "Scored 80% or above.",
     });
   }
@@ -124,6 +136,7 @@ function scoreRingHtml(
 
 export interface CompletionResultEmailOptions {
   scoreRingImageSrc: string;
+  kind?: MailKind;
 }
 
 /** Email-safe HTML card mirroring the in-app Final Result screen (no action button). */
@@ -131,18 +144,26 @@ export function completionResultSummaryHtml(
   summary: CompletionResultSummary,
   options: CompletionResultEmailOptions,
 ): string {
+  const kind = options.kind ?? "compliance";
   const moduleTitle = escapeHtml(summary.moduleTitle);
   const scorePercent = Math.min(100, Math.max(0, Math.round(summary.scorePercent)));
   const passed = summary.passed;
   const finalScore = summary.mcqCorrect * POINTS_PER_MCQ;
   const totalScore = Math.max(summary.mcqTotal, 1) * POINTS_PER_MCQ;
   const wrongAnswers = Math.max(0, summary.mcqTotal - summary.mcqCorrect);
-  const badges = earnedBadgesForEmail(summary);
+  const badges = earnedBadgesForEmail(summary, kind);
 
   const headerBg = passed ? "#ecfdf5" : "#fef2f2";
   const headerBorder = passed ? "#d1fae5" : "#fecaca";
   const accent = passed ? "#2e3192" : "#b91c1c";
   const scoreRingImageSrc = options.scoreRingImageSrc;
+  const failTitle =
+    kind === "course" ? "AI Course Not Passed" : "Compliance Training Failed";
+  const passBody =
+    kind === "course"
+      ? "You have successfully completed the AI course."
+      : "You have successfully completed the training.";
+  const summaryLabel = kind === "course" ? "Course Summary" : "Assessment Summary";
 
   const badgeHtml =
     badges.length > 0
@@ -163,17 +184,17 @@ export function completionResultSummaryHtml(
                         <span style="display:inline-block;padding:5px 10px;border:1px solid ${headerBorder};background:#ffffff;">Final result</span>
                       </p>
                       <h2 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#09090b;line-height:1.25;">
-                        ${passed ? "Congratulations!" : "Compliance Training Failed"}
+                        ${passed ? "Congratulations!" : failTitle}
                       </h2>
                       <p style="margin:0 0 6px;font-size:14px;line-height:1.55;color:#3f3f46;">
                         ${
                           passed
-                            ? "You have successfully completed the training."
+                            ? passBody
                             : `You did not achieve the minimum passing score of ${PASS_THRESHOLD_PERCENT}%. Please review the material and try again.`
                         }
                       </p>
                       <p style="margin:0;font-size:14px;font-weight:600;color:#18181b;line-height:1.5;">
-                        ${escapeHtml(motivationalMessage(scorePercent))}
+                        ${escapeHtml(motivationalMessage(scorePercent, kind))}
                       </p>
                     </td>
                     <td width="132" valign="top" align="right" style="width:132px;min-width:132px;">
@@ -188,7 +209,7 @@ export function completionResultSummaryHtml(
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
             <tr>
               <td style="padding:20px 24px 12px;font-family:Segoe UI,Arial,sans-serif;">
-                <p style="margin:0;font-size:13px;font-weight:700;color:#2e3192;">Assessment Summary</p>
+                <p style="margin:0;font-size:13px;font-weight:700;color:#2e3192;">${summaryLabel}</p>
                 <p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:#52525b;">
                   You scored ${finalScore}/${totalScore} in ${moduleTitle}.
                 </p>
@@ -226,16 +247,22 @@ export function completionResultSummaryHtml(
     </table>`;
 }
 
-export function completionResultTextSummary(summary: CompletionResultSummary): string {
+export function completionResultTextSummary(
+  summary: CompletionResultSummary,
+  options?: { kind?: MailKind },
+): string {
+  const kind = options?.kind ?? "compliance";
   const finalScore = summary.mcqCorrect * POINTS_PER_MCQ;
   const totalScore = Math.max(summary.mcqTotal, 1) * POINTS_PER_MCQ;
   const wrongAnswers = Math.max(0, summary.mcqTotal - summary.mcqCorrect);
-  const badges = earnedBadgesForEmail(summary)
+  const badges = earnedBadgesForEmail(summary, kind)
     .map((b) => `- ${b.name}: ${b.description}`)
     .join("\n");
+  const failTitle =
+    kind === "course" ? "AI Course Not Passed" : "Compliance Training Failed";
 
   return [
-    summary.passed ? "Congratulations!" : "Compliance Training Failed",
+    summary.passed ? "Congratulations!" : failTitle,
     `Score: ${finalScore}/${totalScore} (${summary.scorePercent}%)`,
     `Status: ${summary.passed ? "PASS" : "FAIL"}`,
     `Correct: ${summary.mcqCorrect} | Wrong: ${wrongAnswers}`,
