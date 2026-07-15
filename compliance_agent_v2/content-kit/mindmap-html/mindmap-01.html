@@ -846,14 +846,14 @@
 
         const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
         arrowEnd.id = "arrowEnd";
-        arrowEnd.setAttribute("markerWidth", "10");
-        arrowEnd.setAttribute("markerHeight", "10");
-        arrowEnd.setAttribute("refX", "9");
-        arrowEnd.setAttribute("refY", "5");
+        arrowEnd.setAttribute("markerWidth", "8");
+        arrowEnd.setAttribute("markerHeight", "8");
+        arrowEnd.setAttribute("refX", "7");
+        arrowEnd.setAttribute("refY", "4");
         arrowEnd.setAttribute("orient", "auto");
         arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
         arrowEnd.innerHTML = `
-          <path d="M0,0 L10,5 L0,10 Z" fill="#2e3192" fill-opacity="0.95"/>
+          <path d="M0,0 L8,4 L0,8 Z" fill="#2e3192" fill-opacity="0.95"/>
         `;
 
         defs.appendChild(rootFill);
@@ -870,27 +870,9 @@
       function drawCurve(x1, y1, x2, y2) {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "link");
-        const span = x2 - x1;
-        if (span <= 8) {
-          const midY = (y1 + y2) / 2;
-          path.setAttribute(
-            "d",
-            `M ${x1} ${y1} L ${x1 + 12} ${y1} L ${x1 + 12} ${midY} L ${x2} ${y2}`,
-          );
-          svg.appendChild(path);
-          return;
-        }
-        const dy = Math.abs(y2 - y1);
-        let d;
-        if (dy < 2) {
-          /* Middle-of-3 / single-child: force vertical arc so stroke paints */
-          const midX = (x1 + x2) / 2;
-          const bump = Math.max(14, Math.min(22, span * 0.35));
-          d = `M ${x1} ${y1} C ${midX} ${y1 - bump}, ${midX} ${y2 + bump}, ${x2} ${y2}`;
-        } else {
-          const dx = Math.min(Math.max(12, span * 0.4), span * 0.42);
-          d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-        }
+        const span = Math.max(1, x2 - x1);
+        const dx = Math.min(Math.max(18, span * 0.45), span * 0.55);
+        const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         path.setAttribute("d", d);
         svg.appendChild(path);
       }
@@ -963,14 +945,14 @@
         const parentSize = sizes.get(node.id);
         if (!parent || !parentSize) return;
 
-        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 10 : 4);
+        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 4 : 2);
         const y1 = parent.y + parentSize.h / 2;
 
         for (const child of kids) {
           const childPos = positions.get(child.id);
           const childSize = sizes.get(child.id);
           if (!childPos || !childSize) continue;
-          const x2 = childPos.x - 10;
+          const x2 = childPos.x - 2;
           const y2 = childPos.y + childSize.h / 2;
           drawCurve(x1, y1, x2, y2);
           renderLinks(child, positions, sizes);

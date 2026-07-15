@@ -355,12 +355,6 @@
     .practice-box .practice-hint {
       margin: 8px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted);
     }
-    .practice-check {
-      margin-top: 10px; display: flex; align-items: center; gap: 8px;
-      font-size: 12.5px; font-weight: 700; color: var(--navy); cursor: pointer; user-select: none;
-    }
-    .practice-check input { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
-    .practice-check.done { color: var(--green); }
 
     .nav {
       position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px; z-index: 20;
@@ -837,10 +831,6 @@
               <h3 class="practice-title">${escapeHtml(scenario.practiceTitle || "Practice")}</h3>
               <p class="practice-prompt">${escapeHtml(scenario.practicePrompt)}</p>
               ${scenario.practiceHint ? `<p class="practice-hint">${escapeHtml(scenario.practiceHint)}</p>` : ""}
-              <label class="practice-check">
-                <input type="checkbox" data-practice-check />
-                <span>I tried this</span>
-              </label>
             </div>` : ""}`;
     }
 
@@ -882,7 +872,6 @@
       refreshSlides();
       buildOverview();
       wireChoiceHandlers();
-      wirePracticeChecks();
       const firstPath = slides.findIndex((s) => s.dataset.path === "1");
       showSlide(firstPath >= 0 ? firstPath : 0);
     }
@@ -904,15 +893,6 @@
             }
             list.querySelectorAll(".choice-btn").forEach((b) => { b.disabled = false; });
           });
-        });
-      });
-    }
-
-    function wirePracticeChecks() {
-      deck.querySelectorAll("[data-practice-check]").forEach((input) => {
-        input.addEventListener("change", () => {
-          const label = input.closest(".practice-check");
-          if (label) label.classList.toggle("done", input.checked);
         });
       });
     }
