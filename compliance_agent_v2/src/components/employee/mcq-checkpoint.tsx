@@ -74,9 +74,9 @@ function ExplanationLines({ explanation }: { explanation: string }) {
   if (!lines.length) return null;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {lines.map((line) => (
-        <p key={line} className="text-sm leading-relaxed text-inherit">
+        <p key={line} className="text-[15px] font-medium leading-relaxed text-inherit">
           {line}
         </p>
       ))}
@@ -164,52 +164,75 @@ export function MCQCheckpoint({
 
     setValidating(true);
     setError(null);
-    try {
-      const payload =
-        allowMultiple || optionsToSubmit.length > 1
-          ? { optionIds: optionsToSubmit }
-          : { optionId: optionsToSubmit[0] };
-      const res = await fetch(
-        `/api/modules/${encodeURIComponent(moduleId)}/mcq/${encodeURIComponent(question.id)}/answer`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...payload,
-            userEmail,
-            moduleTitle,
-            batchId,
-            totalSlides,
-            assignedMcqCount,
-          }),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error ?? "Could not validate your answer.");
-        return;
+
+    // Optimistic: lock the selected answer and show explanation from the client
+    // payload immediately; correct/incorrect chrome reconciles when the POST returns.
+    const provisionalLabel =
+      question.options.find((opt) => opt.id === optionsToSubmit[0])?.label ?? "";
+    const provisionalExplanation = normalizeMcqExplanation(
+      question.explanation,
+      provisionalLabel,
+    );
+    setAnswerExplanation(provisionalExplanation);
+    setSubmitted(true);
+
+    const payload =
+      allowMultiple || optionsToSubmit.length > 1
+        ? { optionIds: optionsToSubmit }
+        : { optionId: optionsToSubmit[0] };
+
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/modules/${encodeURIComponent(moduleId)}/mcq/${encodeURIComponent(question.id)}/answer`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...payload,
+              userEmail,
+              moduleTitle,
+              batchId,
+              totalSlides,
+              assignedMcqCount,
+            }),
+          },
+        );
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          setSubmitted(false);
+          setWasCorrect(false);
+          setCorrectOptionId(null);
+          setAnswerExplanation(null);
+          setError(data.error ?? "Could not validate your answer.");
+          return;
+        }
+        const correct = Boolean(data.correct);
+        const resolvedCorrectId = data.correctOptionId ?? null;
+        const correctLabel =
+          question.options.find((opt) => opt.id === resolvedCorrectId)?.label ??
+          provisionalLabel;
+        setWasCorrect(correct);
+        setCorrectOptionId(resolvedCorrectId);
+        setAnswerExplanation(
+          normalizeMcqExplanation(question.explanation, correctLabel),
+        );
+        onAnswered(correct, {
+          mcqCorrect:
+            typeof data.mcqCorrect === "number" ? data.mcqCorrect : undefined,
+          mcqTotal:
+            typeof data.mcqTotal === "number" ? data.mcqTotal : undefined,
+        });
+      } catch {
+        setSubmitted(false);
+        setWasCorrect(false);
+        setCorrectOptionId(null);
+        setAnswerExplanation(null);
+        setError("Could not reach the server. Try again.");
+      } finally {
+        setValidating(false);
       }
-      const correct = Boolean(data.correct);
-      const resolvedCorrectId = data.correctOptionId ?? null;
-      const correctLabel =
-        question.options.find((opt) => opt.id === resolvedCorrectId)?.label ?? "";
-      setWasCorrect(correct);
-      setCorrectOptionId(resolvedCorrectId);
-      setAnswerExplanation(
-        normalizeMcqExplanation(question.explanation, correctLabel),
-      );
-      setSubmitted(true);
-      onAnswered(correct, {
-        mcqCorrect:
-          typeof data.mcqCorrect === "number" ? data.mcqCorrect : undefined,
-        mcqTotal:
-          typeof data.mcqTotal === "number" ? data.mcqTotal : undefined,
-      });
-    } catch {
-      setError("Could not reach the server. Try again.");
-    } finally {
-      setValidating(false);
-    }
+    })();
   };
 
   const handleContinue = () => {
@@ -246,10 +269,10 @@ export function MCQCheckpoint({
 
   const securityBanner = modalMode ? (
     <div className={cn("mb-2.5 shrink-0", submittedLayout && "mb-2")}>
-      <div className="flex flex-nowrap items-stretch gap-2 sm:gap-2.5">
+      <div className="flex flex-nowrap items-stretch gap-2">
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2",
+            "flex min-w-0 max-w-[min(100%,18rem)] shrink items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-2 sm:max-w-none sm:flex-1 sm:px-3",
             bannerHeight,
           )}
         >
@@ -261,7 +284,7 @@ export function MCQCheckpoint({
             <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-zinc-600">
               {submittedLayout
                 ? "Review your answer, then continue."
-                : "Choose the response that follows policy and the required approval path."}
+                : "Choose the best policy-aligned response."}
             </p>
           </div>
         </div>
@@ -269,7 +292,7 @@ export function MCQCheckpoint({
           key={signalState}
           state={signalState}
           progress={checkpointProgress}
-          className={cn(bannerHeight, signalWidth, "shrink-0 rounded-lg")}
+          className={cn(bannerHeight, signalWidth, "ml-auto shrink-0 rounded-lg")}
         />
       </div>
     </div>
@@ -393,29 +416,37 @@ export function MCQCheckpoint({
     </ul>
   );
 
+  const feedbackSettled = submitted && !validating;
   const feedbackBlock =
     submitted ? (
       <motion.div
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          "rounded-lg border",
+          "shrink-0 rounded-lg border",
           modalMode ? "mt-2 p-3" : "mt-3 p-3.5 sm:mt-4 sm:p-4",
-          submittedLayout && "flex min-h-0 flex-1 flex-col",
-          wasCorrect
-            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-            : "border-red-200 bg-red-50 text-red-950",
+          !feedbackSettled
+            ? "border-zinc-200 bg-zinc-50 text-zinc-800"
+            : wasCorrect
+              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+              : "border-red-200 bg-red-50 text-red-950",
         )}
       >
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 flex-col">
           <div className="flex shrink-0 items-start gap-2.5">
             <div
               className={cn(
                 "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border bg-white",
-                wasCorrect ? "border-emerald-200 text-emerald-700" : "border-red-200 text-red-700",
+                !feedbackSettled
+                  ? "border-zinc-200 text-zinc-500"
+                  : wasCorrect
+                    ? "border-emerald-200 text-emerald-700"
+                    : "border-red-200 text-red-700",
               )}
             >
-              {wasCorrect ? (
+              {!feedbackSettled ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : wasCorrect ? (
                 <CheckCircle2 className="h-3.5 w-3.5" />
               ) : (
                 <XCircle className="h-3.5 w-3.5" />
@@ -423,31 +454,34 @@ export function MCQCheckpoint({
             </div>
             <div className="min-w-0 flex-1">
               <p className={cn("font-semibold", modalMode ? "text-sm" : "text-base")}>
-                {wasCorrect ? `Correct. +${POINTS_PER_MCQ} points.` : "Incorrect. +0 points."}
+                {!feedbackSettled
+                  ? "Checking your answer…"
+                  : wasCorrect
+                    ? `Correct. +${POINTS_PER_MCQ} points.`
+                    : "Incorrect. +0 points."}
               </p>
             </div>
           </div>
-          {(answerExplanation || correctOption) && (
-            <div
-              className={cn(
-                "mt-2 flex min-h-0 flex-1 gap-1.5 pl-8 text-sm leading-relaxed",
-                submittedLayout && "min-h-[10rem]",
-              )}
-            >
+          {(answerExplanation || correctOption || feedbackSettled) && (
+            <div className="mt-2 flex max-h-40 shrink-0 gap-1.5 overflow-hidden pl-8 text-[15px] leading-relaxed">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                <p className="font-semibold">
-                  {wasCorrect ? "Why this is correct" : "Why this was wrong?"}
+              <div className="min-h-0 max-h-36 flex-1 overflow-y-auto overscroll-contain">
+                <p className="text-[15px] font-semibold tracking-tight">
+                  {!feedbackSettled
+                    ? "Explanation"
+                    : wasCorrect
+                      ? "Why this is correct"
+                      : "Why this is wrong"}
                 </p>
                 {answerExplanation ? (
                   <div className="mt-1.5">
                     <ExplanationLines explanation={answerExplanation} />
                   </div>
-                ) : (
-                  <p className="mt-1.5 leading-relaxed">
+                ) : feedbackSettled ? (
+                  <p className="mt-1.5 text-[15px] font-medium leading-relaxed">
                     Your response has been recorded for this checkpoint.
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -590,8 +624,20 @@ export function MCQCheckpoint({
             )}
           </Button>
         ) : (
-          <Button variant="primary" className="w-full" onClick={handleContinue}>
-            Continue to next question
+          <Button
+            variant="primary"
+            className="w-full"
+            disabled={validating}
+            onClick={handleContinue}
+          >
+            {validating ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking answer...
+              </>
+            ) : (
+              "Continue to next question"
+            )}
           </Button>
         )}
       </div>

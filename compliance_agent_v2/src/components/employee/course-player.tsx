@@ -290,62 +290,77 @@ export function CoursePlayer({
 
     let serverEntry: ServerProgressEntry | undefined;
     let progressFetchOk = false;
+    let reviewLatest: Awaited<ReturnType<typeof fetchLatestCourseReviewRequest>> = null;
+    let reviewFetchFailed = false;
 
-    try {
-      const result = await fetchCourseUserProgress(user.username);
-      progressFetchOk = result.ok;
-      const entries = result.progress;
-      serverEntry = entries.find((e) => e.moduleId === module.id);
+    const [progressSettled, reviewSettled] = await Promise.allSettled([
+      fetchCourseUserProgress(user.username),
+      fetchLatestCourseReviewRequest(user.username, module.id),
+    ]);
 
-      if (progressFetchOk) {
-        const serverGrantedRetake =
-          Boolean(serverEntry) &&
-          serverEntry!.status === "not_started" &&
-          serverEntry!.warningCount === 0 &&
-          wasLocked;
+    if (progressSettled.status === "fulfilled") {
+      try {
+        const result = progressSettled.value;
+        progressFetchOk = result.ok;
+        const entries = result.progress;
+        serverEntry = entries.find((e) => e.moduleId === module.id);
 
-        if (serverEntry && !serverGrantedRetake) {
-          mergeServerProgress(user.username, [
-            {
-              moduleId: serverEntry.moduleId,
-              moduleTitle: serverEntry.moduleTitle,
-              batchId: serverEntry.batchId,
-              currentSlide: serverEntry.currentSlide,
-              totalSlides: serverEntry.totalSlides,
-              status: serverEntry.status,
-              retakeCount: serverEntry.retakeCount,
-              mcqCorrect: serverEntry.mcqCorrect,
-              mcqTotal: serverEntry.mcqTotal,
-              scorePercent: serverEntry.scorePercent,
-              failedReason: serverEntry.failedReason,
-              completedAt: serverEntry.completedAt,
-              warningCount: serverEntry.warningCount,
-            },
-          ]);
-          if (serverEntry.mcqCorrect > 0) {
-            setCorrectAnswers(serverEntry.mcqCorrect);
+        if (progressFetchOk) {
+          const serverGrantedRetake =
+            Boolean(serverEntry) &&
+            serverEntry!.status === "not_started" &&
+            serverEntry!.warningCount === 0 &&
+            wasLocked;
+
+          if (serverEntry && !serverGrantedRetake) {
+            mergeServerProgress(user.username, [
+              {
+                moduleId: serverEntry.moduleId,
+                moduleTitle: serverEntry.moduleTitle,
+                batchId: serverEntry.batchId,
+                currentSlide: serverEntry.currentSlide,
+                totalSlides: serverEntry.totalSlides,
+                status: serverEntry.status,
+                retakeCount: serverEntry.retakeCount,
+                mcqCorrect: serverEntry.mcqCorrect,
+                mcqTotal: serverEntry.mcqTotal,
+                scorePercent: serverEntry.scorePercent,
+                failedReason: serverEntry.failedReason,
+                completedAt: serverEntry.completedAt,
+                warningCount: serverEntry.warningCount,
+              },
+            ]);
+            if (serverEntry.mcqCorrect > 0) {
+              setCorrectAnswers(serverEntry.mcqCorrect);
+            }
+          } else if (serverEntry && serverGrantedRetake) {
+            setRetakeCount(serverEntry.retakeCount);
+          } else {
+            clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
+            setIsFailed(false);
+            proctorHook.hydrateFromProgress(null);
+            setRetakeCount(0);
+            setDbStatus("not_started");
           }
-        } else if (serverEntry && serverGrantedRetake) {
-          setRetakeCount(serverEntry.retakeCount);
-        } else {
-          clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
-          setIsFailed(false);
-          proctorHook.hydrateFromProgress(null);
-          setRetakeCount(0);
-          setDbStatus("not_started");
-        }
 
-        if (entries.length === 0) {
-          clearAllLocalProgressForUser(user.username);
-        } else {
-          clearStaleLocalProgress(user.username, {
-            serverModuleIds: entries.map((e) => e.moduleId),
-            assignedModuleIds: [module.id],
-          });
+          if (entries.length === 0) {
+            clearAllLocalProgressForUser(user.username);
+          } else {
+            clearStaleLocalProgress(user.username, {
+              serverModuleIds: entries.map((e) => e.moduleId),
+              assignedModuleIds: [module.id],
+            });
+          }
         }
+      } catch {
+        /* fall back to local snapshot below */
       }
-    } catch {
-      /* fall back to local snapshot below */
+    }
+
+    if (reviewSettled.status === "fulfilled") {
+      reviewLatest = reviewSettled.value;
+    } else {
+      reviewFetchFailed = true;
     }
 
     const serverFresh =
@@ -397,8 +412,8 @@ export function CoursePlayer({
       proctorHook.hydrateFromProgress(null);
     }
 
-    try {
-      const latest = await fetchLatestCourseReviewRequest(user.username, module.id);
+    if (!reviewFetchFailed) {
+      const latest = reviewLatest;
       if (serverFresh && latest?.status === "Pending") {
         setReviewRequest(null);
       } else {
@@ -418,7 +433,7 @@ export function CoursePlayer({
           setAwaitingRetakeRestart(true);
         }
       }
-    } catch {
+    } else {
       const requests = getAllReviewRequests();
       const userReqs = requests.filter(
         (r) => r.username === user.username && r.moduleId === module.id,
@@ -1181,7 +1196,7 @@ export function CoursePlayer({
 
   return (
     <div className="training-interactive fixed inset-0 z-30 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-900">
-      <header className="relative z-[70] flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 text-white">
+      <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 text-white">
         <div className="flex items-center gap-3">
           <RelantoLogo size="sm" showTagline={false} />
           <span className="inline-flex items-center rounded-md border border-[#2e3192]/30 bg-[#2e3192]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#f15a24]">
@@ -1378,7 +1393,7 @@ export function CoursePlayer({
         !showFinalQa &&
         !showAcknowledgement &&
         !showScoreResult && (
-          <footer className="relative z-[70] flex h-12 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
+          <footer className="relative z-[70] flex h-14 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
             <span className="text-xs text-zinc-500">
               {isHtmlLessonStep && htmlEmbedState
                 ? `Slide ${htmlEmbedState.slideIndex + 1} of ${htmlEmbedState.slideCount}`
