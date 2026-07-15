@@ -6,6 +6,7 @@ import { resolveModuleKind } from "@/lib/module-kind";
 import { dedupeMcqsByPrompt, gateCountForSlides } from "@/lib/mcq-dedupe";
 import { isMultiSelectAnswer } from "@/lib/mcq-multi-select";
 import { getModuleStepsDb } from "@/lib/services/course-service";
+import { warmMcqAnswerCacheFromQuestions } from "@/lib/services/mcq-answer-cache";
 import type { CourseStepRow } from "@/lib/course-step-types";
 
 type Sql = ReturnType<typeof getSql>;
@@ -130,6 +131,9 @@ export async function loadModuleDetail(
       });
     }
   }
+
+  // Warm process cache so answer POSTs skip the question JOIN.
+  warmMcqAnswerCacheFromQuestions(moduleId, mcqPool);
 
   const progress = progressRows[0];
   const rawStatus = (progress?.status as string | undefined) ?? "not_started";

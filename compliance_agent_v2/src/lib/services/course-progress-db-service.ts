@@ -7,6 +7,7 @@ import {
   resolveDisplayScorePercent,
 } from "@/lib/progress-score";
 import { validateMcqSelection } from "@/lib/mcq-multi-select";
+import { getCachedCorrectOptionId } from "@/lib/services/mcq-answer-cache";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -373,23 +374,44 @@ export async function validateAndRecordMcqAnswerDb(
   mcqTotal: number;
   alreadyAnswered: boolean;
 }> {
-  const rows = await sql`
-    SELECT
-      q.correct_option_id,
-      q.prompt,
-      p.status AS progress_status,
-      p.mcq_correct,
-      p.mcq_total,
-      p.mcq_answers,
-      p.score_percent
-    FROM course_mcq_questions q
-    LEFT JOIN course_progress p
-      ON p.user_email = ${params.userEmail} AND p.module_id = ${params.moduleId}
-    WHERE q.id = ${params.questionId} AND q.module_id = ${params.moduleId}
-    LIMIT 1
-  `;
+  const picked =
+    params.optionIds && params.optionIds.length > 0
+      ? params.optionIds
+      : params.optionId
+        ? [params.optionId]
+        : [];
 
-  if (rows.length === 0 || !rows[0].correct_option_id) {
+  // Hot path: correct option from process cache (warmed on module load) + progress row only.
+  // Avoids the JOIN against course_mcq_questions on every submit.
+  const [correctOptionIdRaw, progress] = await Promise.all([
+    getCachedCorrectOptionId(sql, params.moduleId, params.questionId, true),
+    sql`
+      SELECT
+        status AS progress_status,
+        mcq_correct,
+        mcq_total,
+        mcq_answers,
+        score_percent
+      FROM course_progress
+      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+      LIMIT 1
+    `,
+  ]);
+
+  let correctOptionId = correctOptionIdRaw;
+  if (!correctOptionId) {
+    const qrows = await sql`
+      SELECT correct_option_id
+      FROM course_mcq_questions
+      WHERE id = ${params.questionId} AND module_id = ${params.moduleId}
+      LIMIT 1
+    `;
+    correctOptionId = String(qrows[0]?.correct_option_id ?? "")
+      .trim()
+      .toLowerCase() || null;
+  }
+
+  if (!correctOptionId) {
     return {
       found: false,
       correct: false,
@@ -400,45 +422,36 @@ export async function validateAndRecordMcqAnswerDb(
     };
   }
 
-  const correctOptionId = String(rows[0].correct_option_id ?? "")
-    .trim()
-    .toLowerCase();
-  const picked =
-    params.optionIds && params.optionIds.length > 0
-      ? params.optionIds
-      : params.optionId
-        ? [params.optionId]
-        : [];
   const correct = validateMcqSelection(picked, correctOptionId);
-  let progressStatus = rows[0].progress_status as string | null;
+  let progressStatus = (progress[0]?.progress_status as string | null) ?? null;
+  let mcqCorrectStored = Number(progress[0]?.mcq_correct ?? 0);
+  let mcqTotalStored = Number(progress[0]?.mcq_total ?? 0);
+  let mcqAnswers = parseMcqAnswers(progress[0]?.mcq_answers);
+  const scorePercent = progress[0]?.score_percent;
 
   if (!progressStatus) {
-    await startTrainingSessionDb(sql, {
+    // Non-blocking insert — response does not wait for session create.
+    void startTrainingSessionDb(sql, {
       userEmail: params.userEmail,
       moduleId: params.moduleId,
       moduleTitle: params.moduleTitle,
       batchId: params.batchId,
       totalSlides: params.totalSlides,
       assignedMcqCount: params.assignedMcqCount,
-    });
+    }).catch(console.error);
     progressStatus = "in_progress";
-    rows[0].mcq_correct = 0;
-    rows[0].mcq_total =
+    mcqCorrectStored = 0;
+    mcqTotalStored =
       params.assignedMcqCount && params.assignedMcqCount > 0
         ? params.assignedMcqCount
         : 0;
-    rows[0].mcq_answers = {};
-    rows[0].score_percent = null;
+    mcqAnswers = {};
   }
-
-  const mcqAnswers = parseMcqAnswers(rows[0].mcq_answers);
-  const mcqCorrectStored = Number(rows[0].mcq_correct ?? 0);
-  const mcqTotalStored = Number(rows[0].mcq_total ?? 0);
 
   if (
     progressStatus === "completed" ||
     progressStatus === "permanently_failed" ||
-    (progressStatus === "failed" && rows[0].score_percent == null)
+    (progressStatus === "failed" && scorePercent == null)
   ) {
     return {
       found: true,
@@ -467,10 +480,9 @@ export async function validateAndRecordMcqAnswerDb(
       ? mcqTotalStored
       : params.assignedMcqCount && params.assignedMcqCount > 0
         ? params.assignedMcqCount
-        : await getModuleMcqCount(sql, params.moduleId);
+        : Object.keys(answers).length;
   const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
 
-  // Fire and forget the update to eliminate DB write latency from the user's critical path
   sql`
     UPDATE course_progress
     SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
