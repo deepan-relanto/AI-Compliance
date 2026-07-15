@@ -1,5 +1,6 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { validateAndRecordMcqAnswerDb as validateCourseMcqAnswerDb } from "@/lib/services/course-progress-db-service";
 import { validateAndRecordMcqAnswerDb as validateComplianceMcqAnswerDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -52,7 +53,9 @@ export async function POST(
     }
 
     const sql = getSql();
-    const courseModule = await isCourseModule(sql, moduleId);
+    // Prefer id prefix (course builder ids); fall back to table lookup for legacy rows.
+    const courseModule =
+      moduleId.startsWith("course-") || (await isCourseModule(sql, moduleId));
     const validateMcq = courseModule ? validateCourseMcqAnswerDb : validateComplianceMcqAnswerDb;
 
     const result = await validateMcq(sql, {
@@ -75,6 +78,10 @@ export async function POST(
         { ok: false, error: "Question not found." },
         { status: 404 },
       );
+    }
+
+    if (!result.alreadyAnswered) {
+      invalidateAdminCachesAsync();
     }
 
     return NextResponse.json({
