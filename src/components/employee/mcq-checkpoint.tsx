@@ -12,7 +12,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   BarChart3,
   CheckCircle2,
-  Info,
   Loader2,
   Lock,
   Plus,
@@ -74,11 +73,11 @@ function ExplanationLines({ explanation }: { explanation: string }) {
   if (!lines.length) return null;
 
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-1">
       {lines.map((line) => (
         <li
           key={line}
-          className="relative pl-4 text-[15px] font-medium leading-[1.55] text-inherit before:absolute before:left-0 before:top-[0.65rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-60"
+          className="relative pl-3.5 text-[13px] font-medium leading-snug text-inherit before:absolute before:left-0 before:top-[0.45rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-55"
         >
           {line}
         </li>
@@ -126,10 +125,6 @@ export function MCQCheckpoint({
     }
   }, [open, question.id]);
 
-  const correctOption = useMemo(
-    () => question.options.find((opt) => opt.id === correctOptionId),
-    [question.options, correctOptionId],
-  );
   const displayPrompt = useMemo(
     () => stripGeneratedCheckpointPrefix(question.prompt),
     [question.prompt],
@@ -142,7 +137,13 @@ export function MCQCheckpoint({
     totalCheckpoints > 0
       ? Math.min(100, Math.max(0, (checkpointNumber / totalCheckpoints) * 100))
       : 0;
-  const signalState = submitted ? (wasCorrect ? "success" : "warning") : "active";
+  const signalState = submitted
+    ? validating
+      ? "active"
+      : wasCorrect
+        ? "success"
+        : "warning"
+    : "active";
 
   const allowMultiple = Boolean(question.allowMultiple);
   const correctOptionIds = useMemo(
@@ -168,13 +169,13 @@ export function MCQCheckpoint({
     setValidating(true);
     setError(null);
 
-    // Show the client-side explanation immediately; server confirms score.
     const provisionalLabel =
       question.options.find((opt) => opt.id === optionsToSubmit[0])?.label ?? "";
     const provisionalExplanation = normalizeMcqExplanation(
       question.explanation,
       provisionalLabel,
     );
+    // Instant feedback: explanation + submit chrome appear before the network returns.
     setAnswerExplanation(provisionalExplanation);
     setSubmitted(true);
 
@@ -182,9 +183,6 @@ export function MCQCheckpoint({
       allowMultiple || optionsToSubmit.length > 1
         ? { optionIds: optionsToSubmit }
         : { optionId: optionsToSubmit[0] };
-
-    // Pin the questionId this submission belongs to — the parent uses it to
-    // score the correct question even if the user has already advanced.
     const submittedQuestionId = question.id;
 
     void (async () => {
@@ -266,11 +264,6 @@ export function MCQCheckpoint({
   const modalMode = !panelMode;
   const submittedLayout = modalMode && submitted;
 
-  const bannerHeight = modalMode ? "h-16" : "h-24";
-  const signalWidth = modalMode
-    ? "w-28 min-w-[7rem]"
-    : "w-full";
-
   const blockCheckpointShortcuts = useCallback((e: KeyboardEvent) => {
     if (!shouldBlockCheckpointKey(e)) return;
     e.preventDefault();
@@ -284,25 +277,20 @@ export function MCQCheckpoint({
   }, [open, panelMode, blockCheckpointShortcuts]);
 
   const securityBanner = modalMode ? (
-    <div className="mb-4 shrink-0">
-      <div className="flex flex-nowrap items-stretch gap-3">
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-zinc-200 bg-gradient-to-r from-zinc-50 to-white px-4 py-2.5 shadow-[0_1px_2px_rgba(24,24,27,0.04)]",
-            bannerHeight,
-          )}
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#2e3192]/8 text-[#2e3192]">
-            <ShieldCheck className="h-5 w-5" strokeWidth={1.9} />
+    <div className="mb-2.5 shrink-0">
+      <div className="flex flex-nowrap items-stretch gap-2">
+        <div className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#2e3192]/10 text-[#2e3192]">
+            <ShieldCheck className="h-4 w-4" strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
               Secure checkpoint
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[13px] font-medium leading-snug text-zinc-700">
+            <p className="mt-0.5 line-clamp-1 text-[12px] font-medium leading-snug text-zinc-600">
               {submittedLayout
-                ? "Review the explanation, then continue when ready."
-                : "Choose the response that best follows the policy and required approval path."}
+                ? "Review the explanation, then continue."
+                : "Choose the best policy-aligned response."}
             </p>
           </div>
         </div>
@@ -310,7 +298,7 @@ export function MCQCheckpoint({
           key={signalState}
           state={signalState}
           progress={checkpointProgress}
-          className={cn(bannerHeight, signalWidth, "ml-auto shrink-0 rounded-xl")}
+          className="h-12 w-24 min-w-[5.5rem] shrink-0 rounded-lg"
         />
       </div>
     </div>
@@ -321,23 +309,23 @@ export function MCQCheckpoint({
       <h2
         className={cn(
           "font-semibold tracking-tight text-zinc-900",
-          modalMode ? "text-[17px] leading-[1.45]" : "text-lg leading-snug",
+          modalMode ? "text-[15px] leading-snug" : "text-base leading-snug",
         )}
       >
         {displayPrompt}
       </h2>
-      {!submitted && (
-        <p className="mt-2 text-[13px] font-medium text-zinc-500">
+      {!submitted && !modalMode && (
+        <p className="mt-1 text-xs text-zinc-500">
           {allowMultiple
-            ? "Select all that apply, then submit your answer."
-            : "Pick the option that best fits — you'll see an explanation right after."}
+            ? "Select all that apply, then submit."
+            : "Pick the best option, then submit."}
         </p>
       )}
     </div>
   );
 
   const optionsList = (
-    <ul className={cn("shrink-0", modalMode ? "mt-4 space-y-2.5" : "mt-4 space-y-2.5")}>
+    <ul className={cn("mt-2.5 space-y-1.5", submittedLayout && "mt-2 space-y-1")}>
       {displayOptions.map((opt) => {
         const isSelected = selected.includes(opt.id);
         const showCorrect =
@@ -351,13 +339,7 @@ export function MCQCheckpoint({
           submitted && isSelected && correctOptionIds.size === 0;
 
         return (
-          <motion.li
-            key={opt.id}
-            layout
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
+          <li key={opt.id}>
             <button
               type="button"
               disabled={submitted || validating}
@@ -373,28 +355,26 @@ export function MCQCheckpoint({
                 }
               }}
               className={cn(
-                "relative flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl border px-4 py-3.5 text-[15px] leading-snug text-left transition-all duration-150",
-                "hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-sm",
+                "relative flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border text-left transition-colors duration-100",
+                submittedLayout
+                  ? "px-3 py-2 text-[13px] leading-snug"
+                  : "px-3 py-2.5 text-[13.5px] leading-snug",
+                "hover:border-zinc-300 hover:bg-zinc-50",
                 isSelected && !submitted
-                  ? "border-[#2e3192]/50 bg-[#2e3192]/5 text-zinc-900 shadow-sm"
+                  ? "border-[#2e3192]/50 bg-[#2e3192]/5 text-zinc-900"
                   : "border-zinc-200 bg-white text-zinc-700",
-                isSelectedPending &&
-                  "border-[#2e3192]/40 bg-[#2e3192]/5 text-zinc-900",
+                isSelectedPending && "border-[#2e3192]/40 bg-[#2e3192]/5 text-zinc-900",
                 showCorrect && "border-emerald-300 bg-emerald-50 text-emerald-950",
                 showWrong && "border-red-300 bg-red-50 text-red-950",
                 submitted && "cursor-default",
               )}
             >
               {isSelected && !submitted && (
-                <motion.span
-                  layoutId="selected-answer-glow"
-                  className="absolute inset-y-0 left-0 w-1 bg-[#2e3192]"
-                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
-                />
+                <span className="absolute inset-y-0 left-0 w-1 bg-[#2e3192]" />
               )}
               <span
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border font-mono text-[11px] font-semibold uppercase",
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-semibold uppercase",
                   isSelected && !submitted
                     ? "border-[#2e3192]/40 bg-white text-[#2e3192]"
                     : "border-zinc-200 bg-white text-zinc-500",
@@ -404,18 +384,18 @@ export function MCQCheckpoint({
               >
                 {opt.id}
               </span>
-              <span className="flex-1 leading-[1.5]">{opt.label}</span>
+              <span className="flex-1 leading-snug">{opt.label}</span>
               {showCorrect && (
-                <CheckCircle2 className="ml-2 h-5 w-5 shrink-0 text-emerald-600" />
+                <CheckCircle2 className="ml-1 h-4 w-4 shrink-0 text-emerald-600" />
               )}
               {showWrong && (
-                <XCircle className="ml-2 h-5 w-5 shrink-0 text-red-500" />
+                <XCircle className="ml-1 h-4 w-4 shrink-0 text-red-500" />
               )}
               {isSelectedPending && (
-                <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin text-[#2e3192]" />
+                <Loader2 className="ml-1 h-3.5 w-3.5 shrink-0 animate-spin text-[#2e3192]" />
               )}
             </button>
-          </motion.li>
+          </li>
         );
       })}
     </ul>
@@ -424,32 +404,29 @@ export function MCQCheckpoint({
   const feedbackSettled = submitted && !validating;
   const feedbackBlock =
     submitted ? (
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
+      <div
         className={cn(
-          "mt-4 shrink-0 overflow-hidden rounded-xl border shadow-[0_1px_2px_rgba(24,24,27,0.04)]",
+          "mt-2.5 flex min-h-[5.5rem] shrink-0 flex-col overflow-hidden rounded-lg border",
           !feedbackSettled
             ? "border-zinc-200 bg-zinc-50 text-zinc-800"
             : wasCorrect
-              ? "border-emerald-200 bg-emerald-50/80 text-emerald-950"
-              : "border-red-200 bg-red-50/80 text-red-950",
+              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+              : "border-red-200 bg-red-50 text-red-950",
         )}
       >
         <div
           className={cn(
-            "flex items-center gap-3 border-b px-4 py-2.5",
+            "flex items-center gap-2.5 border-b px-3 py-2",
             !feedbackSettled
-              ? "border-zinc-200/70"
+              ? "border-zinc-200/80"
               : wasCorrect
-                ? "border-emerald-200/70"
-                : "border-red-200/70",
+                ? "border-emerald-200/80"
+                : "border-red-200/80",
           )}
         >
           <div
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border bg-white",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-white",
               !feedbackSettled
                 ? "border-zinc-200 text-zinc-500"
                 : wasCorrect
@@ -458,95 +435,94 @@ export function MCQCheckpoint({
             )}
           >
             {!feedbackSettled ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : wasCorrect ? (
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-3.5 w-3.5" />
             ) : (
-              <XCircle className="h-4 w-4" />
+              <XCircle className="h-3.5 w-3.5" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-semibold tracking-tight">
+            <p className="text-[13.5px] font-semibold tracking-tight">
               {!feedbackSettled
-                ? "Answer submitted"
+                ? "Answer recorded"
                 : wasCorrect
                   ? `Correct — +${POINTS_PER_MCQ} points`
-                  : "Not quite — +0 points"}
+                  : "Incorrect — +0 points"}
             </p>
             <p
               className={cn(
-                "mt-0.5 text-[12px] font-medium uppercase tracking-[0.1em]",
+                "text-[10px] font-semibold uppercase tracking-[0.1em]",
                 !feedbackSettled
                   ? "text-zinc-500"
                   : wasCorrect
-                    ? "text-emerald-700/80"
-                    : "text-red-700/80",
+                    ? "text-emerald-700/85"
+                    : "text-red-700/85",
               )}
             >
               {!feedbackSettled
-                ? "Verifying with the server…"
+                ? "Confirming result…"
                 : wasCorrect
                   ? "Why this is correct"
                   : "Why this is wrong"}
             </p>
           </div>
         </div>
-        <div className="px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-hidden px-3 py-2">
           {answerExplanation ? (
             <ExplanationLines explanation={answerExplanation} />
           ) : (
-            <p className="text-[15px] font-medium leading-[1.55]">
+            <p className="text-[13px] font-medium leading-snug">
               Your response has been recorded for this checkpoint.
             </p>
           )}
         </div>
-      </motion.div>
+      </div>
     ) : null;
 
   const card = (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)]">
       <div className="h-1 shrink-0 bg-zinc-100">
         <motion.div
-          initial={{ width: 0 }}
+          initial={false}
           animate={{ width: `${checkpointProgress}%` }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="h-full bg-[#f15a24]"
         />
       </div>
 
       <div
         className={cn(
-          "flex shrink-0 flex-col gap-1.5 border-b border-zinc-100 bg-zinc-50/90 sm:flex-row sm:items-center sm:justify-between",
-          modalMode ? "px-5 py-2 sm:px-6" : "gap-3 px-4 py-3 sm:px-6 sm:py-4",
+          "flex shrink-0 items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50/90",
+          modalMode ? "px-4 py-1.5 sm:px-5" : "px-4 py-2.5 sm:px-5",
         )}
       >
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[#f15a24]/20 bg-white text-[#f15a24]">
-            <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#f15a24]/20 bg-white text-[#f15a24]">
+            <Lock className="h-3 w-3" strokeWidth={1.75} />
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#f15a24] sm:text-sm">
+          <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-[#f15a24]">
             Checkpoint {Math.min(checkpointNumber, Math.max(totalCheckpoints, 1))} of{" "}
             {Math.max(totalCheckpoints, 1)}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           {modalMode && (
             <StreakCounter
               currentStreak={currentStreak}
               bestStreak={bestStreak}
               compact
               tone="light"
-              className="min-w-0 px-2 py-1"
+              className="min-w-0 px-1.5 py-0.5"
             />
           )}
-          <div className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700 sm:px-2.5 sm:py-1 sm:text-sm">
-            <BarChart3 className="h-3 w-3 text-zinc-400 sm:h-3.5 sm:w-3.5" />
-            Score{" "}
+          <div className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700">
+            <BarChart3 className="h-3 w-3 text-zinc-400" />
             <span className="font-mono tabular-nums">
               {score}/{totalScore}
             </span>
           </div>
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 sm:px-2.5 sm:py-1 sm:text-sm">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">
             <Plus className="mr-0.5 inline h-3 w-3" />
             {POINTS_PER_MCQ}
           </div>
@@ -555,45 +531,32 @@ export function MCQCheckpoint({
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain",
-          modalMode ? "px-5 py-4 sm:px-6" : "p-4 sm:p-5",
+          "flex min-h-0 flex-1 flex-col overflow-hidden",
+          modalMode ? "px-4 py-3 sm:px-5" : "p-4 sm:p-5",
         )}
       >
         {securityBanner}
 
         {!modalMode && (
-          <div className="mb-4 grid shrink-0 gap-3 sm:mb-5 sm:grid-cols-[1fr_10rem] sm:items-stretch">
-            <div
-              className={cn(
-                "flex flex-col justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3",
-                bannerHeight,
-              )}
-            >
+          <div className="mb-3 grid shrink-0 gap-2 sm:grid-cols-[1fr_8rem] sm:items-stretch">
+            <div className="flex h-16 flex-col justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-[#2e3192]" strokeWidth={1.75} />
-                <p className="text-sm font-bold uppercase tracking-[0.14em] text-zinc-500">
+                <ShieldCheck className="h-4 w-4 text-[#2e3192]" strokeWidth={1.75} />
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
                   Secure checkpoint
                 </p>
               </div>
               {!submitted && (
-                <p className="mt-1 text-sm leading-snug text-zinc-600">
-                  Choose the response that best follows the training policy and required approval path.
+                <p className="mt-1 text-xs leading-snug text-zinc-600">
+                  Choose the response that best follows policy.
                 </p>
               )}
-              <div className="mt-3 max-w-[180px]">
-                <StreakCounter
-                  currentStreak={currentStreak}
-                  bestStreak={bestStreak}
-                  compact
-                  tone="light"
-                />
-              </div>
             </div>
             <CheckpointSignal
               key={signalState}
               state={signalState}
               progress={checkpointProgress}
-              className={cn(bannerHeight, "shrink-0")}
+              className="h-16 shrink-0 rounded-lg"
             />
           </div>
         )}
@@ -602,7 +565,7 @@ export function MCQCheckpoint({
         {optionsList}
 
         {error && (
-          <p className="mt-2 shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mt-2 shrink-0 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
             {error}
           </p>
         )}
@@ -613,13 +576,13 @@ export function MCQCheckpoint({
       <div
         className={cn(
           "shrink-0 border-t border-zinc-100 bg-white",
-          modalMode ? "px-5 py-3 sm:px-6" : "p-4 sm:px-6 sm:pb-5",
+          modalMode ? "px-4 py-2.5 sm:px-5" : "p-4 sm:px-5 sm:pb-4",
         )}
       >
         {!submitted ? (
           <Button
             variant="primary"
-            className="w-full text-[15px] font-semibold"
+            className="w-full text-sm font-semibold"
             disabled={selected.length === 0}
             onClick={() => {
               if (selected.length > 0 && !submitted) {
@@ -632,7 +595,7 @@ export function MCQCheckpoint({
         ) : (
           <Button
             variant="primary"
-            className="w-full text-[15px] font-semibold"
+            className="w-full text-sm font-semibold"
             onClick={handleContinue}
           >
             Continue to next question
@@ -650,17 +613,18 @@ export function MCQCheckpoint({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] bg-zinc-900/55 backdrop-blur-[2px]"
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-[200] bg-zinc-900/55 backdrop-blur-[1px]"
         />
         <motion.div
           key="checkpoint-dialog"
           role="dialog"
           aria-modal="true"
-          initial={{ opacity: 0, scale: 0.98, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.99, y: 4 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          className="fixed inset-0 z-[201] flex items-center justify-center overflow-hidden p-3 sm:p-4"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-[201] flex items-center justify-center overflow-hidden p-2.5 sm:p-4"
           onKeyDown={(e) => {
             if (shouldBlockCheckpointKey(e.nativeEvent)) {
               e.preventDefault();
@@ -668,7 +632,7 @@ export function MCQCheckpoint({
             }
           }}
         >
-          <div className="flex h-[min(90dvh,860px)] w-full max-w-4xl min-h-0 flex-col">
+          <div className="flex h-[min(92dvh,720px)] w-full max-w-3xl min-h-0 flex-col">
             {card}
           </div>
         </motion.div>
@@ -681,10 +645,10 @@ export function MCQCheckpoint({
         {open && panelMode && (
           <motion.div
             key="checkpoint-panel"
-            initial={{ opacity: 0, x: 12 }}
+            initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 12 }}
-            transition={{ duration: 0.2 }}
+            exit={{ opacity: 0, x: 8 }}
+            transition={{ duration: 0.15 }}
             className="h-full min-h-0 overflow-hidden"
           >
             {card}

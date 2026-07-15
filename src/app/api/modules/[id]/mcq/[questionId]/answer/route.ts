@@ -7,13 +7,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-async function isCourseModule(sql: ReturnType<typeof getSql>, moduleId: string): Promise<boolean> {
-  const rows = await sql`
-    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
-  `;
-  return rows.length > 0;
-}
-
 /** POST — validate MCQ answer and record score progress */
 export async function POST(
   req: NextRequest,
@@ -42,9 +35,6 @@ export async function POST(
       );
     }
 
-    const access = await requireLearnerModuleAccess(moduleId, userEmail);
-    if (!access.ok) return access.response;
-
     if (!moduleTitle) {
       return NextResponse.json(
         { ok: false, error: "moduleTitle is required." },
@@ -52,11 +42,15 @@ export async function POST(
       );
     }
 
+    // Access check is TTL-cached after the first hit of this quiz session.
+    const access = await requireLearnerModuleAccess(moduleId, userEmail);
+    if (!access.ok) return access.response;
+
     const sql = getSql();
-    // Prefer id prefix (course builder ids); fall back to table lookup for legacy rows.
-    const courseModule =
-      moduleId.startsWith("course-") || (await isCourseModule(sql, moduleId));
-    const validateMcq = courseModule ? validateCourseMcqAnswerDb : validateComplianceMcqAnswerDb;
+    const courseModule = moduleId.startsWith("course-");
+    const validateMcq = courseModule
+      ? validateCourseMcqAnswerDb
+      : validateComplianceMcqAnswerDb;
 
     const result = await validateMcq(sql, {
       userEmail: access.email,

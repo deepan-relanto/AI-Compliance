@@ -74,6 +74,22 @@ export async function getCachedCorrectOptionId(
   return null;
 }
 
+/**
+ * Warm the cache from questions already loaded for a module page — avoids a cold
+ * first-answer DB hit during the quiz.
+ */
+export function warmMcqAnswerCacheFromQuestions(
+  moduleId: string,
+  questions: Array<{ id: string; correctOptionId?: string | null }>,
+): void {
+  for (const q of questions) {
+    const id = String(q.id ?? "").trim();
+    const correct = String(q.correctOptionId ?? "").trim().toLowerCase();
+    if (id && correct) correctOptionCache.set(cacheKey(moduleId, id), correct);
+  }
+  warmedModules.add(moduleId);
+}
+
 /** Invalidate cache when an admin edits questions (call from course-service). */
 export function invalidateMcqAnswerCacheForModule(moduleId: string): void {
   warmedModules.delete(moduleId);
