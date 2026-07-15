@@ -881,16 +881,27 @@ export function CoursePlayer({
   };
 
   const handleCheckpointAnswered = useCallback(
-    (wasCorrect: boolean) => {
-      const questionId = gateMcq.id;
+    (
+      wasCorrect: boolean,
+      meta?: { mcqCorrect?: number; mcqTotal?: number; questionId?: string },
+    ) => {
+      // Prefer the questionId the child submitted; falls back to the current
+      // gateMcq only for legacy callers. This lets scoring settle correctly even
+      // if the learner already advanced past this question.
+      const questionId = meta?.questionId ?? gateMcq.id;
       if (answeredQuestionIdsRef.current.has(questionId)) return;
       answeredQuestionIdsRef.current.add(questionId);
 
       setAnsweredCount((count) => count + 1);
       unlockBadge("starter");
 
-      if (wasCorrect) {
+      if (typeof meta?.mcqCorrect === "number") {
+        setCorrectAnswers(meta.mcqCorrect);
+      } else if (wasCorrect) {
         setCorrectAnswers((count) => count + 1);
+      }
+
+      if (wasCorrect) {
         setCurrentStreak((streak) => {
           const nextStreak = streak + 1;
           setBestStreak((best) => Math.max(best, nextStreak));

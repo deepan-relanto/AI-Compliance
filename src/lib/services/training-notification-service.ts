@@ -39,18 +39,30 @@ function courseDurationLabel(minutes: number | null | undefined): string {
   return `approximately ${mins} min`;
 }
 
-/** Compact rounded CTA — CSS pill for modern clients; VML roundrect for Outlook. */
-/** Outlook-safe solid CTA — table + td bgcolor + padded white link (no VML). */
+/**
+ * Bulletproof CTA that survives Outlook desktop's dark-mode color inversion.
+ *
+ * - Windows Outlook: uses VML roundrect (native Word rendering engine honors
+ *   fillcolor/color literally and is NOT touched by dark mode).
+ * - Every other client (Outlook web, Gmail, Apple Mail, mobile): sees the
+ *   `<a>` fallback (Outlook desktop skips it via `mso-hide:all`).
+ */
 function ctaButtonHtml(loginUrl: string, label: string): string {
   const safeLabel = escapeHtml(label);
+  // Approximate VML width — Outlook can't size a roundrect by padding.
+  const vmlWidth = Math.max(140, Math.min(220, label.length * 11 + 44));
   return `
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0">
-    <tr>
-      <td bgcolor="#2e3192" style="background-color:#2e3192;border:1px solid #25277a;border-radius:6px;">
-        <a href="${loginUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.25;font-weight:700;color:#ffffff !important;text-decoration:none;text-align:center;-webkit-text-size-adjust:none;mso-line-height-rule:exactly;">${safeLabel}</a>
-      </td>
-    </tr>
-  </table>`;
+  <div style="margin:24px 0;">
+    <!--[if mso]>
+    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${loginUrl}" style="height:46px;v-text-anchor:middle;width:${vmlWidth}px;" arcsize="12%" strokecolor="#25277a" strokeweight="1px" fillcolor="#2e3192">
+      <w:anchorlock/>
+      <center style="color:#ffffff;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:bold;letter-spacing:0.01em;">${safeLabel}</center>
+    </v:roundrect>
+    <![endif]-->
+    <!--[if !mso]><!-- -->
+    <a href="${loginUrl}" target="_blank" style="background-color:#2e3192;border:1px solid #25277a;border-radius:6px;color:#ffffff !important;display:inline-block;font-family:'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:0.01em;line-height:46px;mso-hide:all;padding:0 28px;text-align:center;text-decoration:none;-webkit-text-size-adjust:none;mso-line-height-rule:exactly;">${safeLabel}</a>
+    <!--<![endif]-->
+  </div>`;
 }
 
 function invitationHtml(params: {
