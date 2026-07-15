@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useBatches } from "@/hooks/use-batches";
+import { CourseTtsPanel } from "@/components/admin/course-tts-panel";
 import {
   COURSE_STEP_LABELS,
   COURSE_STEP_ORDER,
@@ -29,12 +30,13 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-type WizardStep = "info" | CourseStepType | "publish" | "done";
+type WizardStep = "info" | CourseStepType | "tts" | "publish" | "done";
 type MediaKind = "lesson" | "scenarios" | "video" | "mindmap" | "infographic";
 
 const WIZARD_STEPS: WizardStep[] = [
   "info",
   ...COURSE_STEP_ORDER,
+  "tts",
   "publish",
 ];
 
@@ -212,7 +214,7 @@ export function CourseBuilderPanel() {
       setQuestionCount(data.imported as number);
       markComplete("quiz");
       setUploadFile(null);
-      setStep("publish");
+      setStep("tts");
       setSuccessMsg(`Imported ${data.imported} quiz question(s). Assign batches to publish.`);
     } catch {
       setError("Invalid JSON file or server error.");
@@ -297,6 +299,7 @@ export function CourseBuilderPanel() {
 
   const stepLabel = useMemo(() => {
     if (step === "info") return "Course details";
+    if (step === "tts") return "TTS script";
     if (step === "publish") return "Publish to batches";
     if (step === "done") return "Complete";
     return COURSE_STEP_LABELS[step];
@@ -329,6 +332,8 @@ export function CourseBuilderPanel() {
             const label =
               s === "info"
                 ? "Details"
+                : s === "tts"
+                  ? "TTS"
                 : s === "publish"
                   ? "Publish"
                   : COURSE_STEP_LABELS[s as CourseStepType]?.split(" ")[0] ?? s;
@@ -562,11 +567,39 @@ export function CourseBuilderPanel() {
             </>
           )}
 
+          {step === "tts" && moduleId && (
+            <>
+              <CourseTtsPanel
+                moduleId={moduleId}
+                moduleTitle={title.trim() || "Course"}
+                onContinue={() => {
+                  markComplete("tts");
+                  setStep("publish");
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    markComplete("tts");
+                    setStep("publish");
+                  }}
+                >
+                  Skip to publish
+                </Button>
+              </div>
+            </>
+          )}
+
           {step === "publish" && (
             <>
               <p className="text-sm text-zinc-600">
-                All five bundle steps are ready. Assign this course to one or more batches to make
-                it visible to learners.
+                The content bundle is ready. Review batch assignment below to make this course
+                visible to learners. TTS scripts remain isolated in the dedicated sandbox tables.
               </p>
               <div className="space-y-2">
                 {batches.map((batch) => {
@@ -592,7 +625,7 @@ export function CourseBuilderPanel() {
                 })}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
+                <Button variant="ghost" size="sm" onClick={() => setStep("tts")}>
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>
