@@ -217,7 +217,7 @@ export function McqModal({
                   </Button>
                 ) : (
                   <Button variant="primary" className="mt-5 w-full" onClick={handleContinue}>
-                    Continue to next slide
+                    Continue to next question
                   </Button>
                 )}
               </div>

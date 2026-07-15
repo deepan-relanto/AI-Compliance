@@ -15,6 +15,7 @@ import { sendGraphMail } from "@/lib/services/graph-mail-service";
 import { trainingLoginUrl } from "@/lib/training-link";
 
 type Sql = ReturnType<typeof getSql>;
+type MailKind = "compliance" | "course";
 
 async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
   const rows = await sql`
@@ -23,28 +24,72 @@ async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
   return rows.length > 0;
 }
 
-const EMAIL_DURATION_LABEL = "approximately 15 min";
+const COMPLIANCE_DURATION_LABEL = "approximately 15 min";
+const COURSE_DURATION_FALLBACK_MIN = 30;
 const ONE_STRETCH_NOTE =
   "To ensure a seamless learning experience, the training should be completed in one uninterrupted session.";
+const COURSE_ONE_STRETCH_NOTE =
+  "To get the most from it, please complete the course in one uninterrupted session.";
+
+function courseDurationLabel(minutes: number | null | undefined): string {
+  const mins =
+    typeof minutes === "number" && Number.isFinite(minutes) && minutes > 0
+      ? Math.round(minutes)
+      : COURSE_DURATION_FALLBACK_MIN;
+  return `approximately ${mins} min`;
+}
+
+/** Outlook-safe solid CTA — table + white text avoids pink/inverted link colors. */
+function ctaButtonHtml(loginUrl: string, label: string): string {
+  return `
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0">
+    <tr>
+      <td bgcolor="#2e3192" style="background-color:#2e3192;border-radius:8px;mso-padding-alt:14px 28px;">
+        <a href="${loginUrl}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:Segoe UI,Arial,sans-serif;font-size:16px;line-height:1.25;font-weight:700;color:#ffffff !important;text-decoration:none;mso-line-height-rule:exactly;">
+          <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%;mso-text-raise:21pt">&nbsp;</i><![endif]-->
+          <span style="color:#ffffff !important;text-decoration:none;">${label}</span>
+          <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%">&nbsp;</i><![endif]-->
+        </a>
+      </td>
+    </tr>
+  </table>`;
+}
 
 function invitationHtml(params: {
   displayName: string;
   moduleTitle: string;
   loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
 }): string {
-  const { displayName, moduleTitle, loginUrl } = params;
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto AI Course</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">New AI course assigned</h1>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>Your administrator has assigned <strong>${escapeHtml(moduleTitle)}</strong> to you. This is a Relanto AI learning course (${durationLabel}).</p>
+  <p style="font-size:13px;color:#52525b">${COURSE_ONE_STRETCH_NOTE}</p>
+  ${ctaButtonHtml(loginUrl, "Start course")}
+  <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
+  <p style="font-size:12px;color:#71717a">In case of any technical issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+</body></html>`;
+  }
+
   return `
 <!DOCTYPE html>
 <html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
   <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
   <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
   <h1 style="font-size:22px;margin:8px 0 16px">Mandatory training assigned</h1>
-  <p>Hi ${displayName},</p>
-  <p>Your administrator has sent <strong>${moduleTitle}</strong> to you. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).</p>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>Your administrator has sent <strong>${escapeHtml(moduleTitle)}</strong> to you. This is a proctored compliance assessment (${durationLabel}).</p>
   <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
-  <p style="margin:28px 0">
-    <a href="${loginUrl}" style="display:inline-block;background:#2e3192;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Start training</a>
-  </p>
+  ${ctaButtonHtml(loginUrl, "Start training")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
   <p style="font-size:12px;color:#71717a">In case of any technical issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
   <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
@@ -55,11 +100,22 @@ function invitationTextBody(params: {
   displayName: string;
   moduleTitle: string;
   loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
 }): string {
-  const { displayName, moduleTitle, loginUrl } = params;
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return [
+      `Hi ${displayName},`,
+      `Your administrator has assigned "${moduleTitle}" to you. This is a Relanto AI learning course (${durationLabel}).`,
+      COURSE_ONE_STRETCH_NOTE,
+      `Start course: ${loginUrl}`,
+      "Sign in with your @relanto.ai Microsoft work account to begin.",
+    ].join("\n\n");
+  }
   return [
     `Hi ${displayName},`,
-    `Your administrator has sent "${moduleTitle}" to you. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).`,
+    `Your administrator has sent "${moduleTitle}" to you. This is a proctored compliance assessment (${durationLabel}).`,
     ONE_STRETCH_NOTE,
     `Start here: ${loginUrl}`,
     "Sign in with your @relanto.ai Microsoft work account to begin.",
@@ -70,10 +126,25 @@ function completionHtml(params: {
   displayName: string;
   moduleTitle: string;
   resultSummaryHtml?: string;
+  kind: MailKind;
 }): string {
-  const { displayName, moduleTitle, resultSummaryHtml = "" } = params;
+  const { displayName, moduleTitle, resultSummaryHtml = "", kind } = params;
   const safeName = escapeHtml(displayName);
   const safeTitle = escapeHtml(moduleTitle);
+  if (kind === "course") {
+    return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:640px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto AI Course</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Course completed</h1>
+  <p>Hi ${safeName},</p>
+  <p>We received your completed AI course for <strong>${safeTitle}</strong>, including your attestation and feedback.</p>
+  ${resultSummaryHtml}
+  <p style="color:#52525b">No further action is required. Thank you for completing your AI course.</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+</body></html>`;
+  }
   return `
 <!DOCTYPE html>
 <html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:640px;margin:0 auto;padding:24px">
@@ -92,8 +163,19 @@ function completionTextBody(params: {
   displayName: string;
   moduleTitle: string;
   resultSummaryText?: string;
+  kind: MailKind;
 }): string {
-  const { displayName, moduleTitle, resultSummaryText } = params;
+  const { displayName, moduleTitle, resultSummaryText, kind } = params;
+  if (kind === "course") {
+    return [
+      `Hi ${displayName},`,
+      `We received your completed AI course for "${moduleTitle}", including your attestation and feedback.`,
+      resultSummaryText,
+      "No further action is required. Thank you for completing your AI course.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
   return [
     `Hi ${displayName},`,
     `We received your completed assessment for "${moduleTitle}", including your attestation and feedback.`,
@@ -102,6 +184,70 @@ function completionTextBody(params: {
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function retakeHtml(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto AI Course</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).</p>
+  <p style="font-size:13px;color:#52525b">${COURSE_ONE_STRETCH_NOTE}</p>
+  ${ctaButtonHtml(loginUrl, "Start retake")}
+  <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+</body></html>`;
+  }
+  return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).</p>
+  <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
+  ${ctaButtonHtml(loginUrl, "Start retake")}
+  <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+</body></html>`;
+}
+
+function retakeTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return [
+      `Hi ${displayName},`,
+      `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).`,
+      COURSE_ONE_STRETCH_NOTE,
+      `Start retake here: ${loginUrl}`,
+      "Sign in with your @relanto.ai Microsoft work account to continue.",
+    ].join("\n\n");
+  }
+  return [
+    `Hi ${displayName},`,
+    `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).`,
+    ONE_STRETCH_NOTE,
+    `Start retake here: ${loginUrl}`,
+    "Sign in with your @relanto.ai Microsoft work account to continue.",
+  ].join("\n\n");
 }
 
 async function wasNotificationSent(
@@ -212,6 +358,13 @@ export async function sendModuleInvitationEmails(
   const moduleTitle = moduleRows[0].title as string;
   const loginBase = cfg.baseUrl;
   const isCourse = modules.length > 0;
+  const kind: MailKind = isCourse ? "course" : "compliance";
+  const durationLabel = isCourse
+    ? courseDurationLabel(Number(moduleRows[0].duration_minutes))
+    : COMPLIANCE_DURATION_LABEL;
+  const subjectBrand = isCourse
+    ? "Relanto AI Course"
+    : "Relanto Compliance Training";
 
   const learners = isCourse
     ? await sql`
@@ -255,9 +408,21 @@ export async function sendModuleInvitationEmails(
       const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
       await sendGraphMail({
         to: email,
-        subject: `Action required: ${moduleTitle} — Relanto Compliance Training`,
-        htmlBody: invitationHtml({ displayName, moduleTitle, loginUrl }),
-        textBody: invitationTextBody({ displayName, moduleTitle, loginUrl }),
+        subject: `Action required: ${moduleTitle} — ${subjectBrand}`,
+        htmlBody: invitationHtml({
+          displayName,
+          moduleTitle,
+          loginUrl,
+          kind,
+          durationLabel,
+        }),
+        textBody: invitationTextBody({
+          displayName,
+          moduleTitle,
+          loginUrl,
+          kind,
+          durationLabel,
+        }),
       });
       await recordNotification(sql, moduleId, email, "invited");
       sent++;
@@ -286,44 +451,6 @@ export async function sendModuleInvitationEmails(
   };
 }
 
-function retakeHtml(params: {
-  displayName: string;
-  moduleTitle: string;
-  loginUrl: string;
-}): string {
-  const { displayName, moduleTitle, loginUrl } = params;
-  return `
-<!DOCTYPE html>
-<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
-  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
-  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
-  <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
-  <p>Hi ${displayName},</p>
-  <p>Your administrator approved a new attempt for <strong>${moduleTitle}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).</p>
-  <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
-  <p style="margin:28px 0">
-    <a href="${loginUrl}" style="display:inline-block;background:#2e3192;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">Start retake</a>
-  </p>
-  <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
-</body></html>`;
-}
-
-function retakeTextBody(params: {
-  displayName: string;
-  moduleTitle: string;
-  loginUrl: string;
-}): string {
-  const { displayName, moduleTitle, loginUrl } = params;
-  return [
-    `Hi ${displayName},`,
-    `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${EMAIL_DURATION_LABEL}).`,
-    ONE_STRETCH_NOTE,
-    `Start retake here: ${loginUrl}`,
-    "Sign in with your @relanto.ai Microsoft work account to continue.",
-  ].join("\n\n");
-}
-
 export async function sendRetakeApprovalEmail(
   sql: Sql,
   userEmail: string,
@@ -336,13 +463,13 @@ export async function sendRetakeApprovalEmail(
 
   const email = userEmail.trim().toLowerCase();
   const modules = await sql`
-    SELECT title FROM course_modules WHERE id = ${moduleId} LIMIT 1
+    SELECT title, duration_minutes FROM course_modules WHERE id = ${moduleId} LIMIT 1
   `;
   const moduleRows =
     modules.length > 0
       ? modules
       : await sql`
-          SELECT title FROM training_modules WHERE id = ${moduleId} LIMIT 1
+          SELECT title, duration_minutes FROM training_modules WHERE id = ${moduleId} LIMIT 1
         `;
   if (moduleRows.length === 0) {
     return { ok: false, message: "Module not found." };
@@ -355,13 +482,33 @@ export async function sendRetakeApprovalEmail(
     (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
   const moduleTitle = moduleRows[0].title as string;
   const loginUrl = trainingLoginUrl(moduleId, cfg.baseUrl, email);
+  const isCourse = modules.length > 0;
+  const kind: MailKind = isCourse ? "course" : "compliance";
+  const durationLabel = isCourse
+    ? courseDurationLabel(Number(moduleRows[0].duration_minutes))
+    : COMPLIANCE_DURATION_LABEL;
+  const subjectBrand = isCourse
+    ? "Relanto AI Course"
+    : "Relanto Compliance Training";
 
   try {
     await sendGraphMail({
       to: email,
-      subject: `Retake approved: ${moduleTitle} — Relanto Compliance Training`,
-      htmlBody: retakeHtml({ displayName, moduleTitle, loginUrl }),
-      textBody: retakeTextBody({ displayName, moduleTitle, loginUrl }),
+      subject: `Retake approved: ${moduleTitle} — ${subjectBrand}`,
+      htmlBody: retakeHtml({
+        displayName,
+        moduleTitle,
+        loginUrl,
+        kind,
+        durationLabel,
+      }),
+      textBody: retakeTextBody({
+        displayName,
+        moduleTitle,
+        loginUrl,
+        kind,
+        durationLabel,
+      }),
     });
     return { ok: true, message: "Retake approval email sent." };
   } catch (err) {
@@ -405,16 +552,18 @@ export async function sendModuleCompletionEmail(
   const displayName =
     (users[0]?.display_name as string | null)?.trim() || firstNameFromEmail(email);
   const moduleTitle = moduleRows[0].title as string;
+  const kind: MailKind = courseModules.length > 0 ? "course" : "compliance";
 
-  const progressRows = courseModules.length > 0
-    ? await sql`
+  const progressRows =
+    courseModules.length > 0
+      ? await sql`
         SELECT score_percent, mcq_correct, mcq_total
         FROM course_progress
         WHERE module_id = ${moduleId}
           AND LOWER(user_email) = LOWER(${email})
         LIMIT 1
       `
-    : await sql`
+      : await sql`
         SELECT score_percent, mcq_correct, mcq_total
         FROM assessment_progress
         WHERE module_id = ${moduleId}
@@ -453,22 +602,28 @@ export async function sendModuleCompletionEmail(
   ];
   const resultSummaryHtml = completionResultSummaryHtml(resultSummary, {
     scoreRingImageSrc: `cid:${SCORE_RING_IMAGE_CID}`,
+    kind,
   });
-  const resultSummaryText = completionResultTextSummary(resultSummary);
+  const resultSummaryText = completionResultTextSummary(resultSummary, { kind });
+  const subjectBrand =
+    kind === "course" ? "Relanto AI Course" : "Relanto Compliance Training";
+  const subjectPrefix = kind === "course" ? "Completed" : "Submitted";
 
   try {
     await sendGraphMail({
       to: email,
-      subject: `Submitted: ${moduleTitle} — Relanto Compliance Training`,
+      subject: `${subjectPrefix}: ${moduleTitle} — ${subjectBrand}`,
       htmlBody: completionHtml({
         displayName,
         moduleTitle,
         resultSummaryHtml,
+        kind,
       }),
       textBody: completionTextBody({
         displayName,
         moduleTitle,
         resultSummaryText,
+        kind,
       }),
       inlineAttachments,
     });
