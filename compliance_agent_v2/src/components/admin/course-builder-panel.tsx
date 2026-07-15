@@ -107,6 +107,11 @@ export function CourseBuilderPanel() {
     }
   };
 
+  const goToNextWizardStep = useCallback((current: WizardStep) => {
+    const index = WIZARD_STEPS.indexOf(current);
+    setStep(WIZARD_STEPS[index + 1] ?? "publish");
+  }, []);
+
   const handleCreateCourse = async () => {
     const trimmed = title.trim();
     if (trimmed.length < 3) {
@@ -222,6 +227,24 @@ export function CourseBuilderPanel() {
       setLoading(false);
     }
   };
+
+  const handleSkipStep = useCallback((skipStep: WizardStep) => {
+    setUploadFile(null);
+    if (htmlPreviewUrl) {
+      URL.revokeObjectURL(htmlPreviewUrl);
+      setHtmlPreviewUrl(null);
+    }
+    markComplete(skipStep);
+    goToNextWizardStep(skipStep);
+    setError(null);
+    const skippedLabel =
+      skipStep === "tts"
+        ? "TTS step"
+        : skipStep === "publish" || skipStep === "done" || skipStep === "info"
+          ? skipStep
+          : COURSE_STEP_LABELS[skipStep];
+    setSuccessMsg(`${skippedLabel} skipped.`);
+  }, [goToNextWizardStep, htmlPreviewUrl, markComplete]);
 
   const toggleBatch = (batchId: string) => {
     setSelectedBatchIds((prev) =>
@@ -532,6 +555,15 @@ export function CourseBuilderPanel() {
                     )}
                     Upload &amp; continue
                   </Button>
+                  {currentContentStep !== "pdf" && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleSkipStep(currentContentStep)}
+                      disabled={loading}
+                    >
+                      Skip this step
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -563,6 +595,13 @@ export function CourseBuilderPanel() {
                   )}
                   Import quiz &amp; continue
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleSkipStep("quiz")}
+                  disabled={loading}
+                >
+                  Skip this step
+                </Button>
               </div>
             </>
           )}
@@ -585,8 +624,7 @@ export function CourseBuilderPanel() {
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    markComplete("tts");
-                    setStep("publish");
+                    handleSkipStep("tts");
                   }}
                 >
                   Skip to publish

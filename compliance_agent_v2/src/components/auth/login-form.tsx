@@ -3,11 +3,13 @@
 import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import { resolvePostLoginPath, isTrainingCallback } from "@/lib/auth-routes";
+import { LOCAL_ADMIN_BYPASS_ENABLED, getLocalAdminUser } from "@/lib/local-dev-auth";
 import { emailsMatch, normalizeEmail } from "@/lib/training-link";
 import { motion } from "framer-motion";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useAuthStore } from "@/lib/auth-store";
 import { useCallback, useEffect, useState } from "react";
 
 function MicrosoftIcon({ className }: { className?: string }) {
@@ -41,6 +43,7 @@ type AuthStatus = {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession();
+  const setUser = useAuthStore((s) => s.setUser);
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
@@ -130,6 +133,11 @@ export function LoginForm() {
     }
   }, [authConfigured, rawCallback, isTraining, wrongAccount]);
 
+  const handleLocalAdmin = useCallback(() => {
+    setUser(getLocalAdminUser());
+    window.location.href = "/admin";
+  }, [setUser]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -155,7 +163,9 @@ export function LoginForm() {
             Compliance Agent
           </h1>
           <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-zinc-500">
-            {isTraining
+            {LOCAL_ADMIN_BYPASS_ENABLED
+              ? "Local admin bypass is enabled for development. Microsoft sign-in is not required on this machine."
+              : isTraining
               ? forEmail
                 ? (
                   <>
@@ -205,11 +215,21 @@ export function LoginForm() {
         )}
 
         <div className="mt-7">
-          <Button
+          {LOCAL_ADMIN_BYPASS_ENABLED && (
+            <Button
+              type="button"
+              size="lg"
+              className="mb-3 h-12 w-full cursor-pointer gap-3 bg-[#2e3192] text-[15px] font-semibold text-white hover:bg-[#232676]"
+              onClick={handleLocalAdmin}
+            >
+              Continue as local admin
+            </Button>
+          )}
+              <Button
             type="button"
             size="lg"
             className="h-12 w-full cursor-pointer gap-3 border border-zinc-200 bg-white text-[15px] font-semibold text-zinc-800 shadow-sm transition-all hover:border-[#2e3192]/30 hover:bg-zinc-50 hover:shadow-md disabled:opacity-50"
-            disabled={loading || statusLoading || !authConfigured}
+            disabled={loading || statusLoading || (!authConfigured && !LOCAL_ADMIN_BYPASS_ENABLED)}
             onClick={() => void handleMicrosoftSignIn()}
           >
             <MicrosoftIcon className="h-5 w-5 shrink-0" />
@@ -224,7 +244,9 @@ export function LoginForm() {
         </div>
 
         <p className="mt-6 text-center text-[11px] leading-relaxed text-zinc-400">
-          Authorized @relanto.ai users only
+          {LOCAL_ADMIN_BYPASS_ENABLED
+            ? "Local admin bypass active for development"
+            : "Authorized @relanto.ai users only"}
         </p>
       </div>
     </motion.div>

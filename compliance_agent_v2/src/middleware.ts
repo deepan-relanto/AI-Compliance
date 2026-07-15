@@ -1,6 +1,9 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
+const LOCAL_ADMIN_BYPASS =
+  process.env.NEXT_PUBLIC_LOCAL_ADMIN_BYPASS === "true";
+
 const PUBLIC_PREFIXES = [
   "/login",
   "/api/auth",
@@ -10,6 +13,9 @@ const PUBLIC_PREFIXES = [
 ];
 
 export default auth((req) => {
+  if (LOCAL_ADMIN_BYPASS) {
+    return NextResponse.next();
+  }
   const { pathname } = req.nextUrl;
   const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
   if (isPublic) return NextResponse.next();

@@ -5,13 +5,16 @@ import {
   isTrainingCallback,
   resolvePostLoginPath,
 } from "@/lib/auth-routes";
+import { LOCAL_ADMIN_BYPASS_ENABLED, getLocalAdminUser } from "@/lib/local-dev-auth";
 import { normalizeEmail } from "@/lib/training-link";
 import { useSession } from "next-auth/react";
+import { useAuthStore } from "@/lib/auth-store";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 export function LoginRedirect() {
   const { data: session, status } = useSession();
+  const setUser = useAuthStore((s) => s.setUser);
   const router = useRouter();
   const searchParams = useSearchParams();
   const signedOut = searchParams.get("signedOut");
@@ -20,6 +23,11 @@ export function LoginRedirect() {
   const isTraining = isTrainingCallback(callbackUrl);
 
   useEffect(() => {
+    if (LOCAL_ADMIN_BYPASS_ENABLED) {
+      setUser(getLocalAdminUser());
+      router.replace("/admin");
+      return;
+    }
     if (signedOut) return;
     if (status !== "authenticated" || !session?.user?.email) return;
 
@@ -32,7 +40,7 @@ export function LoginRedirect() {
 
     const role = session.user.role ?? "user";
     router.replace(resolvePostLoginPath(callbackUrl, role));
-  }, [session, status, signedOut, callbackUrl, forEmail, isTraining, router]);
+  }, [session, status, signedOut, callbackUrl, forEmail, isTraining, router, setUser]);
 
   return null;
 }

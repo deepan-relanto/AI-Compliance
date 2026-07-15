@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/lib/auth-store";
+import { LOCAL_ADMIN_BYPASS_ENABLED, getLocalAdminUser } from "@/lib/local-dev-auth";
 import type { AuthUser } from "@/lib/types";
 import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect } from "react";
@@ -12,6 +13,12 @@ function SessionSync({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === "loading") return;
+
+    if (LOCAL_ADMIN_BYPASS_ENABLED) {
+      setUser(getLocalAdminUser());
+      setHydrated();
+      return;
+    }
 
     if (status === "authenticated" && session?.user?.email) {
       const u = session.user;

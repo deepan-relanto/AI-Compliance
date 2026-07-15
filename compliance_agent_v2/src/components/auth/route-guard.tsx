@@ -2,6 +2,7 @@
 
 import { loginPathWithCallback } from "@/lib/auth-routes";
 import { useAuthStore } from "@/lib/auth-store";
+import { LOCAL_ADMIN_BYPASS_ENABLED, getLocalAdminUser } from "@/lib/local-dev-auth";
 import type { UserRole } from "@/lib/types";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,14 +14,17 @@ interface RouteGuardProps {
 }
 
 export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
-  const user = useAuthStore((s) => s.user);
+  const storedUser = useAuthStore((s) => s.user);
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const { status: sessionStatus } = useSession();
   const pathname = usePathname();
   const router = useRouter();
 
+  const user = LOCAL_ADMIN_BYPASS_ENABLED ? getLocalAdminUser() : storedUser;
+
   const sessionLoading = sessionStatus === "loading";
-  const waitingForSync = sessionStatus === "authenticated" && !user;
+  const waitingForSync =
+    !LOCAL_ADMIN_BYPASS_ENABLED && sessionStatus === "authenticated" && !user;
 
   useEffect(() => {
     if (sessionLoading || !isHydrated || waitingForSync) return;

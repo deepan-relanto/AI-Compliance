@@ -1,29 +1,9 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { neonConfig, Pool } from "@neondatabase/serverless";
-import { getDatabaseUrl, getSql } from "@/lib/db";
 
 const ASSETS_DIR = path.join(process.cwd(), "public", "course-assets");
 const MAX_BYTES = 100 * 1024 * 1024;
-/** Neon HTTP SQL requests are capped (~64MB encoded). Large videos use WS Pool. */
-const HTTP_SAFE_BYTES = 40 * 1024 * 1024;
-
-let wsPool: Pool | null = null;
-
-async function getWsPool(): Promise<Pool> {
-  if (wsPool) return wsPool;
-  try {
-    const mod = await import("ws");
-    neonConfig.webSocketConstructor = mod.default ?? mod;
-  } catch {
-    throw new Error(
-      "Large course media needs the `ws` package. Run npm install ws",
-    );
-  }
-  wsPool = new Pool({ connectionString: getDatabaseUrl() });
-  return wsPool;
-}
 const ASSET_FILENAME =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/i;
 
@@ -99,18 +79,6 @@ function mimeFromFilename(filename: string): string {
   return MIME_BY_EXT[ext] ?? "application/octet-stream";
 }
 
-function bufferFromDbValue(data: unknown): Buffer {
-  if (Buffer.isBuffer(data)) return data;
-  if (data instanceof Uint8Array) return Buffer.from(data);
-  if (typeof data === "string") {
-    if (/^[0-9a-f]+$/i.test(data) && data.length % 2 === 0) {
-      return Buffer.from(data, "hex");
-    }
-    return Buffer.from(data, "base64");
-  }
-  throw new Error("Unsupported course asset blob format from database.");
-}
-
 export function courseAssetUrlToFilename(assetUrl: string): string {
   const name = assetUrl.replace(/^\//, "").split("/").pop() ?? "";
   if (!ASSET_FILENAME.test(name)) {
@@ -144,48 +112,7 @@ export function isAllowedCourseAsset(
   if (kind === "video" && [".mp4", ".webm", ".mov"].includes(ext)) return true;
   return false;
 }
-
-/** Persist course media in Neon so Render redeploys do not lose uploads. */
-export async function storeCourseAssetInDatabase(
-  assetUrl: string,
-  buffer: Buffer,
-  mimeType: string,
-): Promise<void> {
-  const filename = courseAssetUrlToFilename(assetUrl);
-
-  if (buffer.length <= HTTP_SAFE_BYTES) {
-    const sql = getSql();
-    await sql`
-      INSERT INTO course_assets (filename, asset_url, mime_type, size_bytes, data)
-      VALUES (${filename}, ${assetUrl}, ${mimeType}, ${buffer.length}, ${buffer})
-      ON CONFLICT (filename) DO UPDATE SET
-        asset_url = EXCLUDED.asset_url,
-        mime_type = EXCLUDED.mime_type,
-        size_bytes = EXCLUDED.size_bytes,
-        data = EXCLUDED.data
-    `;
-    return;
-  }
-
-  const pool = await getWsPool();
-  const client = await pool.connect();
-  try {
-    await client.query(
-      `INSERT INTO course_assets (filename, asset_url, mime_type, size_bytes, data)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (filename) DO UPDATE SET
-         asset_url = EXCLUDED.asset_url,
-         mime_type = EXCLUDED.mime_type,
-         size_bytes = EXCLUDED.size_bytes,
-         data = EXCLUDED.data`,
-      [filename, assetUrl, mimeType, buffer.length, buffer],
-    );
-  } finally {
-    client.release();
-  }
-}
-
-/** Store course media on local disk and in Neon (public/course-assets + course_assets). */
+/** Store course media on local disk only for local testing. */
 export async function storeCourseAsset(
   buffer: Buffer,
   originalName: string,
@@ -222,19 +149,10 @@ export async function storeCourseAsset(
     sizeBytes: buffer.length,
   });
 
-  try {
-    await storeCourseAssetInDatabase(assetUrl, buffer, resolvedMime);
-  } catch (err) {
-    console.error("[course-asset] Failed to persist asset to database:", err);
-    throw new Error(
-      "File saved locally but could not be persisted to the database. Learners may lose media after redeploy.",
-    );
-  }
-
   return { assetUrl, mimeType: resolvedMime, originalName };
 }
 
-/** Read course asset bytes — local disk first, then Neon course_assets. */
+/** Read course asset bytes from local disk only. */
 export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   buffer: Buffer;
   mimeType: string;
@@ -244,33 +162,15 @@ export async function getCourseAssetBuffer(assetUrl: string): Promise<{
   return { buffer: chunk.buffer, mimeType: chunk.mimeType };
 }
 
-async function getDbAssetMeta(filename: string): Promise<{ size: number; mimeType: string } | null> {
-  const sql = getSql();
-  const rows = await sql`
-    SELECT length(data)::int AS size, mime_type
-    FROM course_assets
-    WHERE filename = ${filename}
-    LIMIT 1
-  `;
-  if (rows.length === 0 || rows[0].size == null) return null;
-  return {
-    size: Number(rows[0].size),
-    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
-  };
-}
-
-/** Prefer local disk only when the file looks complete (not a OneDrive placeholder). */
-async function shouldUseLocalFile(
+function shouldUseLocalFile(
   localPath: string,
   filename: string,
-): Promise<boolean> {
+): boolean {
   if (!fs.existsSync(localPath)) return false;
   const stat = fs.statSync(localPath);
   if (stat.size === 0) return false;
   const diskMeta = readMeta(filename);
   if (diskMeta?.sizeBytes && stat.size < diskMeta.sizeBytes * 0.9) return false;
-  const dbMeta = await getDbAssetMeta(filename);
-  if (dbMeta && dbMeta.size > 0 && stat.size < dbMeta.size * 0.9) return false;
   return true;
 }
 
@@ -283,7 +183,7 @@ export async function getCourseAssetMeta(assetUrl: string): Promise<{
   const localPath = path.normalize(path.join(publicRoot, relative));
   const filename = courseAssetUrlToFilename(assetUrl);
 
-  if (localPath.startsWith(publicRoot) && (await shouldUseLocalFile(localPath, filename))) {
+  if (localPath.startsWith(publicRoot) && shouldUseLocalFile(localPath, filename)) {
     const meta = readMeta(filename);
     const stat = fs.statSync(localPath);
     return {
@@ -292,14 +192,10 @@ export async function getCourseAssetMeta(assetUrl: string): Promise<{
     };
   }
 
-  const dbMeta = await getDbAssetMeta(filename);
-  if (!dbMeta) {
-    throw new Error("Asset not found.");
-  }
-  return dbMeta;
+  throw new Error("Asset not found on local disk.");
 }
 
-/** Read a byte range without loading the entire asset when served from Neon. */
+/** Read a byte range from local disk. */
 export async function readCourseAssetRange(
   assetUrl: string,
   start: number,
@@ -314,7 +210,7 @@ export async function readCourseAssetRange(
   const localPath = path.normalize(path.join(publicRoot, relative));
   const filename = courseAssetUrlToFilename(assetUrl);
 
-  if (localPath.startsWith(publicRoot) && (await shouldUseLocalFile(localPath, filename))) {
+  if (localPath.startsWith(publicRoot) && shouldUseLocalFile(localPath, filename)) {
     const meta = readMeta(filename);
     const stat = fs.statSync(localPath);
     const safeEnd = Math.min(end, stat.size - 1);
@@ -332,26 +228,5 @@ export async function readCourseAssetRange(
       fs.closeSync(fd);
     }
   }
-
-  const sql = getSql();
-  const length = end - start + 1;
-  const rows = await sql`
-    SELECT
-      length(data)::int AS size,
-      mime_type,
-      substring(data FROM ${start + 1} FOR ${length}) AS chunk
-    FROM course_assets
-    WHERE filename = ${filename}
-    LIMIT 1
-  `;
-
-  if (rows.length === 0 || rows[0].size == null || rows[0].chunk == null) {
-    throw new Error("Asset not found.");
-  }
-
-  return {
-    buffer: bufferFromDbValue(rows[0].chunk),
-    mimeType: String(rows[0].mime_type ?? mimeFromFilename(filename)),
-    size: Number(rows[0].size),
-  };
+  throw new Error("Asset not found on local disk.");
 }

@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto AI Fundamentals - Interactive Executive Presentation</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+
+    body.embed {
+      /* Match course-player chrome gutters (black sides) */
+      background: #0a0a0a;
+    }
+
+    body.embed .deck-shell {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      container-type: size;
+    }
+
+    body.embed .deck {
+      flex-shrink: 0;
+      transform: none;
+      transform-origin: center center;
+      aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    body.embed .slide {
+      padding: 16px 22px 36px;
+      overflow: hidden;
+      box-sizing: border-box;
+      gap: 10px;
+    }
+
+    body.embed .flow { margin-top: 8px; gap: 22px; }
+    body.embed .flow-step { min-height: 0; padding: 10px 8px; font-size: 12px; }
+    body.embed .flow-step:not(:last-child)::after { right: -16px; width: 10px; height: 10px; }
+    body.embed .content { margin-top: 8px; }
+    body.embed .grid { gap: 8px; }
+    body.embed .card { padding: 10px 12px; }
+    body.embed .card h3, body.embed .card strong { font-size: 14px; }
+    body.embed .card p, body.embed .card li { font-size: 12px; line-height: 1.35; }
+    body.embed .journey { margin-top: 6px; gap: 0; }
+    body.embed .journey-step { min-height: 0; padding: 0 6px; }
+    body.embed .journey-card { min-height: 110px; padding: 12px 10px; }
+    body.embed .slide.closing { padding-top: 18px; gap: 12px; }
+    body.embed h1 { font-size: clamp(18px, 2.5vw, 28px); margin-bottom: 6px; }
+    body.embed .subtitle { margin-top: 6px; font-size: 13px; }
+    body.embed .kicker { margin-bottom: 4px; }
+    body.embed .footer { left: 22px; right: 22px; bottom: 10px; font-size: 10px; padding-top: 0; }
+    body.embed .cover-hero { gap: 12px; }
+    body.embed .cover-stats { gap: 10px; }
+    body.embed .cover-stat { padding: 10px 12px; }
+    body.embed .cover-stat .stat-value { font-size: 14px; }
+    body.embed .cover-stat .stat-value .num { font-size: 24px; }
+    body.embed .cover-brand { margin-bottom: 0; }
+    body.embed .cover-title { font-size: clamp(34px, 5.2vw, 64px); }
+    body.embed .slide.cover {
+      padding: 16px 22px 30px !important;
+      gap: 14px;
+      overflow: hidden !important;
+    }
+    body.embed .executive-map { margin-top: 8px; }
+    body.embed .exec-card { min-height: 0; }
+    body.embed .risk-triangle { margin-top: 8px; }
+    body.embed .objectives { margin-top: 8px; }
+    body.embed .function-grid { margin-top: 8px; gap: 8px; }
+    body.embed .function { padding: 10px; font-size: 11px; }
+    body.embed .function h3 { font-size: 13px; margin-bottom: 6px; }
+    body.embed .takeaway { margin-top: 8px; padding: 9px 12px; font-size: 12px; }
+    body.embed .maturity { margin-top: 10px; gap: 10px; }
+    body.embed .principles { margin-top: 10px; gap: 8px; }
+    body.embed .risk-matrix { margin-top: 10px; gap: 8px; }
+
+    body.embed .nav,
+    body.embed .help,
+    body.embed .progress,
+    body.embed .overview {
+      display: none !important;
+    }
+
+
+    .deck-shell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      position: relative;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      background: var(--paper-2);
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px 36px 52px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0;
+      transform: translateX(18px) scale(0.995);
+      box-sizing: border-box;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+
+    .slide:has(.cover-header),
+    .slide.cover {
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 28px 44px;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      overflow: hidden !important;
+    }
+
+    .slide.cover.active {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    .slide.dark {
+      color: var(--white);
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+    }
+
+    .slide.section {
+      display: none;
+      place-items: center;
+      text-align: center;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(241, 90, 36, 0.22), transparent 36%),
+        linear-gradient(135deg, #12143a, #2e3192 58%, #3d42a8);
+      color: var(--white);
+    }
+
+    .slide.section.active {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      opacity: 1;
+      transform: none;
+      text-align: center;
+    }
+
+    .slide.section > div:not(.footer) {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 0;
+    }
+
+    @keyframes slideIn {
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      height: 22px;
+      margin-bottom: 0;
+      flex-shrink: 0;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .dark .kicker, .section .kicker { color: #fdba8c; }
+    .kicker::before {
+      content: "";
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      display: block;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 100%;
+      flex-shrink: 0;
+      font-size: clamp(22px, 2.6vw, 34px);
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+      font-weight: 760;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.35;
+      font-size: 14px;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      max-width: 900px;
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .dark .subtitle, .section .subtitle { color: rgba(255, 255, 255, 0.78); }
+
+    .grid { display: grid; gap: 12px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+    .card {
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(46,49,146,0.10);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 22px rgba(24,24,39,0.06);
+    }
+
+    .dark .card {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: none;
+    }
+
+    .takeaway {
+      margin-top: 4px;
+      flex-shrink: 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      border-left: 4px solid var(--orange);
+      background: rgba(241, 90, 36, 0.08);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .dark .takeaway {
+      color: var(--white);
+      background: rgba(255,255,255,0.10);
+      border-left-color: #fdba8c;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(36,87,197,.12);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .metric {
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 820;
+      color: var(--blue);
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .dark .small { color: rgba(255,255,255,0.68); }
+
+    .footer {
+      position: absolute;
+      left: 36px;
+      right: 36px;
+      bottom: 16px;
+      margin-top: 0;
+      padding-top: 0;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: rgba(17,24,39,.45);
+      font-size: 11px;
+      letter-spacing: .02em;
+    }
+
+    .dark .footer, .section .footer { color: rgba(255,255,255,.48); }
+
+    .content {
+      margin-top: 0;
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      color: var(--blue);
+      flex: 0 0 auto;
+    }
+
+    .dark .icon { color: #9ee8e7; }
+
+    .fragment {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 360ms ease, transform 360ms ease;
+    }
+
+    .fragment.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .nav {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(17,24,39,.82);
+      color: white;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 34px rgba(0,0,0,.22);
+    }
+
+    .nav button {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      color: white;
+      background: rgba(255,255,255,.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 0;
+    }
+
+    .nav button svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .nav button:hover { background: rgba(255,255,255,.24); }
+    .counter { min-width: 64px; text-align: center; font-size: 12px; font-weight: 750; }
+    .progress {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 4px;
+      width: 100%;
+      background: rgba(19,35,63,.13);
+      z-index: 60;
+    }
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--blue), var(--orange));
+      transition: width 250ms ease;
+    }
+
+    .overview {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 100;
+      padding: 28px;
+      background: rgba(10,16,29,.92);
+      overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .thumb {
+      min-height: 124px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      cursor: pointer;
+    }
+    .thumb b { display: block; font-size: 12px; color: #fdba8c; margin-bottom: 8px; }
+    .thumb:hover { background: rgba(255,255,255,.14); }
+
+    .cover-header,
+    .cover-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 3;
+    }
+
+    .cover-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 0;
+      min-width: 0;
+    }
+    .cover-brand img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.96);
+      padding: 5px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      flex-shrink: 0;
+    }
+    .cover-brand .brand-word {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .cover-brand .brand-tag {
+      margin-left: 2px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--orange);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* Hero: big title block, fills the middle, left aligned */
+    .cover-hero {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #fdba8c;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .cover-eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: var(--orange);
+      display: block;
+    }
+    .cover-title {
+      font-size: clamp(44px, 6.2vw, 84px);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      font-weight: 820;
+      color: #fff;
+      margin: 0;
+      max-width: 100%;
+    }
+    .cover-hero .subtitle {
+      margin-top: 2px;
+      font-size: clamp(15px, 1.7vw, 20px);
+      color: rgba(255,255,255,0.82) !important;
+      max-width: 620px;
+    }
+
+    /* Stats: horizontal row pinned at the bottom — cannot overflow vertically */
+    .cover-stats {
+      flex: 0 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+      backdrop-filter: blur(6px);
+    }
+    .cover-stat .tag {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.14);
+      color: #fdba8c;
+      border: 1px solid rgba(253,186,140,0.35);
+    }
+    .cover-stat .stat-value {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .cover-stat .stat-value .num {
+      color: #fdba8c;
+      font-size: 28px;
+      margin-right: 6px;
+    }
+    .module-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 999px;
+      color: #fdba8c;
+      background: rgba(18, 20, 58, 0.45);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 4;
+    }
+
+    .executive-map {
+      grid-template-columns: 1fr 1fr;
+      margin-top: 0;
+      flex: 0 0 auto;
+      gap: 12px;
+    }
+    .exec-card {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .exec-card h3, .risk-card h3, .concept h3, .myth h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+    .num-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--blue), #3d42a8);
+      color: white;
+      font-weight: 850;
+      font-size: 13px;
+    }
+
+    .section-number {
+      font-size: clamp(72px, 12vw, 120px);
+      line-height: .85;
+      font-weight: 840;
+      color: rgba(255,255,255,.18);
+      margin-bottom: 8px;
+    }
+    .section h1 {
+      font-size: clamp(36px, 5vw, 52px);
+      margin: 0 auto;
+    }
+
+    .risk-triangle {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+    .risk-card {
+      min-height: 0;
+      height: auto;
+      border-top: 4px solid var(--blue);
+    }
+    .risk-card:nth-child(2) { border-top-color: var(--orange); }
+    .risk-card:nth-child(3) { border-top-color: var(--cyan); }
+
+    .objectives {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .objective {
+      min-height: 0;
+      height: auto;
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+      background: rgba(46,49,146,.05);
+      border: 1px solid rgba(46,49,146,.12);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .objective b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 18px;
+    }
+
+    .analogy {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+    .analogy .card {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      text-align: center;
+      padding: 18px 16px;
+    }
+    .analogy-title { font-size: 22px; font-weight: 800; color: var(--navy); }
+    .tool-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .tool {
+      min-height: 0;
+      height: auto;
+      padding: 12px 10px;
+      border-radius: 12px;
+      background: rgba(32,167,181,.10);
+      border: 1px solid rgba(32,167,181,.18);
+      font-size: 12px;
+      font-weight: 650;
+      display: grid;
+      align-content: center;
+      text-align: center;
+    }
+
+    .myth-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .myth {
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.7));
+      border: 1px solid rgba(19,35,63,.12);
+    }
+    .myth h3 { color: var(--red); font-size: 15px; }
+
+    .nested {
+      position: relative;
+      width: min(100%, 420px);
+      aspect-ratio: 5 / 4;
+      height: auto;
+      margin: 0 auto;
+      max-height: 100%;
+    }
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 850;
+      color: white;
+      box-shadow: 0 12px 44px rgba(19,35,63,.16);
+      font-size: clamp(11px, 1.4vw, 15px);
+    }
+    .ring.ai { inset: 0; background: #172d52; }
+    .ring.ml { inset: 12%; background: #2457c5; }
+    .ring.gen { inset: 24%; background: #20a7b5; }
+    .ring.llm { inset: 38%; background: #38a169; font-size: clamp(18px, 2.4vw, 26px); }
+    .example-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 0;
+      align-content: start;
+      height: auto;
+    }
+    .example-list .card { padding: 12px 14px; }
+
+    .comparison {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+      overflow: hidden;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(17,24,39,.07);
+    }
+    .comparison th {
+      background: var(--navy);
+      color: white;
+      text-align: left;
+      padding: 10px 12px;
+    }
+    .comparison td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(19,35,63,.09);
+      background: rgba(255,255,255,.75);
+      vertical-align: top;
+    }
+    .comparison tr:last-child td { border-bottom: 0; }
+
+    .risk-meter {
+      display: grid;
+      grid-template-columns: 110px minmax(80px, 1.2fr) minmax(140px, 1.6fr);
+      gap: 12px;
+      align-items: center;
+      margin-top: 0;
+    }
+    .meter-stack {
+      margin-top: 0;
+      display: grid;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .bar {
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(19,35,63,.08);
+      overflow: hidden;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--amber), var(--red));
+    }
+
+    .prompt-panel {
+      display: grid;
+      grid-template-columns: 240px 1fr 1fr;
+      gap: 12px;
+      margin-top: 0;
+      flex: 0 0 auto;
+      align-items: stretch;
+    }
+    .prompt-panel .card { min-height: 0; height: auto; }
+    .bad { border-left: 5px solid var(--red); }
+    .good { border-left: 5px solid var(--green); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 28px;
+      margin-top: 0;
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .flow-step {
+      min-height: 0;
+      height: auto;
+      padding: 16px 12px;
+      text-align: center;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      border-radius: 14px;
+      background: white;
+      border: 1px solid rgba(46,49,146,.12);
+      box-shadow: 0 10px 28px rgba(24,24,39,.07);
+      position: relative;
+    }
+    .flow-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: -19px;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-top: 2.5px solid var(--blue);
+      border-right: 2.5px solid var(--blue);
+      transform: translateY(-50%) rotate(45deg);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    .flow-step:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      width: 12px;
+      height: 2px;
+      background: var(--blue);
+      transform: translateY(-50%);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .function-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .function {
+      grid-column: span 3;
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(46,49,146,.10);
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 8px 22px rgba(24,24,39,.05);
+      font-size: 12px;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .function:nth-child(n+5) { grid-column: span 4; }
+    .function h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: var(--blue);
+    }
+    .function p { margin: 0; }
+
+    .risk-matrix {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .risk-tile {
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(19,35,63,.10);
+      box-shadow: 0 8px 22px rgba(24,24,39,.05);
+    }
+    .risk-tile .tag { margin-bottom: 8px; }
+    .tag.high, .tag.critical { background: rgba(199,71,71,.12); color: var(--red); }
+    .tag.medium { background: rgba(216,138,31,.14); color: var(--amber); }
+
+    .maturity {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 0;
+      align-items: end;
+      flex: 0 0 auto;
+    }
+    .level {
+      padding: 16px;
+      border-radius: 14px;
+      color: white;
+      background: var(--blue);
+      display: grid;
+      align-content: start;
+      min-height: 0;
+      height: auto;
+    }
+    .level:nth-child(1) { background: #3a3d9e; min-height: 140px; }
+    .level:nth-child(2) { background: #2e3192; min-height: 160px; }
+    .level:nth-child(3) { background: #1f8f9c; min-height: 180px; }
+    .level:nth-child(4) { background: #2f8f5b; min-height: 200px; }
+    .level b { font-size: 28px; }
+    .level h3 { margin: 6px 0 8px; font-size: 18px; }
+
+    .principles {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .principle {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(19,35,63,.10);
+      box-shadow: 0 8px 22px rgba(24,24,39,.05);
+    }
+    .principle b {
+      color: var(--blue);
+      font-size: 20px;
+    }
+    .principle h3 { margin: 0 0 6px; font-size: 15px; }
+
+    .journey {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0;
+      flex: 0 0 auto;
+      align-items: stretch;
+      position: relative;
+    }
+    .journey::before {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 22px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--orange), rgba(253, 186, 140, 0.35));
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .journey-step {
+      min-height: 0;
+      height: auto;
+      padding: 0 10px;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
+      position: relative;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+      z-index: 1;
+    }
+    .journey-step .tag {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(18, 20, 58, 0.95);
+      border: 2px solid #fdba8c;
+      color: #fdba8c;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      box-shadow: 0 0 0 6px rgba(18, 20, 58, 0.55);
+    }
+    .journey-step:first-child .tag {
+      background: var(--orange);
+      border-color: #fff;
+      color: #fff;
+      box-shadow: 0 0 0 6px rgba(241, 90, 36, 0.22);
+    }
+    .journey-card {
+      width: 100%;
+      padding: 14px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(6px);
+      text-align: left;
+      min-height: 128px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .journey-step:first-child .journey-card {
+      background: rgba(241, 90, 36, 0.16);
+      border-color: rgba(253, 186, 140, 0.45);
+    }
+    .journey-step h3 {
+      margin: 0;
+      color: #fdba8c;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    .journey-step p {
+      font-size: 12px;
+      line-height: 1.4;
+      color: rgba(255,255,255,0.82);
+    }
+    .slide:not(.dark) .journey-step {
+      color: var(--ink);
+    }
+    .slide:not(.dark) .journey-step h3 { color: var(--blue); }
+    .slide:not(.dark) .journey-card {
+      background: rgba(255,255,255,.92);
+      border-color: rgba(46,49,146,.12);
+    }
+    .slide:not(.dark) .journey-step p { color: var(--muted); }
+
+    .slide.closing {
+      justify-content: flex-start;
+      gap: 18px;
+      padding-top: 32px;
+      padding-bottom: 56px;
+    }
+    .slide.closing .journey {
+      margin-top: 8px;
+      flex: 1 1 auto;
+      align-content: center;
+    }
+    .slide.closing .takeaway {
+      margin-top: auto;
+    }
+    .slide.closing h1 {
+      max-width: 920px;
+    }
+
+    .help {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 50;
+      color: rgba(255,255,255,.72);
+      font-size: 11px;
+      background: rgba(17,24,39,.58);
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+
+    @media (max-width: 900px) {
+      .deck-shell { padding: 0; }
+      .deck { width: 100vw; height: 56.25vw; border-radius: 0; }
+      .slide { padding: 20px 20px 48px; }
+      h1 { font-size: 24px; }
+      .cover-title { font-size: clamp(32px, 8vw, 46px); }
+      .cover-stats { grid-template-columns: 1fr; gap: 8px; }
+      .objectives { grid-template-columns: repeat(2, 1fr); }
+      .function-grid { grid-template-columns: repeat(6, 1fr); }
+      .function { grid-column: span 2; }
+      .function:nth-child(n+5) { grid-column: span 2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <main class="deck" id="deck">
+      <section class="slide active dark cover" data-title="AI Fundamentals & Terminology">
+        <div class="cover-bar">
+          <div class="cover-brand">
+            <img src="./relanto-logo.png" alt="Relanto" width="40" height="40" />
+            <span class="brand-word">Relanto</span>
+            <span class="brand-tag">Course</span>
+          </div>
+          <span class="module-badge">MODULE 1 OF 5</span>
+        </div>
+        <div class="cover-hero">
+          <span class="cover-eyebrow">Enterprise AI Awareness</span>
+          <h1 class="cover-title">AI Fundamentals<br />&amp; Terminology</h1>
+          <p class="subtitle">A 60-minute foundation for every employee - no technical background required.</p>
+        </div>
+        <div class="cover-stats" aria-label="Course details">
+          <div class="cover-stat">
+            <div class="tag">Duration</div>
+            <div class="stat-value"><span class="num">60</span>Minutes</div>
+          </div>
+          <div class="cover-stat">
+            <div class="tag">Audience</div>
+            <div class="stat-value">All Employees</div>
+          </div>
+          <div class="cover-stat">
+            <div class="tag">Level</div>
+            <div class="stat-value">No Technical Background Required</div>
+          </div>
+        </div>
+        <div class="footer"><span>Confidential | Relanto Academy</span><span>Relanto AI Fundamentals</span></div>
+      </section>
+
+      <section class="slide" data-title="Shared AI literacy is a business imperative">
+        <div class="kicker">Executive Summary</div>
+        <h1>Shared AI literacy is a business imperative - not a technical nice-to-have.</h1>
+        <div class="grid two executive-map content">
+          <div class="card exec-card fragment">
+            <div class="num-dot">01</div><div><h3>The Challenge</h3><p>Most employees already use AI without common vocabulary, governance awareness, or understanding of failure modes. This creates silent risk.</p></div>
+          </div>
+          <div class="card exec-card fragment">
+            <div class="num-dot">02</div><div><h3>The Solution</h3><p>A structured 60-minute module builds a shared mental model: what AI is, how it works, and where it breaks.</p></div>
+          </div>
+          <div class="card exec-card fragment">
+            <div class="num-dot">03</div><div><h3>Business Outcomes</h3><p>Fewer AI-related errors in client deliverables, higher quality prompts, and a workforce that knows when to trust - and when to verify.</p></div>
+          </div>
+          <div class="card exec-card fragment">
+            <div class="num-dot">04</div><div><h3>Strategic Value</h3><p>Reduces organizational risk from hallucinations, bias, and misplaced trust while accelerating responsible AI adoption at scale.</p></div>
+          </div>
+        </div>
+        <div class="takeaway fragment">Key takeaway: AI literacy is a control system for enterprise risk and an accelerator for productivity.</div>
+        <div class="footer"><span>Executive-ready framing</span><span>02 / 19</span></div>
+      </section>
+
+      <section class="slide section" data-title="Course Overview">
+        <div>
+          <div class="section-number">1</div>
+          <div class="kicker">Section</div>
+          <h1>Course Overview</h1>
+          <p class="subtitle">Purpose | Learning Objectives | Why It Matters</p>
+        </div>
+        <div class="footer"><span>Course overview</span><span>03 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="AI is already in the room">
+        <div class="kicker">Course Overview</div>
+        <h1>AI is already in the room - the question is whether teams are ready.</h1>
+        <p class="subtitle">Knowledge workers across every function already use AI tools, often without formal guidance. Three risks compound quickly.</p>
+        <div class="risk-triangle">
+          <div class="card risk-card fragment"><h3>Miscommunication</h3><p>Teams talk past each other when "AI" means different things to different people.</p></div>
+          <div class="card risk-card fragment"><h3>Misplaced Trust</h3><p>Employees who do not understand AI limitations may rely on incorrect outputs in client work or decisions.</p></div>
+          <div class="card risk-card fragment"><h3>Missed Opportunity</h3><p>Employees who do not understand AI capabilities never discover legitimate time savings available to them.</p></div>
+        </div>
+        <div class="objectives">
+          <div class="objective fragment"><b>1</b>Explain AI, ML, and Generative AI in plain language</div>
+          <div class="objective fragment"><b>2</b>Use core AI terms correctly in day-to-day work</div>
+          <div class="objective fragment"><b>3</b>Distinguish automation from AI - and choose wisely</div>
+          <div class="objective fragment"><b>4</b>Identify realistic AI use cases within your own role</div>
+          <div class="objective fragment"><b>5</b>Recognize key AI limitations and apply human review</div>
+          <div class="objective fragment"><b>6</b>Make informed judgements when working with AI outputs</div>
+        </div>
+        <div class="footer"><span>Six learning objectives</span><span>04 / 19</span></div>
+      </section>
+
+      <section class="slide section" data-title="Introduction">
+        <div>
+          <div class="section-number">2</div>
+          <div class="kicker">Section</div>
+          <h1>Introduction</h1>
+          <p class="subtitle">What AI Is | Business Relevance | Common Misconceptions</p>
+        </div>
+        <div class="footer"><span>Introduction</span><span>05 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="AI is a well-read colleague">
+        <div class="kicker">Introduction</div>
+        <h1>AI is a well-read colleague - knowledgeable, fast, and fallible.</h1>
+        <div class="analogy">
+          <div class="card fragment">
+            <div class="tag">Traditional Software</div>
+            <div class="analogy-title">Like a recipe</div>
+            <p>Precise steps. Predictable results. Same output every time.</p>
+          </div>
+          <div class="card fragment">
+            <div class="tag">AI Systems</div>
+            <div class="analogy-title">Like a well-read colleague</div>
+            <p>Broadly knowledgeable and fast, but capable of being confidently wrong and always in need of review.</p>
+          </div>
+        </div>
+        <h2 class="fragment" style="margin-top:12px;flex-shrink:0">AI is already embedded in daily tools</h2>
+        <div class="tool-grid">
+          <div class="tool fragment">Spell-check & writing suggestions</div>
+          <div class="tool fragment">Meeting transcription & summaries</div>
+          <div class="tool fragment">Email filtering & prioritization</div>
+          <div class="tool fragment">CRM lead scoring</div>
+          <div class="tool fragment">Chatbots & customer service</div>
+          <div class="tool fragment">Translation & document search</div>
+        </div>
+        <div class="takeaway fragment">The question is no longer "Will I use AI?" - it is "Am I using it well and safely?"</div>
+        <div class="footer"><span>AI as a practical workplace capability</span><span>06 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Six myths create AI workplace risk">
+        <div class="kicker">Introduction</div>
+        <h1>Six dangerous myths create risk in AI-enabled workplaces.</h1>
+        <div class="myth-grid">
+          <div class="myth fragment"><h3>"AI thinks like a human."</h3><p>AI recognizes patterns in data. It has no understanding, intentions, or awareness in the human sense.</p></div>
+          <div class="myth fragment"><h3>"AI is always right - it is a computer."</h3><p>AI can produce fluent, confident, and completely incorrect answers. Output always needs human judgement.</p></div>
+          <div class="myth fragment"><h3>"AI will replace all our jobs."</h3><p>AI changes tasks more than it eliminates roles. Humans remain accountable for all decisions.</p></div>
+          <div class="myth fragment"><h3>"AI learns from everything I type."</h3><p>Most assistants do not learn in real time. Data handling depends on the tool and settings - use company-approved tools.</p></div>
+          <div class="myth fragment"><h3>"AI and automation are the same."</h3><p>Automation follows fixed rules. AI handles variation and ambiguity. They are different and complementary.</p></div>
+          <div class="myth fragment"><h3>"You must be technical to use AI."</h3><p>Clear thinking and clear instructions matter far more than technical skill.</p></div>
+        </div>
+        <div class="footer"><span>Myth-to-risk translation</span><span>07 / 19</span></div>
+      </section>
+
+      <section class="slide section" data-title="Key Concepts">
+        <div>
+          <div class="section-number">3</div>
+          <div class="kicker">Section</div>
+          <h1>Key Concepts</h1>
+          <p class="subtitle">AI | ML | Generative AI | LLMs | Assistants | Automation</p>
+        </div>
+        <div class="footer"><span>Key concepts</span><span>08 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="The AI landscape has four nested concepts">
+        <div class="kicker">Key Concepts 3.1-3.4</div>
+        <h1>The AI landscape has four nested concepts every employee should know.</h1>
+        <div class="grid two content" style="grid-template-columns: 1fr 1.05fr">
+          <div class="nested fragment">
+            <div class="ring ai">Artificial Intelligence<br /><span class="small" style="color:rgba(255,255,255,.75)">Human-like tasks</span></div>
+            <div class="ring ml">Machine Learning<br /><span class="small" style="color:rgba(255,255,255,.75)">Patterns from data</span></div>
+            <div class="ring gen">Generative AI<br /><span class="small" style="color:rgba(255,255,255,.75)">Creates new content</span></div>
+            <div class="ring llm">LLMs</div>
+          </div>
+          <div class="example-list">
+            <div class="card fragment"><b>AI</b><p>Email reply suggestions, expense anomaly flags, document summarizers</p></div>
+            <div class="card fragment"><b>ML</b><p>Spam filters that improve over time, sales lead scoring models</p></div>
+            <div class="card fragment"><b>Generative AI</b><p>Draft emails, campaign slogans, status summaries, code snippets</p></div>
+            <div class="card fragment"><b>LLMs</b><p>Your chat assistant, document Q&amp;A tool, meeting-notes generator</p></div>
+          </div>
+        </div>
+        <div class="footer"><span>Nested concept map</span><span>09 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Automation handles rules; AI handles ambiguity">
+        <div class="kicker">Key Concepts 3.5-3.6</div>
+        <h1>Automation handles rules; AI handles ambiguity - choosing the wrong tool is costly.</h1>
+        <div class="grid two content">
+          <div class="card fragment">
+            <div class="tag">3.5 AI Assistants</div>
+            <p style="font-size:20px;font-weight:700;margin-top:12px">Applications built on LLMs that you interact with through conversation.</p>
+            <div class="tool-grid" style="grid-template-columns:repeat(5,1fr);margin-top:18px">
+              <div class="tool">Draft & rewrite content</div><div class="tool">Summarize long documents</div><div class="tool">Translate languages</div><div class="tool">Answer in context</div><div class="tool">Read uploaded documents</div>
+            </div>
+          </div>
+          <div class="fragment">
+            <table class="comparison">
+              <thead><tr><th>Aspect</th><th>Automation</th><th>AI</th></tr></thead>
+              <tbody>
+                <tr><td>How it works</td><td>Fixed pre-programmed rules</td><td>Learns patterns from data</td></tr>
+                <tr><td>Input handling</td><td>Structured predictable input</td><td>Messy or ambiguous input</td></tr>
+                <tr><td>Output</td><td>Identical every time</td><td>Varies; needs human review</td></tr>
+                <tr><td>Best for</td><td>Rule-based tasks, e.g. auto-route invoice</td><td>Language and judgment tasks, e.g. summarize complaints</td></tr>
+                <tr><td>Failure mode</td><td>Breaks visibly when rules do not fit</td><td>Fails quietly with plausible-but-wrong output</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="takeaway fragment">Rule of thumb: precise checklist with no exceptions means automation. Language or judgement means AI, with review.</div>
+        <div class="footer"><span>Tool selection heuristic</span><span>10 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Hallucinations are a natural consequence">
+        <div class="kicker">Key Concepts 3.7-3.8</div>
+        <h1>Hallucinations are not bugs - they are a natural consequence of how AI generates text.</h1>
+        <div class="grid two content">
+          <div class="card fragment">
+            <div class="tag">3.7 Training Data</div>
+            <p style="font-size:20px;margin-top:14px">AI learned from vast text such as websites, books, and articles up to a cutoff date. Post-cutoff events and internal data are invisible unless provided in conversation.</p>
+          </div>
+          <div class="card fragment">
+            <div class="tag">3.8 Hallucinations</div>
+            <p style="font-size:20px;margin-top:14px">AI can produce fluent, confident, and completely fabricated information: invented statistics, non-existent citations, and wrong dates. This is a core behavior.</p>
+          </div>
+        </div>
+        <h2 class="fragment" style="margin-top:12px;flex-shrink:0">When are hallucinations most likely?</h2>
+        <div class="meter-stack">
+          <div class="risk-meter fragment"><b>Very High</b><div class="bar"><span style="width:96%"></span></div><p>Specific internal data: policies, org charts, contracts</p></div>
+          <div class="risk-meter fragment"><b>High</b><div class="bar"><span style="width:78%"></span></div><p>Named entities: executives, citation details, statistics</p></div>
+          <div class="risk-meter fragment"><b>Medium</b><div class="bar"><span style="width:56%"></span></div><p>Events after training cutoff date</p></div>
+          <div class="risk-meter fragment"><b>Low</b><div class="bar"><span style="width:28%"></span></div><p>Well-documented general knowledge</p></div>
+        </div>
+        <div class="takeaway fragment">Critical habit: verify every AI-provided fact, figure, citation, or name before using it in client-facing or decision-making material.</div>
+        <div class="footer"><span>Reliability risk map</span><span>11 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Prompt quality and context are controllable levers">
+        <div class="kicker">Key Concepts 3.9-3.11</div>
+        <h1>Prompt quality and context are the levers employees actually control.</h1>
+        <div class="prompt-panel">
+          <div class="card fragment">
+            <div class="tag">3.9 Tokens</div>
+            <div class="metric" style="margin-top:18px">100K</div>
+            <p style="font-weight:800">tokens ~= 75,000 words</p>
+            <p class="small">About 300 pages. Large documents may need processing in sections.</p>
+          </div>
+          <div class="card bad fragment">
+            <div class="tag">Weak Prompt</div>
+            <p style="font-size:23px;font-weight:800;margin-top:18px">"Write an email about the delay."</p>
+            <p class="small" style="margin-top:18px">Missing audience, tone, length, purpose, and constraints.</p>
+          </div>
+          <div class="card good fragment">
+            <div class="tag">Strong Prompt</div>
+            <p style="font-size:19px;font-weight:800;margin-top:14px">"Draft a short apologetic email to a client for a one-week delay. Professional tone, under 150 words, revised date 24 June."</p>
+            <p class="small" style="margin-top:14px">Includes task, audience, format, and constraints.</p>
+          </div>
+        </div>
+        <div class="grid three" style="margin-top:10px;flex:0 0 auto">
+          <div class="card fragment"><b>Context</b><p>Everything the AI can see: prompts, answers, and documents you provide.</p></div>
+          <div class="card fragment"><b>Visibility Limit</b><p>AI has no knowledge of your team or projects unless you provide it.</p></div>
+          <div class="card fragment"><b>Grounding Habit</b><p>Paste the policy section before asking a policy question.</p></div>
+        </div>
+        <div class="takeaway fragment">Grounded context equals grounded answers.</div>
+        <div class="footer"><span>Prompt and context operating model</span><span>12 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Fine-tuning creates specialist enterprise AI">
+        <div class="kicker">Key Concepts 3.12</div>
+        <h1>Fine-tuning transforms general AI into a domain-specific enterprise asset.</h1>
+        <div class="flow">
+          <div class="flow-step fragment"><div class="tag">Base LLM</div><p>General-purpose model trained on vast internet text</p></div>
+          <div class="flow-step fragment"><div class="tag">Specialist Data</div><p>Company support tickets, policies, product documents</p></div>
+          <div class="flow-step fragment"><div class="tag">Fine-Tuning</div><p>Additional training run by technical teams</p></div>
+          <div class="flow-step fragment"><div class="tag">Specialist AI</div><p>Model that speaks your product terminology accurately</p></div>
+        </div>
+        <div class="grid two content">
+          <div class="card fragment"><h2>What technical teams do</h2><p style="margin-top:10px">Curate training data, run the fine-tuning process, evaluate model quality, and deploy the specialized model to production.</p></div>
+          <div class="card fragment"><h2>What employees need to know</h2><p style="margin-top:10px">You do not perform fine-tuning - you benefit from it. A fine-tuned assistant for your domain is more accurate and trustworthy for your specific use cases.</p></div>
+        </div>
+        <div class="footer"><span>General-to-specialist transformation</span><span>13 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Every function has high-value AI use cases">
+        <div class="kicker">Key Concepts 3.13</div>
+        <h1>Every function has high-value AI use cases - drafting, summarizing, and analyzing.</h1>
+        <div class="function-grid">
+          <div class="function fragment"><h3>HR</h3><p>Draft job descriptions</p><p>Summarize exit interviews</p><p>First-draft policy comms</p></div>
+          <div class="function fragment"><h3>Sales</h3><p>Personalize outreach drafts</p><p>Summarize call notes</p><p>Research prospects publicly</p></div>
+          <div class="function fragment"><h3>Marketing</h3><p>Brainstorm campaign ideas</p><p>Adapt messages across channels</p><p>First-draft copy</p></div>
+          <div class="function fragment"><h3>Finance & Admin</h3><p>Summarize financial reports</p><p>Draft variance explanations</p><p>Tidy meeting minutes</p></div>
+          <div class="function fragment"><h3>Project Mgmt</h3><p>Draft status reports</p><p>Convert discussions to actions</p><p>Risk brainstorming</p></div>
+          <div class="function fragment"><h3>Customer Support</h3><p>Suggest reply drafts</p><p>Summarize ticket histories</p><p>Draft knowledge-base articles</p></div>
+          <div class="function fragment"><h3>Everyone</h3><p>Email drafting & proofreading</p><p>Document summarization</p><p>Brainstorming & translation</p></div>
+        </div>
+        <div class="takeaway fragment">The common pattern: AI accelerates first drafts and synthesis; humans own judgement, quality, and sign-off.</div>
+        <div class="footer"><span>Functional use-case portfolio</span><span>14 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Governance controls mitigate reliability and compliance risk">
+        <div class="kicker">Key Concepts 3.14</div>
+        <h1>Governance controls are required to mitigate AI reliability and compliance risks.</h1>
+        <div class="risk-matrix">
+          <div class="risk-tile fragment"><span class="tag high">High</span><h3>Confidently Wrong</h3><p>Fluency does not equal accuracy. AI generates plausible text, not verified facts.</p></div>
+          <div class="risk-tile fragment"><span class="tag high">High</span><h3>Knowledge Cutoffs</h3><p>Post-cutoff events and internal data are invisible unless provided in context.</p></div>
+          <div class="risk-tile fragment"><span class="tag medium">Medium</span><h3>Reflects Bias</h3><p>Training data can reproduce stereotyped or skewed outputs, especially in HR and compliance contexts.</p></div>
+          <div class="risk-tile fragment"><span class="tag high">High</span><h3>No True Understanding</h3><p>AI predicts plausible next tokens. It does not reason, verify facts, or grasp consequences like humans.</p></div>
+          <div class="risk-tile fragment"><span class="tag medium">Medium</span><h3>Arithmetic Can Fail</h3><p>For exact calculations, use a spreadsheet. Have AI explain logic, not compute critical numbers.</p></div>
+          <div class="risk-tile fragment"><span class="tag critical">Critical</span><h3>Not Accountable</h3><p>Responsibility for AI output remains with you and your organization - not the tool.</p></div>
+        </div>
+        <div class="footer"><span>Risk taxonomy</span><span>15 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Human judgement remains the final control">
+        <div class="kicker">Key Concepts 3.14 - Governance</div>
+        <h1>Human judgement remains the final control in every AI-assisted workflow.</h1>
+        <div class="flow">
+          <div class="flow-step fragment"><div class="tag">1</div><h2>Receive<br />AI Output</h2></div>
+          <div class="flow-step fragment"><div class="tag">2</div><h2>Human<br />Review</h2></div>
+          <div class="flow-step fragment"><div class="tag">3</div><h2>Verify<br />Facts</h2></div>
+          <div class="flow-step fragment"><div class="tag">4</div><h2>Use /<br />Publish</h2></div>
+        </div>
+        <div class="grid three content">
+          <div class="card fragment"><b>Always verify specific facts</b><p>Names, dates, statistics, citations - check authoritative sources before use.</p></div>
+          <div class="card fragment"><b>Provide context upfront</b><p>Paste the relevant document or data. AI with context outperforms AI without it.</p></div>
+          <div class="card fragment"><b>Use approved tools</b><p>Data handling policies vary. Use enterprise-approved AI tools for sensitive work.</p></div>
+          <div class="card fragment"><b>AI for drafts, not decisions</b><p>Use AI to accelerate first drafts. Humans own final judgement and sign-off.</p></div>
+          <div class="card fragment"><b>Flag uncertainty explicitly</b><p>Overconfidence on specific claims is a signal to verify - not to proceed.</p></div>
+          <div class="card fragment"><b>Accountability stays with you</b><p>The employee using AI output is responsible for it, not the vendor.</p></div>
+        </div>
+        <div class="footer"><span>Human-in-the-loop control model</span><span>16 / 19</span></div>
+      </section>
+
+      <section class="slide dark" data-title="AI literacy is the foundation of maturity">
+        <div class="kicker">Strategic Framework</div>
+        <h1>Building AI literacy is the foundation of enterprise AI maturity.</h1>
+        <div class="maturity">
+          <div class="level fragment"><b>L1</b><h3>Awareness</h3><p>Employees know what AI is and can use approved tools with basic prompts.</p></div>
+          <div class="level fragment"><b>L2</b><h3>Literacy</h3><p>Shared vocabulary, understands limitations, applies human review consistently.</p></div>
+          <div class="level fragment"><b>L3</b><h3>Proficiency</h3><p>Craft high-quality prompts, provide context, integrate AI into daily workflows productively.</p></div>
+          <div class="level fragment"><b>L4</b><h3>Leadership</h3><p>Define policies, train others, identify automation vs AI candidates, govern outputs.</p></div>
+        </div>
+        <div class="takeaway fragment">Module 1 delivers Level 1 to Level 2 literacy across all functions - the essential foundation for every subsequent AI initiative.</div>
+        <div class="footer"><span>Enterprise AI maturity ladder</span><span>17 / 19</span></div>
+      </section>
+
+      <section class="slide" data-title="Six principles govern safe AI use">
+        <div class="kicker">Key Takeaways</div>
+        <h1>Six principles govern safe and effective AI use in the enterprise.</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>01</b><div><h3>Fluency &ne; Accuracy</h3><p>AI sounds confident even when wrong. Human verification is non-negotiable for client-facing output.</p></div></div>
+          <div class="principle fragment"><b>02</b><div><h3>Context Is Everything</h3><p>AI without context produces generic output. Provide specifics; get grounded answers.</p></div></div>
+          <div class="principle fragment"><b>03</b><div><h3>Choose the Right Tool</h3><p>Automation for predictable rule-based tasks. AI for language, variation, and ambiguity - with review.</p></div></div>
+          <div class="principle fragment"><b>04</b><div><h3>Prompts Drive Quality</h3><p>Clear task, defined audience, specified format, and stated constraints produce better output.</p></div></div>
+          <div class="principle fragment"><b>05</b><div><h3>Know Failure Modes</h3><p>Hallucinations, cutoffs, bias, and arithmetic errors are predictable and preventable with the right habits.</p></div></div>
+          <div class="principle fragment"><b>06</b><div><h3>You Stay Accountable</h3><p>The employee who uses AI output owns its accuracy and consequences. No tool can change that.</p></div></div>
+        </div>
+        <div class="footer"><span>Operating principles</span><span>18 / 19</span></div>
+      </section>
+
+      <section class="slide dark closing" data-title="Module 1 complete">
+        <div class="kicker">What Comes Next</div>
+        <h1>Module 1 complete - apply it now, then continue the AI journey.</h1>
+        <div class="journey">
+          <div class="journey-step fragment">
+            <span class="tag">Now</span>
+            <div class="journey-card">
+              <h3>Apply this module</h3>
+              <p>Use the vocabulary and habits in your next AI interaction this week.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">02</span>
+            <div class="journey-card">
+              <h3>Prompting Skills</h3>
+              <p>Go deeper on prompt construction and context management.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">03</span>
+            <div class="journey-card">
+              <h3>AI Tools at Work</h3>
+              <p>Explore company-approved tools and their appropriate use cases.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">04</span>
+            <div class="journey-card">
+              <h3>AI Governance</h3>
+              <p>Data privacy, compliance requirements, and acceptable use policies.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">05</span>
+            <div class="journey-card">
+              <h3>AI Strategy</h3>
+              <p>How leadership is shaping responsible AI adoption at scale.</p>
+            </div>
+          </div>
+        </div>
+        <div class="takeaway fragment">Final call to action: practice the habits immediately - shared language becomes shared execution only when used.</div>
+        <div class="footer"><span>AI Awareness Training Series</span><span>19 / 19</span></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="nav" aria-label="Presentation controls">
+    <button id="prevBtn" title="Previous slide" aria-label="Previous slide">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 3.5L6 8l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="counter" id="counter">1 / 19</span>
+    <button id="nextBtn" title="Next / reveal" aria-label="Next slide">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5.5 3.5L10 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button id="overviewBtn" title="Overview" aria-label="Overview">O</button>
+  </div>
+  <div class="help">Keys: arrows/space to present | O overview | Home/End</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const urlParams = new URLSearchParams(window.location.search);
+    const revealAllMode = urlParams.get("reveal") === "all";
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = urlParams.get("clean") === "1" || embedMode;
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    let index = 0;
+
+    function resetFragments(slide) {
+      slide.querySelectorAll(".fragment").forEach(el => el.classList.remove("visible"));
+    }
+
+    function hasHiddenFragments() {
+      const active = slides[index];
+      return Boolean(active?.querySelector(".fragment:not(.visible)"));
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deck = shell?.querySelector(".deck");
+      if (!shell || !deck) return;
+      deck.style.transform = "none";
+      slides.forEach((s) => {
+        s.style.zoom = "";
+        s.style.transform = "";
+      });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW;
+      let deckH;
+      if (sw / sh > ASPECT) {
+        deckH = sh;
+        deckW = Math.round(sh * ASPECT);
+      } else {
+        deckW = sw;
+        deckH = Math.round(sw / ASPECT);
+      }
+      deck.style.width = `${deckW}px`;
+      deck.style.height = `${deckH}px`;
+      deck.style.maxWidth = "100%";
+      deck.style.maxHeight = "100%";
+      const active = deck.querySelector(".slide.active");
+      if (active) {
+        /* Cover must never be zoom-squeezed — that shoved content to one side in the player */
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) {
+            active.style.overflow = "auto";
+          }
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = index >= slides.length - 1 && !hasHiddenFragments();
+      const atStart = index <= 0 && !slides[index]?.querySelector(".fragment.visible");
+      window.parent.postMessage(
+        {
+          type: EMBED_EVENT,
+          kind: "lesson",
+          slideIndex: index,
+          slideCount: slides.length,
+          atEnd,
+          atStart,
+        },
+        "*",
+      );
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => {
+        slide.classList.toggle("active", i === index);
+        if (i !== index) resetFragments(slide);
+      });
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      if (revealAllMode) {
+        slides[index].querySelectorAll(".fragment").forEach(el => el.classList.add("visible"));
+      } else {
+        revealNext(true);
+      }
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function revealNext(firstOnly = false) {
+      const active = slides[index];
+      const hidden = Array.from(active.querySelectorAll(".fragment:not(.visible)"));
+      if (!hidden.length) return false;
+      hidden[0].classList.add("visible");
+      if (!firstOnly && hidden.length > 1 && hidden[0].dataset.group) {
+        hidden.filter(el => el.dataset.group === hidden[0].dataset.group).forEach(el => el.classList.add("visible"));
+      }
+      publishEmbedState();
+      return true;
+    }
+
+    function next() {
+      if (!revealNext()) showSlide(index + 1);
+      else publishEmbedState();
+    }
+
+    function prev() {
+      const visible = Array.from(slides[index].querySelectorAll(".fragment.visible"));
+      if (visible.length > 1) {
+        visible[visible.length - 1].classList.remove("visible");
+        publishEmbedState();
+      } else {
+        showSlide(index - 1);
+      }
+    }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") {
+        overview.classList.toggle("open");
+        return;
+      }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open");
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault();
+        next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+    }
+
+    if (embedMode) {
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) {
+          showSlide(Number(data.index));
+        }
+      });
+    }
+
+    if (embedMode) {
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") {
+          new ResizeObserver(fitEmbedDeck).observe(shell);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>

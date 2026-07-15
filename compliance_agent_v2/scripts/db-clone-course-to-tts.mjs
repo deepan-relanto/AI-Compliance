@@ -169,7 +169,9 @@ try {
         feedback_required,
         status_default,
         content_hash,
-        mcq_generation_status
+        mcq_generation_status,
+        tts_enabled,
+        avatar_enabled
       )
       VALUES (
         ${newId},
@@ -183,7 +185,9 @@ try {
         ${Boolean(source.feedback_required)},
         'not_started',
         ${source.content_hash ?? null},
-        ${String(source.mcq_generation_status ?? "completed")}
+        ${String(source.mcq_generation_status ?? "completed")},
+        true,
+        true
       )
     `;
 

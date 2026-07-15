@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { normalizeMcqExplanation } from "@/lib/mcq-explanation";
 import { MCQ_SYSTEM_PROMPT, buildMcqUserPrompt } from "@/lib/prompts/mcq-checkpoint";
 import { extractPdfPagesText } from "@/lib/services/pdf-text-service";
-import { nvidiaChatJson } from "@/lib/services/nvidia-llm";
+import { geminiChatJson } from "@/lib/services/gemini-llm";
 import {
   gateCountForSlides,
   normalizeMcqPrompt,
@@ -247,7 +247,7 @@ async function generateMcqPool(
 
   try {
     for (let attempt = 1; attempt <= 3; attempt++) {
-      const raw = await nvidiaChatJson(MCQ_SYSTEM_PROMPT, userPrompt, {
+      const raw = await geminiChatJson(MCQ_SYSTEM_PROMPT, userPrompt, {
         maxTokens: 4500,
         temperature: 0.35,
       });
@@ -353,7 +353,7 @@ Return strict JSON only.`;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const raw = await nvidiaChatJson(MCQ_SYSTEM_PROMPT, prompt, {
+      const raw = await geminiChatJson(MCQ_SYSTEM_PROMPT, prompt, {
         maxTokens: 800,
         temperature: 0.2,
       });
