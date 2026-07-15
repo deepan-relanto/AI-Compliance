@@ -1,6 +1,7 @@
 "use client";
 
 import { MetricCard } from "@/components/admin/metric-card";
+import { TrackSegmentedControl } from "@/components/admin/track-segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { exportFeedbackCsv, type FeedbackDisplayRow } from "@/lib/feedback-export";
@@ -174,14 +175,7 @@ export function FeedbackTable() {
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterPill active={track === "compliance"} onClick={() => setTrack("compliance")}>
-            Security Compliance
-          </FilterPill>
-          <FilterPill active={track === "course"} onClick={() => setTrack("course")}>
-            AI-course
-          </FilterPill>
-        </div>
+        <TrackSegmentedControl value={track} onChange={setTrack} />
         <div className="empty-state mx-auto max-w-md">
           <MessageSquare className="h-10 w-10 text-zinc-300" strokeWidth={1.5} />
           <p className="mt-4 text-sm font-medium text-zinc-600">No feedback submitted yet</p>
@@ -196,14 +190,7 @@ export function FeedbackTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterPill active={track === "compliance"} onClick={() => setTrack("compliance")}>
-          Security Compliance
-        </FilterPill>
-        <FilterPill active={track === "course"} onClick={() => setTrack("course")}>
-          AI-course
-        </FilterPill>
-      </div>
+      <TrackSegmentedControl value={track} onChange={setTrack} />
 
       {/* Summary */}
       <section className="grid gap-4 sm:grid-cols-3">

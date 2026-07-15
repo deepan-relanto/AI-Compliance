@@ -201,8 +201,12 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
     await Promise.all([
       sql`
         SELECT
-          (SELECT COALESCE(SUM(member_count), 0)::int FROM batches) AS total_learners,
-          (SELECT COUNT(*)::int FROM batches) AS total_batches,
+          (SELECT COALESCE(SUM(b.member_count), 0)::int
+           FROM batches b
+           WHERE EXISTS (
+             SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id
+           )) AS total_learners,
+          (SELECT COUNT(DISTINCT cmb.batch_id)::int FROM course_module_batches cmb) AS total_batches,
           (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
           (SELECT COUNT(*)::int FROM course_progress) AS total_attempts,
           (SELECT COUNT(*)::int FROM course_progress WHERE status = 'completed') AS completed_count,
@@ -237,6 +241,9 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           )::int AS compliance
         FROM batches b
         LEFT JOIN course_progress ap ON ap.batch_id = b.id
+        WHERE EXISTS (
+          SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id
+        )
         GROUP BY b.id, b.label, b.member_count
         ORDER BY b.label
       `,
