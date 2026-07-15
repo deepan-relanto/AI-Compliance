@@ -5,6 +5,11 @@ import {
   setCachedLearnerAccess,
 } from "@/lib/learner-access-cache";
 import {
+  clearCachedSessionEmail,
+  getCachedSessionEmail,
+  setCachedSessionEmail,
+} from "@/lib/session-email-cache";
+import {
   verifyModuleAccess,
   type ModuleAccessDenyCode,
 } from "@/lib/services/module-access-service";
@@ -12,8 +17,14 @@ import { emailsMatch } from "@/lib/training-link";
 import { NextResponse } from "next/server";
 
 export async function getSessionEmail(): Promise<string | null> {
+  const hit = getCachedSessionEmail();
+  if (hit) return hit;
+
   const session = await auth();
-  return session?.user?.email?.trim().toLowerCase() ?? null;
+  const email = session?.user?.email?.trim().toLowerCase() ?? null;
+  if (email) setCachedSessionEmail(email);
+  else clearCachedSessionEmail();
+  return email;
 }
 
 export type SessionCheckResult =

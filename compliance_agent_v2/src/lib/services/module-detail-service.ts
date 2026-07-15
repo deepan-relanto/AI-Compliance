@@ -7,6 +7,7 @@ import { dedupeMcqsByPrompt, gateCountForSlides } from "@/lib/mcq-dedupe";
 import { isMultiSelectAnswer } from "@/lib/mcq-multi-select";
 import { getModuleStepsDb } from "@/lib/services/course-service";
 import { warmMcqAnswerCacheFromQuestions } from "@/lib/services/mcq-answer-cache";
+import { setLearnerProgressSnapshot } from "@/lib/learner-progress-cache";
 import type { CourseStepRow } from "@/lib/course-step-types";
 
 type Sql = ReturnType<typeof getSql>;
@@ -88,13 +89,15 @@ export async function loadModuleDetail(
     userEmail
       ? isCourse
         ? sql`
-            SELECT status, retake_count, score_percent, completed_at, acknowledgement
+            SELECT status, retake_count, score_percent, completed_at, acknowledgement,
+                   mcq_correct, mcq_total, mcq_answers
             FROM course_progress
             WHERE user_email = ${userEmail} AND module_id = ${moduleId}
             LIMIT 1
           `
         : sql`
-            SELECT status, retake_count, score_percent, completed_at, acknowledgement
+            SELECT status, retake_count, score_percent, completed_at, acknowledgement,
+                   mcq_correct, mcq_total, mcq_answers
             FROM assessment_progress
             WHERE user_email = ${userEmail} AND module_id = ${moduleId}
             LIMIT 1
@@ -136,6 +139,22 @@ export async function loadModuleDetail(
   warmMcqAnswerCacheFromQuestions(moduleId, mcqPool);
 
   const progress = progressRows[0];
+  if (progress && userEmail) {
+    const rawAnswers = progress.mcq_answers;
+    const mcqAnswers =
+      rawAnswers && typeof rawAnswers === "object" && !Array.isArray(rawAnswers)
+        ? (rawAnswers as Record<string, boolean>)
+        : {};
+    setLearnerProgressSnapshot(userEmail, moduleId, {
+      status: String(progress.status ?? "not_started"),
+      mcqAnswers,
+      mcqCorrect: Number(progress.mcq_correct ?? 0),
+      mcqTotal: Number(progress.mcq_total ?? 0),
+      scorePercent:
+        progress.score_percent != null ? Number(progress.score_percent) : null,
+    });
+  }
+
   const rawStatus = (progress?.status as string | undefined) ?? "not_started";
   const scorePercent =
     progress?.score_percent != null ? Number(progress.score_percent) : null;
