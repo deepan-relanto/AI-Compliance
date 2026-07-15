@@ -1,6 +1,10 @@
 import { auth } from "@/auth";
 import { getSql } from "@/lib/db";
 import {
+  getCachedLearnerAccess,
+  setCachedLearnerAccess,
+} from "@/lib/learner-access-cache";
+import {
   verifyModuleAccess,
   type ModuleAccessDenyCode,
 } from "@/lib/services/module-access-service";
@@ -60,6 +64,13 @@ export async function requireLearnerModuleAccess(
   const sessionCheck = await requireSessionEmail(claimedEmail);
   if (!sessionCheck.ok) return sessionCheck;
 
+  // Hot-path cache: learner batch assignment is stable for a session — skip 3
+  // DB queries per MCQ submission after the first hit.
+  const cachedBatch = getCachedLearnerAccess(sessionCheck.email, moduleId);
+  if (cachedBatch) {
+    return { ok: true, email: sessionCheck.email, batchId: cachedBatch };
+  }
+
   const sql = getSql();
   const access = await verifyModuleAccess(
     sql,
@@ -77,5 +88,6 @@ export async function requireLearnerModuleAccess(
     };
   }
 
+  setCachedLearnerAccess(sessionCheck.email, moduleId, access.batchId);
   return { ok: true, email: sessionCheck.email, batchId: access.batchId };
 }
