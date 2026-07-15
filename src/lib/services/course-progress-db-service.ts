@@ -8,6 +8,11 @@ import {
 } from "@/lib/progress-score";
 import { validateMcqSelection } from "@/lib/mcq-multi-select";
 import { getCachedCorrectOptionId } from "@/lib/services/mcq-answer-cache";
+import {
+  getLearnerProgressSnapshot,
+  invalidateLearnerProgressSnapshot,
+  setLearnerProgressSnapshot,
+} from "@/lib/learner-progress-cache";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -352,7 +357,7 @@ export async function startTrainingSessionDb(
   return mapProgressRow(rows[0] as Record<string, unknown>);
 }
 
-/** Validate MCQ + update progress in at most two DB round-trips. */
+/** Validate MCQ + update progress; zero DB on hot path after progress snapshot is warm. */
 export async function validateAndRecordMcqAnswerDb(
   sql: Sql,
   params: {
@@ -381,22 +386,12 @@ export async function validateAndRecordMcqAnswerDb(
         ? [params.optionId]
         : [];
 
-  // Hot path: correct option from process cache (warmed on module load) + progress row only.
-  // Avoids the JOIN against course_mcq_questions on every submit.
-  const [correctOptionIdRaw, progress] = await Promise.all([
-    getCachedCorrectOptionId(sql, params.moduleId, params.questionId, true),
-    sql`
-      SELECT
-        status AS progress_status,
-        mcq_correct,
-        mcq_total,
-        mcq_answers,
-        score_percent
-      FROM course_progress
-      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
-      LIMIT 1
-    `,
-  ]);
+  const correctOptionIdRaw = await getCachedCorrectOptionId(
+    sql,
+    params.moduleId,
+    params.questionId,
+    true,
+  );
 
   let correctOptionId = correctOptionIdRaw;
   if (!correctOptionId) {
@@ -423,14 +418,42 @@ export async function validateAndRecordMcqAnswerDb(
   }
 
   const correct = validateMcqSelection(picked, correctOptionId);
-  let progressStatus = (progress[0]?.progress_status as string | null) ?? null;
-  let mcqCorrectStored = Number(progress[0]?.mcq_correct ?? 0);
-  let mcqTotalStored = Number(progress[0]?.mcq_total ?? 0);
-  let mcqAnswers = parseMcqAnswers(progress[0]?.mcq_answers);
-  const scorePercent = progress[0]?.score_percent;
+
+  let snapshot = getLearnerProgressSnapshot(params.userEmail, params.moduleId);
+  if (!snapshot) {
+    const progress = await sql`
+      SELECT
+        status AS progress_status,
+        mcq_correct,
+        mcq_total,
+        mcq_answers,
+        score_percent
+      FROM course_progress
+      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+      LIMIT 1
+    `;
+    if (progress[0]) {
+      snapshot = {
+        status: String(progress[0].progress_status ?? "in_progress"),
+        mcqAnswers: parseMcqAnswers(progress[0].mcq_answers),
+        mcqCorrect: Number(progress[0].mcq_correct ?? 0),
+        mcqTotal: Number(progress[0].mcq_total ?? 0),
+        scorePercent:
+          progress[0].score_percent != null
+            ? Number(progress[0].score_percent)
+            : null,
+      };
+      setLearnerProgressSnapshot(params.userEmail, params.moduleId, snapshot);
+    }
+  }
+
+  let progressStatus = snapshot?.status ?? null;
+  let mcqCorrectStored = snapshot?.mcqCorrect ?? 0;
+  let mcqTotalStored = snapshot?.mcqTotal ?? 0;
+  let mcqAnswers = snapshot?.mcqAnswers ?? {};
+  const scorePercent = snapshot?.scorePercent ?? null;
 
   if (!progressStatus) {
-    // Non-blocking insert — response does not wait for session create.
     void startTrainingSessionDb(sql, {
       userEmail: params.userEmail,
       moduleId: params.moduleId,
@@ -438,7 +461,10 @@ export async function validateAndRecordMcqAnswerDb(
       batchId: params.batchId,
       totalSlides: params.totalSlides,
       assignedMcqCount: params.assignedMcqCount,
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error(err);
+      invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+    });
     progressStatus = "in_progress";
     mcqCorrectStored = 0;
     mcqTotalStored =
@@ -446,6 +472,13 @@ export async function validateAndRecordMcqAnswerDb(
         ? params.assignedMcqCount
         : 0;
     mcqAnswers = {};
+    setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
+      status: progressStatus,
+      mcqAnswers,
+      mcqCorrect: mcqCorrectStored,
+      mcqTotal: mcqTotalStored,
+      scorePercent: null,
+    });
   }
 
   if (
@@ -483,6 +516,16 @@ export async function validateAndRecordMcqAnswerDb(
         : Object.keys(answers).length;
   const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
 
+  setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
+    status: progressStatus === "not_started" || progressStatus === "failed"
+      ? "in_progress"
+      : progressStatus,
+    mcqAnswers: answers,
+    mcqCorrect,
+    mcqTotal,
+    scorePercent,
+  });
+
   sql`
     UPDATE course_progress
     SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
@@ -495,7 +538,10 @@ export async function validateAndRecordMcqAnswerDb(
         last_accessed_at = NOW(),
         updated_at = NOW()
     WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
-  `.catch(console.error);
+  `.catch((err) => {
+    console.error(err);
+    invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+  });
 
   return {
     found: true,
