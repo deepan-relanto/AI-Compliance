@@ -1,6 +1,7 @@
 "use client";
 
 import { FloatingAvatar } from "@/components/course/floating-avatar";
+import { isSpeakableNarration, sanitizeNarrationSource } from "@/lib/tts-narration";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 type PlaybackSegment = {
@@ -130,28 +131,33 @@ export function CourseTtsOverlay({
         (stepType === "pdf" && segment.sourceStepType === "pdf"),
     );
     const pool = forStep.length > 0 ? forStep : payload.segments;
-    return (
-      pool.find(
+    const exact = pool.find(
         (segment) =>
           segment.slideIndex === beat.slideIndex &&
           segment.fragmentIndex === beat.fragmentIndex,
-      ) ??
-      pool.find(
+      );
+    const slideLevel = pool.find(
         (segment) =>
           segment.slideIndex === beat.slideIndex && segment.fragmentIndex === 0,
-      ) ??
-      null
-    );
+      );
+    return exact && isSpeakableNarration(exact.scriptText)
+      ? exact
+      : slideLevel ?? exact ?? null;
   }, [payload, stepType, beat]);
 
   if (!payload?.available) return null;
   if (!payload.settings.ttsEnabled && !payload.settings.avatarEnabled) return null;
 
   const showAvatar = payload.settings.avatarEnabled;
-  const script =
-    (payload.settings.ttsEnabled
-      ? activeSegment?.scriptText || activeSegment?.rawText
-      : activeSegment?.scriptText) ?? "";
+  const reviewedScript = sanitizeNarrationSource(activeSegment?.scriptText ?? "");
+  const rawFallback = sanitizeNarrationSource(activeSegment?.rawText ?? "");
+  const script = payload.settings.ttsEnabled
+    ? isSpeakableNarration(reviewedScript)
+      ? reviewedScript
+      : isSpeakableNarration(rawFallback)
+        ? rawFallback
+        : ""
+    : reviewedScript;
 
   // Keep the avatar visible whenever enabled, even if this beat has no script yet.
   if (!showAvatar) return null;
