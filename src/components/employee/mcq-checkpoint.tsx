@@ -264,6 +264,15 @@ export function MCQCheckpoint({
   const modalMode = !panelMode;
   const submittedLayout = modalMode && submitted;
 
+  // Main-branch shrink pattern: banner + signal compress after submit so
+  // question/options/explanation fit the fixed checkpoint shell.
+  const bannerHeight = submittedLayout ? "h-14" : modalMode ? "h-16" : "h-24";
+  const signalWidth = submittedLayout
+    ? "w-24 min-w-[6rem]"
+    : modalMode
+      ? "w-28 min-w-[7rem]"
+      : "w-full";
+
   const blockCheckpointShortcuts = useCallback((e: KeyboardEvent) => {
     if (!shouldBlockCheckpointKey(e)) return;
     e.preventDefault();
@@ -277,17 +286,22 @@ export function MCQCheckpoint({
   }, [open, panelMode, blockCheckpointShortcuts]);
 
   const securityBanner = modalMode ? (
-    <div className="mb-3 shrink-0">
-      <div className="flex flex-nowrap items-stretch gap-2.5">
-        <div className="flex min-h-16 min-w-0 flex-1 items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#2e3192]/10 text-[#2e3192]">
-            <ShieldCheck className="h-5 w-5" strokeWidth={1.9} />
+    <div className={cn("mb-2.5 shrink-0", submittedLayout && "mb-2")}>
+      <div className="flex flex-nowrap items-stretch gap-2 sm:gap-2.5">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 sm:px-3.5",
+            bannerHeight,
+          )}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2e3192]/10 text-[#2e3192]">
+            <ShieldCheck className="h-[18px] w-[18px]" strokeWidth={1.9} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 sm:text-[11px]">
               Secure checkpoint
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[13px] font-medium leading-snug text-zinc-600">
+            <p className="mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-zinc-600 sm:text-[13px]">
               {submittedLayout
                 ? "Review the explanation, then continue when ready."
                 : "Choose the best policy-aligned response."}
@@ -298,24 +312,35 @@ export function MCQCheckpoint({
           key={signalState}
           state={signalState}
           progress={checkpointProgress}
-          className="h-16 w-28 min-w-[7rem] shrink-0 rounded-xl"
+          className={cn(bannerHeight, signalWidth, "shrink-0 rounded-lg")}
         />
       </div>
     </div>
   ) : null;
 
   const questionBlock = (
-    <div className="shrink-0">
+    <div
+      className={cn(
+        "shrink-0",
+        modalMode && "min-h-0 max-h-[5.5rem] overflow-y-auto overscroll-contain",
+      )}
+    >
       <h2
         className={cn(
           "font-semibold tracking-tight text-zinc-900",
-          modalMode ? "text-[15px] leading-snug" : "text-base leading-snug",
+          modalMode
+            ? submittedLayout
+              ? "text-[0.9375rem] leading-snug"
+              : "text-base leading-snug"
+            : submittedLayout
+              ? "text-base leading-snug"
+              : "text-lg leading-snug",
         )}
       >
         {displayPrompt}
       </h2>
       {!submitted && !modalMode && (
-        <p className="mt-1 text-xs text-zinc-500">
+        <p className="mt-1.5 text-sm text-zinc-500">
           {allowMultiple
             ? "Select all that apply, then submit."
             : "Pick the best option, then submit."}
@@ -325,7 +350,13 @@ export function MCQCheckpoint({
   );
 
   const optionsList = (
-    <ul className={cn("mt-2.5 space-y-1.5", submittedLayout && "mt-2 space-y-1")}>
+    <ul
+      className={cn(
+        "shrink-0",
+        modalMode ? "mt-2 space-y-1.5" : "mt-4 space-y-2.5",
+        submittedLayout && "mt-2 space-y-1",
+      )}
+    >
       {displayOptions.map((opt) => {
         const isSelected = selected.includes(opt.id);
         const showCorrect =
@@ -356,9 +387,13 @@ export function MCQCheckpoint({
               }}
               className={cn(
                 "relative flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border text-left transition-colors duration-100",
-                submittedLayout
-                  ? "px-3 py-2 text-[13px] leading-snug"
-                  : "px-3 py-2.5 text-[13.5px] leading-snug",
+                modalMode
+                  ? submittedLayout
+                    ? "px-3 py-2 text-[0.8125rem] leading-snug"
+                    : "px-3.5 py-2.5 text-sm leading-snug"
+                  : submittedLayout
+                    ? "px-3.5 py-2.5 text-sm"
+                    : "px-4 py-3.5 text-base",
                 "hover:border-zinc-300 hover:bg-zinc-50",
                 isSelected && !submitted
                   ? "border-[#2e3192]/50 bg-[#2e3192]/5 text-zinc-900"
@@ -374,7 +409,14 @@ export function MCQCheckpoint({
               )}
               <span
                 className={cn(
-                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border font-mono text-[10px] font-semibold uppercase",
+                  "flex shrink-0 items-center justify-center rounded-md border font-mono font-semibold uppercase",
+                  modalMode
+                    ? submittedLayout
+                      ? "h-5 w-5 text-[10px]"
+                      : "h-6 w-6 text-[10px]"
+                    : submittedLayout
+                      ? "h-5 w-5 text-[10px]"
+                      : "h-7 w-7 text-xs",
                   isSelected && !submitted
                     ? "border-[#2e3192]/40 bg-white text-[#2e3192]"
                     : "border-zinc-200 bg-white text-zinc-500",
@@ -481,7 +523,7 @@ export function MCQCheckpoint({
     ) : null;
 
   const card = (
-    <div className="flex w-full max-h-full min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)]">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)]">
       <div className="h-1 shrink-0 bg-zinc-100">
         <motion.div
           initial={false}
@@ -493,36 +535,37 @@ export function MCQCheckpoint({
 
       <div
         className={cn(
-          "flex shrink-0 items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50/90",
-          modalMode ? "px-4 py-1.5 sm:px-5" : "px-4 py-2.5 sm:px-5",
+          "flex shrink-0 flex-col gap-1.5 border-b border-zinc-100 bg-zinc-50/90 sm:flex-row sm:items-center sm:justify-between",
+          modalMode ? "px-5 py-2 sm:px-6" : "gap-3 px-4 py-3 sm:px-6 sm:py-4",
         )}
       >
-        <div className="flex min-w-0 items-center gap-1.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md border border-[#f15a24]/20 bg-white text-[#f15a24]">
-            <Lock className="h-3 w-3" strokeWidth={1.75} />
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md border border-[#f15a24]/20 bg-white text-[#f15a24]">
+            <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
           </div>
-          <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-[#f15a24]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#f15a24] sm:text-sm">
             Checkpoint {Math.min(checkpointNumber, Math.max(totalCheckpoints, 1))} of{" "}
             {Math.max(totalCheckpoints, 1)}
           </span>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {modalMode && (
             <StreakCounter
               currentStreak={currentStreak}
               bestStreak={bestStreak}
               compact
               tone="light"
-              className="min-w-0 px-1.5 py-0.5"
+              className="min-w-0 px-2 py-1"
             />
           )}
-          <div className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-zinc-700">
-            <BarChart3 className="h-3 w-3 text-zinc-400" />
+          <div className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-700 sm:px-2.5 sm:py-1 sm:text-sm">
+            <BarChart3 className="h-3 w-3 text-zinc-400 sm:h-3.5 sm:w-3.5" />
+            Score{" "}
             <span className="font-mono tabular-nums">
               {score}/{totalScore}
             </span>
           </div>
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 sm:px-2.5 sm:py-1 sm:text-sm">
             <Plus className="mr-0.5 inline h-3 w-3" />
             {POINTS_PER_MCQ}
           </div>
@@ -531,23 +574,29 @@ export function MCQCheckpoint({
 
       <div
         className={cn(
-          "flex min-h-0 flex-col overflow-y-auto overscroll-contain",
-          modalMode ? "px-4 py-3 sm:px-5" : "flex-1 p-4 sm:p-5",
+          "flex min-h-0 flex-1 flex-col",
+          modalMode ? "overflow-hidden" : "overflow-y-auto overscroll-contain",
+          modalMode ? "px-5 py-3 sm:px-6" : "p-4 sm:p-5",
         )}
       >
         {securityBanner}
 
         {!modalMode && (
-          <div className="mb-3 grid shrink-0 gap-2 sm:grid-cols-[1fr_8rem] sm:items-stretch">
-            <div className="flex h-16 flex-col justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+          <div className="mb-4 grid shrink-0 gap-3 sm:mb-5 sm:grid-cols-[1fr_10rem] sm:items-stretch">
+            <div
+              className={cn(
+                "flex flex-col justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3",
+                bannerHeight,
+              )}
+            >
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-[#2e3192]" strokeWidth={1.75} />
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+                <ShieldCheck className="h-5 w-5 text-[#2e3192]" strokeWidth={1.75} />
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-zinc-500">
                   Secure checkpoint
                 </p>
               </div>
               {!submitted && (
-                <p className="mt-1 text-xs leading-snug text-zinc-600">
+                <p className="mt-1 text-sm leading-snug text-zinc-600">
                   Choose the response that best follows policy.
                 </p>
               )}
@@ -556,7 +605,7 @@ export function MCQCheckpoint({
               key={signalState}
               state={signalState}
               progress={checkpointProgress}
-              className="h-16 shrink-0 rounded-lg"
+              className={cn(bannerHeight, "shrink-0")}
             />
           </div>
         )}
@@ -565,7 +614,7 @@ export function MCQCheckpoint({
         {optionsList}
 
         {error && (
-          <p className="mt-2 shrink-0 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
+          <p className="mt-2 shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -576,7 +625,11 @@ export function MCQCheckpoint({
       <div
         className={cn(
           "shrink-0 border-t border-zinc-100 bg-white",
-          modalMode ? "px-4 py-2.5 sm:px-5" : "p-4 sm:px-5 sm:pb-4",
+          modalMode
+            ? submittedLayout
+              ? "px-5 py-3 sm:px-6"
+              : "px-5 py-2.5 sm:px-6"
+            : "p-4 sm:px-6 sm:pb-5",
         )}
       >
         {!submitted ? (
@@ -614,17 +667,17 @@ export function MCQCheckpoint({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[200] bg-zinc-900/55 backdrop-blur-[1px]"
+          className="fixed inset-0 z-[200] bg-zinc-900/55 backdrop-blur-[2px]"
         />
         <motion.div
           key="checkpoint-dialog"
           role="dialog"
           aria-modal="true"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[201] flex items-center justify-center overflow-hidden p-2.5 sm:p-4"
+          initial={{ opacity: 0, scale: 0.98, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.99, y: 4 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="fixed inset-0 z-[201] flex items-center justify-center overflow-hidden p-3 sm:p-4"
           onKeyDown={(e) => {
             if (shouldBlockCheckpointKey(e.nativeEvent)) {
               e.preventDefault();
@@ -632,7 +685,8 @@ export function MCQCheckpoint({
             }
           }}
         >
-          <div className="flex max-h-[min(92dvh,720px)] w-full max-w-3xl min-h-0 flex-col">
+          {/* Main-branch shell: standard Relanto checkpoint size */}
+          <div className="flex h-[min(90dvh,860px)] w-full max-w-4xl min-h-0 flex-col">
             {card}
           </div>
         </motion.div>

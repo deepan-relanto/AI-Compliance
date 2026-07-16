@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Award, Flame, Target, Zap } from "lucide-react";
+import { createPortal } from "react-dom";
+
 export interface GamificationBadge {
   id: string;
   name: string;
@@ -28,7 +30,7 @@ interface BadgeUnlockProps {
 export function BadgeUnlock({ badge, onClose }: BadgeUnlockProps) {
   const Icon = badge ? (BADGE_ICONS[badge.id] ?? Award) : Award;
 
-  return (
+  const toast = (
     <AnimatePresence>
       {badge && (
         <motion.div
@@ -46,7 +48,8 @@ export function BadgeUnlock({ badge, onClose }: BadgeUnlockProps) {
             damping: 24,
             scale: { duration: 0.45, times: [0, 0.55, 1] },
           }}
-          className="pointer-events-none fixed left-1/2 top-16 z-[88] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2"
+          // Above MCQ checkpoint (z-200/201); below proctor warnings (z-300).
+          className="pointer-events-none fixed left-1/2 top-16 z-[220] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2"
           onAnimationComplete={() => {
             window.setTimeout(onClose, BADGE_DISPLAY_MS);
           }}
@@ -94,4 +97,7 @@ export function BadgeUnlock({ badge, onClose }: BadgeUnlockProps) {
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(toast, document.body);
 }
