@@ -83,7 +83,7 @@ const envVars = [
   },
   {
     key: "NEXT_PUBLIC_HEADTTS_VOICE",
-    value: env.NEXT_PUBLIC_HEADTTS_VOICE || "af_bella",
+    value: env.NEXT_PUBLIC_HEADTTS_VOICE || "af_nicole",
   },
   { key: "GEMINI_API_KEY", value: env.GEMINI_API_KEY },
   { key: "GEMINI_MODEL", value: env.GEMINI_MODEL || "gemini-2.5-flash" },

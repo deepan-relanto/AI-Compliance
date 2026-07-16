@@ -51,6 +51,13 @@ type HeadTtsModule = {
   HeadTTS?: new (options: Record<string, unknown>) => HeadTtsInstance;
 };
 
+const DEFAULT_HEADTTS_VOICE = "af_nicole";
+
+/** Module-level caches so remounts / slide changes do not re-download CDN + GLB. */
+let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
+let headTtsImportPromise: Promise<HeadTtsModule> | null = null;
+const warmedModelUrls = new Set<string>();
+
 function getSpeechEngine(): SpeechSynthesis | null {
   if (typeof window === "undefined") return null;
   return window.speechSynthesis ?? window.webkitSpeechSynthesis ?? null;
@@ -72,6 +79,61 @@ export function normalizeTalkingHeadModelUrl(input: string | undefined): string 
     return fileName ? `/avatars/${fileName}` : null;
   }
   return raw;
+}
+
+function loadTalkingHeadModule(cdnUrl: string): Promise<TalkingHeadModule> {
+  if (!talkingHeadImportPromise) {
+    talkingHeadImportPromise = import(
+      /* webpackIgnore: true */ cdnUrl
+    ) as Promise<TalkingHeadModule>;
+  }
+  return talkingHeadImportPromise;
+}
+
+function loadHeadTtsModule(cdnUrl: string): Promise<HeadTtsModule> {
+  if (!headTtsImportPromise) {
+    headTtsImportPromise = import(
+      /* webpackIgnore: true */ cdnUrl
+    ) as Promise<HeadTtsModule>;
+  }
+  return headTtsImportPromise;
+}
+
+/** Prefetch the GLB (+ CDN modules) so the avatar circle fills faster on first show. */
+export function warmAvatarAssets(options?: {
+  modelUrl?: string | null;
+  talkingHeadCdnUrl?: string;
+  headTtsCdnUrl?: string;
+}): void {
+  if (typeof window === "undefined") return;
+
+  const modelUrl =
+    options?.modelUrl ??
+    normalizeTalkingHeadModelUrl(process.env.NEXT_PUBLIC_TALKINGHEAD_MODEL_URL);
+  const talkingHeadCdnUrl = normalizeTalkingHeadCdnUrl(
+    options?.talkingHeadCdnUrl ?? process.env.NEXT_PUBLIC_TALKINGHEAD_CDN_URL,
+  );
+  const headTtsCdnUrl =
+    options?.headTtsCdnUrl?.trim() ||
+    process.env.NEXT_PUBLIC_HEADTTS_CDN_URL?.trim() ||
+    "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
+
+  void loadTalkingHeadModule(talkingHeadCdnUrl).catch(() => undefined);
+  void loadHeadTtsModule(headTtsCdnUrl).catch(() => undefined);
+
+  if (!modelUrl || warmedModelUrls.has(modelUrl)) return;
+  warmedModelUrls.add(modelUrl);
+
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "fetch";
+  link.href = modelUrl;
+  link.crossOrigin = "anonymous";
+  document.head.appendChild(link);
+
+  void fetch(modelUrl, { credentials: "same-origin", cache: "force-cache" }).catch(
+    () => undefined,
+  );
 }
 
 function createFakeTalkingAudio(
@@ -183,6 +245,9 @@ export function FloatingAvatar({
     const talkingHeadCdnUrl = normalizeTalkingHeadCdnUrl(
       process.env.NEXT_PUBLIC_TALKINGHEAD_CDN_URL,
     );
+    const headTtsCdnUrl =
+      process.env.NEXT_PUBLIC_HEADTTS_CDN_URL?.trim() ||
+      "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
 
     if (!enabled || !modelUrl || typeof window === "undefined") {
       setAvatarReady(false);
@@ -191,14 +256,50 @@ export function FloatingAvatar({
       return;
     }
 
+    warmAvatarAssets({ modelUrl, talkingHeadCdnUrl, headTtsCdnUrl });
     setAvatarLoading(true);
 
     (async () => {
       try {
-        const { TalkingHead } = (await import(
-          /* webpackIgnore: true */ talkingHeadCdnUrl
-        )) as TalkingHeadModule;
+        // Kick HeadTTS warm-up in parallel with the 3D model load.
+        const headTtsWarm = (async (): Promise<HeadTtsInstance | null> => {
+          const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
+          if (gttsApiKey) return null;
+          try {
+            const { HeadTTS } = await loadHeadTtsModule(headTtsCdnUrl);
+            if (!HeadTTS || cancelled) return null;
+            const voice =
+              process.env.NEXT_PUBLIC_HEADTTS_VOICE?.trim() || DEFAULT_HEADTTS_VOICE;
+            const headTts = new HeadTTS({
+              endpoints: ["webgpu", "wasm"],
+              dtypeWebgpu: "fp32",
+              dtypeWasm: "fp16",
+              workerModule:
+                process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
+                "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
+              dictionaryURL:
+                process.env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL?.trim() ||
+                "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
+              voices: [voice],
+              defaultVoice: voice,
+              defaultLanguage: "en-us",
+              defaultSpeed: 1,
+              splitSentences: true,
+            });
+            await headTts.connect?.();
+            await headTts.setup?.({
+              voice,
+              language: "en-us",
+              speed: 1,
+              audioEncoding: "wav",
+            });
+            return cancelled ? null : headTts;
+          } catch {
+            return null;
+          }
+        })();
 
+        const { TalkingHead } = await loadTalkingHeadModule(talkingHeadCdnUrl);
         if (cancelled || !headRef.current || !TalkingHead) return;
 
         const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
@@ -246,43 +347,15 @@ export function FloatingAvatar({
           return;
         }
 
-        try {
-          const headTtsCdnUrl =
-            process.env.NEXT_PUBLIC_HEADTTS_CDN_URL?.trim() ||
-            "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
-          const { HeadTTS } = (await import(
-            /* webpackIgnore: true */ headTtsCdnUrl
-          )) as HeadTtsModule;
-          if (!HeadTTS || cancelled) throw new Error("HeadTTS module unavailable");
-
-          const voice = process.env.NEXT_PUBLIC_HEADTTS_VOICE?.trim() || "af_bella";
-          const headTts = new HeadTTS({
-            workerModule:
-              process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
-              "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
-            dictionaryURL:
-              process.env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL?.trim() ||
-              "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
-            voices: [voice],
-            defaultVoice: voice,
-            defaultLanguage: "en-us",
-            defaultSpeed: 0.96,
-            splitSentences: true,
-          });
-          await headTts.connect?.();
-          await headTts.setup?.({
-            voice,
-            language: "en-us",
-            speed: 0.96,
-            audioEncoding: "wav",
-          });
-          if (cancelled) {
-            headTts.clear?.();
-            return;
-          }
+        const headTts = await headTtsWarm;
+        if (cancelled) {
+          headTts?.clear?.();
+          return;
+        }
+        if (headTts) {
           headTtsRef.current = headTts;
           setTtsMode("headtts");
-        } catch {
+        } else {
           setTtsMode("browser");
         }
       } catch {
@@ -330,7 +403,7 @@ export function FloatingAvatar({
       voices.find(
         (voice) =>
           /^en[-_]/i.test(voice.lang) &&
-          /(samantha|zira|aria|jenny|natural|female)/i.test(voice.name),
+          /(samantha|zira|aria|jenny|natural|neural|female)/i.test(voice.name),
       ) ??
       voices.find((voice) => /^en[-_](US|GB)/i.test(voice.lang)) ??
       null;

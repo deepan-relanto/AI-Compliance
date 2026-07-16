@@ -184,11 +184,10 @@ export function CoursePlayer({
   const signatureReady =
     isValidSignatureName(normalizeSignatureName(signatureName)) && !!signatureDataUrl;
 
-  const [isFailed, setIsFailed] = useState<boolean>(() => {
-    if (!user?.username) return false;
-    const progress = getProgress(user.username, module.id);
-    return progress ? isProctorLocked(progress) : false;
-  });
+  // Do not hydrate lockout from localStorage on first paint — stale failed
+  // progress flashes the admin-review overlay until the server wipe resolves.
+  const [isFailed, setIsFailed] = useState(false);
+  const [integrityHydrated, setIntegrityHydrated] = useState(false);
 
   const proctorRetakeStartedRef = useRef(false);
   const [retakeCount, setRetakeCount] = useState<number>(0);
@@ -284,141 +283,150 @@ export function CoursePlayer({
   const isExitingRef = proctorHook.isExitingRef;
 
   const loadIntegrityState = useCallback(async () => {
-    if (!user?.username) return;
+    if (!user?.username) {
+      setIntegrityHydrated(true);
+      return;
+    }
 
-    const progBefore = getProgress(user.username, module.id);
-    const wasLocked = progBefore ? isProctorLocked(progBefore) : false;
+    try {
+      const progBefore = getProgress(user.username, module.id);
+      const wasLocked = progBefore ? isProctorLocked(progBefore) : false;
 
-    let serverEntry: ServerProgressEntry | undefined;
-    let progressFetchOk = false;
-    let reviewLatest: Awaited<ReturnType<typeof fetchLatestCourseReviewRequest>> = null;
-    let reviewFetchFailed = false;
+      let serverEntry: ServerProgressEntry | undefined;
+      let progressFetchOk = false;
+      let reviewLatest: Awaited<ReturnType<typeof fetchLatestCourseReviewRequest>> = null;
+      let reviewFetchFailed = false;
 
-    const [progressSettled, reviewSettled] = await Promise.allSettled([
-      fetchCourseUserProgress(user.username),
-      fetchLatestCourseReviewRequest(user.username, module.id),
-    ]);
+      const [progressSettled, reviewSettled] = await Promise.allSettled([
+        fetchCourseUserProgress(user.username),
+        fetchLatestCourseReviewRequest(user.username, module.id),
+      ]);
 
-    if (progressSettled.status === "fulfilled") {
-      try {
-        const result = progressSettled.value;
-        progressFetchOk = result.ok;
-        const entries = result.progress;
-        serverEntry = entries.find((e) => e.moduleId === module.id);
+      if (progressSettled.status === "fulfilled") {
+        try {
+          const result = progressSettled.value;
+          progressFetchOk = result.ok;
+          const entries = result.progress;
+          serverEntry = entries.find((e) => e.moduleId === module.id);
 
-        if (progressFetchOk) {
-          const serverGrantedRetake =
-            Boolean(serverEntry) &&
-            serverEntry!.status === "not_started" &&
-            serverEntry!.warningCount === 0 &&
-            wasLocked;
+          if (progressFetchOk) {
+            const serverGrantedRetake =
+              Boolean(serverEntry) &&
+              serverEntry!.status === "not_started" &&
+              serverEntry!.warningCount === 0 &&
+              wasLocked;
 
-          if (serverEntry && !serverGrantedRetake) {
-            mergeServerProgress(user.username, [
-              {
-                moduleId: serverEntry.moduleId,
-                moduleTitle: serverEntry.moduleTitle,
-                batchId: serverEntry.batchId,
-                currentSlide: serverEntry.currentSlide,
-                totalSlides: serverEntry.totalSlides,
-                status: serverEntry.status,
-                retakeCount: serverEntry.retakeCount,
-                mcqCorrect: serverEntry.mcqCorrect,
-                mcqTotal: serverEntry.mcqTotal,
-                scorePercent: serverEntry.scorePercent,
-                failedReason: serverEntry.failedReason,
-                completedAt: serverEntry.completedAt,
-                warningCount: serverEntry.warningCount,
-              },
-            ]);
-            if (serverEntry.mcqCorrect > 0) {
-              setCorrectAnswers(serverEntry.mcqCorrect);
+            if (serverEntry && !serverGrantedRetake) {
+              mergeServerProgress(user.username, [
+                {
+                  moduleId: serverEntry.moduleId,
+                  moduleTitle: serverEntry.moduleTitle,
+                  batchId: serverEntry.batchId,
+                  currentSlide: serverEntry.currentSlide,
+                  totalSlides: serverEntry.totalSlides,
+                  status: serverEntry.status,
+                  retakeCount: serverEntry.retakeCount,
+                  mcqCorrect: serverEntry.mcqCorrect,
+                  mcqTotal: serverEntry.mcqTotal,
+                  scorePercent: serverEntry.scorePercent,
+                  failedReason: serverEntry.failedReason,
+                  completedAt: serverEntry.completedAt,
+                  warningCount: serverEntry.warningCount,
+                },
+              ]);
+              if (serverEntry.mcqCorrect > 0) {
+                setCorrectAnswers(serverEntry.mcqCorrect);
+              }
+            } else if (serverEntry && serverGrantedRetake) {
+              setRetakeCount(serverEntry.retakeCount);
+            } else {
+              clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
+              setIsFailed(false);
+              proctorHook.hydrateFromProgress(null);
+              setRetakeCount(0);
+              setDbStatus("not_started");
             }
-          } else if (serverEntry && serverGrantedRetake) {
-            setRetakeCount(serverEntry.retakeCount);
-          } else {
-            clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
-            setIsFailed(false);
-            proctorHook.hydrateFromProgress(null);
-            setRetakeCount(0);
-            setDbStatus("not_started");
-          }
 
-          if (entries.length === 0) {
-            clearAllLocalProgressForUser(user.username);
-          } else {
-            clearStaleLocalProgress(user.username, {
-              serverModuleIds: entries.map((e) => e.moduleId),
-              assignedModuleIds: [module.id],
-            });
+            if (entries.length === 0) {
+              clearAllLocalProgressForUser(user.username);
+            } else {
+              clearStaleLocalProgress(user.username, {
+                serverModuleIds: entries.map((e) => e.moduleId),
+                assignedModuleIds: [module.id],
+              });
+            }
           }
+        } catch {
+          /* fall back to local snapshot below */
         }
-      } catch {
-        /* fall back to local snapshot below */
-      }
-    }
-
-    if (reviewSettled.status === "fulfilled") {
-      reviewLatest = reviewSettled.value;
-    } else {
-      reviewFetchFailed = true;
-    }
-
-    const serverFresh =
-      !progressFetchOk ||
-      !serverEntry ||
-      (serverEntry.status === "not_started" &&
-        (serverEntry.warningCount ?? 0) === 0);
-
-    const prog = getProgress(user.username, module.id);
-    const locallyLocked = prog ? isProctorLocked(prog) : false;
-
-    if (prog && !serverFresh) {
-      setRetakeCount(prog.retakeCount ?? 0);
-      setDbStatus(prog.status);
-      setIsFailed(isProctorLocked(prog));
-      proctorHook.hydrateFromProgress(prog);
-      if (typeof prog.mcqCorrect === "number" && prog.mcqCorrect > 0) {
-        setCorrectAnswers(prog.mcqCorrect);
       }
 
-      const storedScore = prog.scorePercent;
-      const storedMcqCorrect = prog.mcqCorrect ?? 0;
-      const storedMcqTotal = prog.mcqTotal ?? moduleMcqs.length;
-      const pendingScoreFailure =
-        storedScore != null &&
-        !isPassingScore(storedScore) &&
-        !isProctorLocked(prog) &&
-        !quizOnlyModeFromModule &&
-        !ackPendingMode;
-
-      if (pendingScoreFailure) {
-        const retakes = prog.retakeCount ?? 0;
-        setShowProctorRules(false);
-        setSessionStarted(true);
-        setSessionStartMs((current) => current ?? Date.now());
-        setScoreResult({
-          scorePercent: storedScore,
-          passed: false,
-          canRetake: retakes < 2,
-          mcqCorrect: storedMcqCorrect,
-          mcqTotal: storedMcqTotal,
-        });
-        setShowScoreResult(true);
-      }
-    } else {
-      setRetakeCount(serverEntry?.retakeCount ?? 0);
-      setDbStatus(serverEntry?.status ?? "not_started");
-      setIsFailed(false);
-      proctorHook.hydrateFromProgress(null);
-    }
-
-    if (!reviewFetchFailed) {
-      const latest = reviewLatest;
-      if (serverFresh && latest?.status === "Pending") {
-        setReviewRequest(null);
+      if (reviewSettled.status === "fulfilled") {
+        reviewLatest = reviewSettled.value;
       } else {
-        setReviewRequest(latest);
+        reviewFetchFailed = true;
+      }
+
+      const serverFresh =
+        !progressFetchOk ||
+        !serverEntry ||
+        (serverEntry.status === "not_started" &&
+          (serverEntry.warningCount ?? 0) === 0);
+
+      const prog = getProgress(user.username, module.id);
+      const locallyLocked = prog ? isProctorLocked(prog) : false;
+
+      if (prog && !serverFresh) {
+        setRetakeCount(prog.retakeCount ?? 0);
+        setDbStatus(prog.status);
+        setIsFailed(isProctorLocked(prog));
+        proctorHook.hydrateFromProgress(prog);
+        if (typeof prog.mcqCorrect === "number" && prog.mcqCorrect > 0) {
+          setCorrectAnswers(prog.mcqCorrect);
+        }
+
+        const storedScore = prog.scorePercent;
+        const storedMcqCorrect = prog.mcqCorrect ?? 0;
+        const storedMcqTotal = prog.mcqTotal ?? moduleMcqs.length;
+        const pendingScoreFailure =
+          storedScore != null &&
+          !isPassingScore(storedScore) &&
+          !isProctorLocked(prog) &&
+          !quizOnlyModeFromModule &&
+          !ackPendingMode;
+
+        if (pendingScoreFailure) {
+          const retakes = prog.retakeCount ?? 0;
+          setShowProctorRules(false);
+          setSessionStarted(true);
+          setSessionStartMs((current) => current ?? Date.now());
+          setScoreResult({
+            scorePercent: storedScore,
+            passed: false,
+            canRetake: retakes < 2,
+            mcqCorrect: storedMcqCorrect,
+            mcqTotal: storedMcqTotal,
+          });
+          setShowScoreResult(true);
+        }
+      } else {
+        setRetakeCount(serverEntry?.retakeCount ?? 0);
+        setDbStatus(serverEntry?.status ?? "not_started");
+        setIsFailed(false);
+        proctorHook.hydrateFromProgress(null);
+      }
+
+      if (!reviewFetchFailed) {
+        const latest = reviewLatest;
+        if (serverFresh) {
+          // Fresh / wiped assignment — never keep stale pending review UI.
+          setReviewRequest(latest?.status === "Approved" ? latest : null);
+          if (latest?.status !== "Approved") {
+            setAwaitingRetakeRestart(false);
+          }
+        } else {
+          setReviewRequest(latest);
+        }
         const serverNotStarted = serverEntry?.status === "not_started";
         if (
           latest?.status === "Approved" &&
@@ -433,21 +441,23 @@ export function CoursePlayer({
           }
           setAwaitingRetakeRestart(true);
         }
+      } else {
+        const requests = getAllReviewRequests();
+        const userReqs = requests.filter(
+          (r) => r.username === user.username && r.moduleId === module.id,
+        );
+        const latest = userReqs.length > 0 ? userReqs[0] : null;
+        setReviewRequest(latest);
+        if (
+          latest?.status === "Approved" &&
+          (locallyLocked || wasLocked) &&
+          !proctorRetakeStartedRef.current
+        ) {
+          setAwaitingRetakeRestart(true);
+        }
       }
-    } else {
-      const requests = getAllReviewRequests();
-      const userReqs = requests.filter(
-        (r) => r.username === user.username && r.moduleId === module.id,
-      );
-      const latest = userReqs.length > 0 ? userReqs[0] : null;
-      setReviewRequest(latest);
-      if (
-        latest?.status === "Approved" &&
-        (locallyLocked || wasLocked) &&
-        !proctorRetakeStartedRef.current
-      ) {
-        setAwaitingRetakeRestart(true);
-      }
+    } finally {
+      setIntegrityHydrated(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username, module.id, moduleMcqs.length, ackPendingMode, quizOnlyModeFromModule]);
@@ -919,15 +929,17 @@ export function CoursePlayer({
   );
 
   const handleMcqContinue = () => {
-    setMcqOpen(false);
     scheduleBadgeFlush(420);
     const next = quizIndex + 1;
     if (next < moduleMcqs.length) {
+      setMcqOpen(false);
       setQuizIndex(next);
       setGateMcq(moduleMcqs[next] ?? FALLBACK_MCQ);
       setMcqOpen(true);
       return;
     }
+    // Keep the last MCQ open until finish sets the score/completion screen,
+    // otherwise "Ready for the quiz" flashes in the background.
     void handleFinishAttempt();
   };
 
@@ -1151,7 +1163,7 @@ export function CoursePlayer({
   };
 
   if (!sessionStarted) {
-    if (isFailed && dbStatus !== "not_started") {
+    if (integrityHydrated && isFailed && dbStatus !== "not_started") {
       return (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
           <CourseProctorFailOverlay
@@ -1357,7 +1369,7 @@ export function CoursePlayer({
                     />
                   )}
                 </div>
-              ) : phase === "quiz" && !mcqOpen ? (
+              ) : phase === "quiz" && !mcqOpen && !showScoreResult ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
                   <div className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/15 via-zinc-900 to-[#f15a24]/10 px-5 py-4 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
@@ -1552,7 +1564,7 @@ export function CoursePlayer({
         />
       )}
 
-      {(isFailed || awaitingRetakeRestart) && (
+      {integrityHydrated && (isFailed || awaitingRetakeRestart) && (
         <CourseProctorFailOverlay
           liveWarningCount={liveWarningCount}
           liveWarningHistory={liveWarningHistory}

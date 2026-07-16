@@ -127,6 +127,13 @@ export default function DashboardPage() {
         });
       } else if (result.modules.length === 0) {
         clearAllLocalProgressForUser(username);
+      } else {
+        // Assigned modules with no server progress rows (e.g. admin wipe /
+        // new publish) — drop stale local lockout so the review panel never flashes.
+        clearStaleLocalProgress(username, {
+          serverModuleIds: [],
+          assignedModuleIds: result.modules.map((m) => m.id),
+        });
       }
 
       const progressEntries = getProgressForUser(username);

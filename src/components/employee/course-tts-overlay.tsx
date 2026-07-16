@@ -1,6 +1,9 @@
 "use client";
 
-import { FloatingAvatar } from "@/components/course/floating-avatar";
+import {
+  FloatingAvatar,
+  warmAvatarAssets,
+} from "@/components/course/floating-avatar";
 import { isSpeakableNarration, sanitizeNarrationSource } from "@/lib/tts-narration";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
@@ -74,6 +77,8 @@ export function CourseTtsOverlay({
   const syncRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Start GLB + CDN downloads while playback settings are still fetching.
+    warmAvatarAssets();
     let cancelled = false;
     void fetch(`/api/courses/${encodeURIComponent(moduleId)}/tts/playback`, {
       cache: "no-store",
@@ -81,6 +86,7 @@ export function CourseTtsOverlay({
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data?.ok) return;
+        if (data.settings?.avatarEnabled) warmAvatarAssets();
         setPayload({
           available: Boolean(data.available),
           settings: {
