@@ -2,8 +2,8 @@
  * Repair TTS sandbox for the live assigned AI basics course.
  * - Drops empty non-canonical duplicates
  * - Ensures canonical tts-{moduleId} with steps + flags on
- * - Syncs beat segments; seeds script_text from raw_text
- * - Runs Gemini generation when possible
+ * - Syncs draft beat segments for courses without reviewed narration
+ * - Never overwrites reviewed, human-authored narration
  *
  * Usage: node --import tsx scripts/db-repair-ai-basics-tts.mts
  *    or: npx tsx scripts/db-repair-ai-basics-tts.mts
@@ -143,6 +143,15 @@ const sql = postgres(url, { ssl: "require", max: 1 });
 try {
   console.log("Repairing TTS for", SOURCE_MODULE_ID);
 
+  const reviewedRows = await sql`
+    SELECT script_status
+    FROM tts_course_modules
+    WHERE id = ${SANDBOX_ID}
+    LIMIT 1
+  `;
+  if (String(reviewedRows[0]?.script_status ?? "") === "reviewed") {
+    console.log("Reviewed narration already exists; repair skipped to preserve it.");
+  } else {
   const deleted = await sql`
     DELETE FROM tts_course_modules
     WHERE source_module_id = ${SOURCE_MODULE_ID}
@@ -280,7 +289,8 @@ try {
 
   console.log("Seeded beat drafts:", draftCount);
   console.log("Sandbox ready:", summary[0]);
-  console.log("Next: optional Gemini polish via admin TTS step or generate API.");
+  console.log("Draft extraction complete. Publish reviewed narration with db-seed-ai-basics-reviewed-tts.mjs.");
+  }
 } catch (err) {
   console.error("Repair failed:", err);
   process.exitCode = 1;

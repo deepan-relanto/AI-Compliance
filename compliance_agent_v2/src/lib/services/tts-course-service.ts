@@ -1,5 +1,6 @@
 import { getCourseAssetBuffer } from "@/lib/services/course-asset-service";
 import { extractJsonObject, geminiChatJson } from "@/lib/services/gemini-llm";
+import { isSpeakableNarration, sanitizeNarrationSource } from "@/lib/tts-narration";
 import type { getSql } from "@/lib/db";
 
 type Sql = ReturnType<typeof getSql>;
@@ -102,7 +103,8 @@ function extractBeatDraftsFromHtml(
     const slideHtml = match[0];
     const bodyHtml = match[1] ?? "";
     const slideTitle = extractTitle(slideHtml, `Slide ${slideIndex + 1}`);
-    const slideText = truncateText(stripHtml(bodyHtml));
+    const slideText = truncateText(sanitizeNarrationSource(stripHtml(bodyHtml)));
+    if (!isSpeakableNarration(slideText)) return;
     drafts.push({
       sourceStepType: stepType,
       stepOrder,
@@ -115,8 +117,11 @@ function extractBeatDraftsFromHtml(
 
     const fragments = [...slideHtml.matchAll(/<[^>]*class="[^"]*\bfragment\b[^"]*"[^>]*>([\s\S]*?)<\/[^>]+>/gi)];
     fragments.forEach((fragment, fragmentIndex) => {
-      const fragmentText = truncateText(stripHtml(fragment[1] ?? ""), 500);
-      if (!fragmentText) return;
+      const fragmentText = truncateText(
+        sanitizeNarrationSource(stripHtml(fragment[1] ?? "")),
+        500,
+      );
+      if (!isSpeakableNarration(fragmentText)) return;
       drafts.push({
         sourceStepType: stepType,
         stepOrder,
@@ -124,7 +129,7 @@ function extractBeatDraftsFromHtml(
         slideIndex,
         fragmentIndex: fragmentIndex + 1,
         slideTitle,
-        rawText: `${slideTitle ?? `Slide ${slideIndex + 1}`}: ${fragmentText}`,
+        rawText: fragmentText,
       });
     });
   });
@@ -428,9 +433,10 @@ async function generateNarrationScriptsBatch(
     "You write narration scripts for corporate learning slides.",
     "Return valid JSON with a single key named scripts.",
     "scripts must be an array of objects with beatKey and script.",
-    "Keep each script concise, spoken, professional, and easy to follow.",
-    "Do not mention UI controls, buttons, or slide numbers.",
-    "Use 1 short paragraph per script only.",
+    "Write two to four natural spoken sentences that explain the business meaning of the slide.",
+    "Never read page numbers, section counters, footers, navigation labels, or isolated headings.",
+    "Do not recite UI controls or copy a list verbatim; connect the ideas into professional narration.",
+    "Use one concise paragraph per script.",
   ].join(" ");
 
   const user = JSON.stringify({

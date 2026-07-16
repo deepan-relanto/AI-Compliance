@@ -31,6 +31,26 @@ type TalkingHeadModule = {
   ) => TalkingHeadInstance;
 };
 
+type HeadTtsMessage = {
+  type: "audio" | "error" | "custom";
+  data: unknown;
+};
+
+type HeadTtsInstance = {
+  connect?: () => Promise<void>;
+  setup?: (options: Record<string, unknown>) => Promise<unknown>;
+  synthesize?: (
+    options: { input: string },
+    onMessage?: (message: HeadTtsMessage) => void,
+    onError?: (error: unknown) => void,
+  ) => Promise<HeadTtsMessage[]>;
+  clear?: () => void;
+};
+
+type HeadTtsModule = {
+  HeadTTS?: new (options: Record<string, unknown>) => HeadTtsInstance;
+};
+
 function getSpeechEngine(): SpeechSynthesis | null {
   if (typeof window === "undefined") return null;
   return window.speechSynthesis ?? window.webkitSpeechSynthesis ?? null;
@@ -148,9 +168,13 @@ export function FloatingAvatar({
   const [muted, setMuted] = useState(false);
   const [avatarReady, setAvatarReady] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [ttsMode, setTtsMode] = useState<"gtts" | "browser" | "none">("none");
+  const [showCaption, setShowCaption] = useState(true);
+  const [ttsMode, setTtsMode] = useState<"headtts" | "gtts" | "browser" | "none">(
+    "none",
+  );
   const headRef = useRef<HTMLDivElement | null>(null);
   const headInstanceRef = useRef<TalkingHeadInstance | null>(null);
+  const headTtsRef = useRef<HeadTtsInstance | null>(null);
   const lastAutoScriptRef = useRef<string>("");
 
   useEffect(() => {
@@ -217,7 +241,51 @@ export function FloatingAvatar({
         headInstanceRef.current = head;
         setAvatarReady(true);
         setAvatarLoading(false);
-        setTtsMode(gttsApiKey ? "gtts" : "browser");
+
+        if (gttsApiKey) {
+          setTtsMode("gtts");
+          return;
+        }
+
+        try {
+          const headTtsCdnUrl =
+            process.env.NEXT_PUBLIC_HEADTTS_CDN_URL?.trim() ||
+            "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
+          const { HeadTTS } = (await import(
+            /* webpackIgnore: true */ headTtsCdnUrl
+          )) as HeadTtsModule;
+          if (!HeadTTS || cancelled) throw new Error("HeadTTS module unavailable");
+
+          const voice = process.env.NEXT_PUBLIC_HEADTTS_VOICE?.trim() || "af_bella";
+          const headTts = new HeadTTS({
+            workerModule:
+              process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
+              "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
+            dictionaryURL:
+              process.env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL?.trim() ||
+              "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
+            voices: [voice],
+            defaultVoice: voice,
+            defaultLanguage: "en-us",
+            defaultSpeed: 0.96,
+            splitSentences: true,
+          });
+          await headTts.connect?.();
+          await headTts.setup?.({
+            voice,
+            language: "en-us",
+            speed: 0.96,
+            audioEncoding: "wav",
+          });
+          if (cancelled) {
+            headTts.clear?.();
+            return;
+          }
+          headTtsRef.current = headTts;
+          setTtsMode("headtts");
+        } catch {
+          setTtsMode("browser");
+        }
       } catch {
         if (!cancelled) {
           setAvatarReady(false);
@@ -231,6 +299,8 @@ export function FloatingAvatar({
       cancelled = true;
       const head = headInstanceRef.current;
       if (typeof head?.stop === "function") head.stop();
+      headTtsRef.current?.clear?.();
+      headTtsRef.current = null;
       headInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,6 +318,7 @@ export function FloatingAvatar({
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     const synth = getSpeechEngine();
     synth?.cancel();
+    headTtsRef.current?.clear?.();
     setSpeaking(false);
   };
 
@@ -262,6 +333,15 @@ export function FloatingAvatar({
     utterance.rate = 0.98;
     utterance.pitch = 1;
     utterance.volume = muted ? 0 : 1;
+    const voices = synth.getVoices();
+    utterance.voice =
+      voices.find(
+        (voice) =>
+          /^en[-_]/i.test(voice.lang) &&
+          /(samantha|zira|aria|jenny|natural|female)/i.test(voice.name),
+      ) ??
+      voices.find((voice) => /^en[-_](US|GB)/i.test(voice.lang)) ??
+      null;
     utterance.onstart = () => {
       setSpeaking(true);
       if (head && typeof head.speakAudio === "function") {
@@ -299,6 +379,33 @@ export function FloatingAvatar({
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     getSpeechEngine()?.cancel();
 
+    if (
+      ttsMode === "headtts" &&
+      avatarReady &&
+      headTtsRef.current?.synthesize &&
+      typeof head?.speakAudio === "function"
+    ) {
+      try {
+        setSpeaking(true);
+        const messages = await headTtsRef.current.synthesize({
+          input: script.trim().slice(0, 500),
+        });
+        for (const message of messages ?? []) {
+          if (message.type === "error") throw new Error("HeadTTS synthesis failed");
+          if (message.type === "audio") {
+            await Promise.resolve(head.speakAudio(message.data));
+          }
+        }
+        return;
+      } catch {
+        setTtsMode("browser");
+        handleFallbackSpeak();
+        return;
+      } finally {
+        setSpeaking(false);
+      }
+    }
+
     if (ttsMode === "gtts" && avatarReady && typeof head?.speakText === "function") {
       try {
         setSpeaking(true);
@@ -331,7 +438,6 @@ export function FloatingAvatar({
     return () => {
       stopSpeaking();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const statusLabel =
@@ -343,7 +449,9 @@ export function FloatingAvatar({
           ? "Using fallback preview — avatar model unavailable."
           : ttsMode === "gtts"
             ? "Google TTS · TalkingHead lip-sync active."
-            : "TalkingHead avatar ready.";
+            : ttsMode === "headtts"
+              ? "Neural HeadTTS · TalkingHead lip-sync active."
+              : "TalkingHead avatar ready.";
 
   return (
     <div
@@ -352,46 +460,57 @@ export function FloatingAvatar({
         className,
       )}
     >
-      <div className="max-w-[230px] rounded-2xl border border-zinc-200 bg-white/95 px-3 py-2 text-xs text-zinc-600 shadow-xl backdrop-blur">
-        <p className="font-semibold text-zinc-900">
-          {variant === "learner" ? "Narrator" : "Avatar preview"}
-        </p>
-        <p className="mt-1 line-clamp-3">
-          {script.trim() ||
-            (variant === "learner"
-              ? "Narration will play when a script is available for this slide."
-              : "Generate a TTS script to preview the talking avatar narration.")}
-        </p>
-        {variant === "admin" && (
-          <p className="mt-1 text-[11px] text-zinc-500">{statusLabel}</p>
-        )}
-        <div className="mt-2 flex items-center gap-2">
-          <button
-            type="button"
-            className={cn(
-              "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white transition-colors",
-              speaking ? "bg-red-500" : "bg-[#2e3192] hover:bg-[#3d42a8]",
-            )}
-            onClick={() => void handleSpeak()}
-            disabled={!script.trim() || avatarLoading}
-          >
-            <Mic className="h-3.5 w-3.5" />
-            {speaking ? "Stop" : "Speak"}
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50"
-            onClick={() => setMuted((c) => !c)}
-            title={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-          </button>
+      {showCaption && (
+        <div className="max-w-[230px] rounded-2xl border border-zinc-200 bg-white/95 px-3 py-2 text-xs text-zinc-600 shadow-xl backdrop-blur">
+          <p className="font-semibold text-zinc-900">
+            {variant === "learner" ? "Narrator" : "Avatar preview"}
+          </p>
+          <p className="mt-1 line-clamp-3">
+            {script.trim() ||
+              (variant === "learner"
+                ? "Narration will play when a script is available for this slide."
+                : "Generate a TTS script to preview the talking avatar narration.")}
+          </p>
+          {variant === "admin" && (
+            <p className="mt-1 text-[11px] text-zinc-500">{statusLabel}</p>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold text-white transition-colors",
+                speaking ? "bg-red-500" : "bg-[#2e3192] hover:bg-[#3d42a8]",
+              )}
+              onClick={() => void handleSpeak()}
+              disabled={!script.trim() || avatarLoading}
+            >
+              <Mic className="h-3.5 w-3.5" />
+              {speaking ? "Stop" : "Speak"}
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50"
+              onClick={() => setMuted((c) => !c)}
+              title={muted ? "Unmute" : "Mute"}
+            >
+              {muted ? (
+                <VolumeX className="h-3.5 w-3.5" />
+              ) : (
+                <Volume2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div
+      <button
+        type="button"
+        aria-pressed={!showCaption}
+        aria-label={showCaption ? "Hide narrator text" : "Show narrator text"}
+        title={showCaption ? "Hide narrator text" : "Show narrator text"}
+        onClick={() => setShowCaption((visible) => !visible)}
         className={cn(
-          "relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-2xl ring-2 ring-[#2e3192]/20 transition-all duration-300",
+          "relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-full border-4 border-white shadow-2xl ring-2 ring-[#2e3192]/20 transition-all duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2e3192]/45",
           speaking
             ? "bg-gradient-to-br from-[#2e3192] via-[#3d42a8] to-[#f15a24]"
             : "bg-gradient-to-br from-zinc-200 via-white to-zinc-100",
@@ -413,7 +532,7 @@ export function FloatingAvatar({
           </div>
         )}
         <div className="absolute bottom-2 left-1/2 h-2.5 w-8 -translate-x-1/2 rounded-full bg-white/80" />
-      </div>
+      </button>
     </div>
   );
 }
