@@ -7,6 +7,7 @@ const PUBLIC_PREFIXES = [
   "/api/mail",
   "/submitted",
   "/api/files/course-assets",
+  "/avatars",
 ];
 
 export default auth((req) => {
@@ -23,6 +24,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|mjs)$).*)",
   ],
 };

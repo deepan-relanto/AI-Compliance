@@ -159,15 +159,25 @@ function extractDocumentContext(html: string) {
 }
 
 export async function ensureTtsSandboxCourse(sql: Sql, sourceModuleId: string) {
-  const existing = await sql`
+  const sandboxId = `tts-${sourceModuleId}`;
+
+  // Prefer the canonical sandbox id so empty duplicates don't shadow live courses.
+  const byCanonical = await sql`
     SELECT id, source_module_id, title, description, tts_enabled, avatar_enabled, script_status
     FROM tts_course_modules
-    WHERE source_module_id = ${sourceModuleId}
-    ORDER BY created_at DESC
+    WHERE id = ${sandboxId}
     LIMIT 1
   `;
-  if (existing.length > 0) {
-    return existing[0];
+  let existing = byCanonical;
+
+  if (existing.length === 0) {
+    existing = await sql`
+      SELECT id, source_module_id, title, description, tts_enabled, avatar_enabled, script_status
+      FROM tts_course_modules
+      WHERE source_module_id = ${sourceModuleId}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
   }
 
   const modules = await sql`
@@ -181,13 +191,19 @@ export async function ensureTtsSandboxCourse(sql: Sql, sourceModuleId: string) {
     throw new Error("Source course not found.");
   }
   const source = modules[0];
-  const sandboxId = `tts-${sourceModuleId}`;
+
+  // Drop non-canonical duplicates that steal source_module_id lookups.
+  await sql`
+    DELETE FROM tts_course_modules
+    WHERE source_module_id = ${sourceModuleId}
+      AND id <> ${sandboxId}
+  `;
 
   await sql`
     INSERT INTO tts_course_modules (
       id, source_module_id, title, description, slide_count, duration_minutes, content_type,
       pdf_url, feedback_required, status_default, content_hash, mcq_generation_status,
-      tts_enabled, avatar_enabled
+      tts_enabled, avatar_enabled, script_status
     )
     VALUES (
       ${sandboxId},
@@ -203,9 +219,11 @@ export async function ensureTtsSandboxCourse(sql: Sql, sourceModuleId: string) {
       ${source.content_hash ?? null},
       ${String(source.mcq_generation_status ?? "completed")},
       true,
-      true
+      true,
+      ${existing[0] ? String(existing[0].script_status ?? "not_started") : "not_started"}
     )
     ON CONFLICT (id) DO UPDATE SET
+      source_module_id = EXCLUDED.source_module_id,
       title = EXCLUDED.title,
       description = EXCLUDED.description,
       slide_count = EXCLUDED.slide_count,
@@ -710,12 +728,13 @@ export async function updateTtsScriptSegment(
 
 /** Read-only learner playback — does not create a sandbox. */
 export async function getTtsPlaybackForLearner(sql: Sql, sourceModuleId: string) {
+  const sandboxId = `tts-${sourceModuleId}`;
   const sandboxRows = await sql`
     SELECT id, source_module_id, title, tts_enabled, avatar_enabled, script_status
     FROM tts_course_modules
-    WHERE source_module_id = ${sourceModuleId}
-       OR id = ${`tts-${sourceModuleId}`}
-    ORDER BY created_at DESC
+    WHERE id = ${sandboxId}
+       OR source_module_id = ${sourceModuleId}
+    ORDER BY CASE WHEN id = ${sandboxId} THEN 0 ELSE 1 END, created_at DESC
     LIMIT 1
   `;
   if (sandboxRows.length === 0) {
