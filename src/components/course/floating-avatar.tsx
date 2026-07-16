@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Loader2, Mic, Volume2, VolumeX } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 declare global {
@@ -165,7 +165,6 @@ export function FloatingAvatar({
   className,
 }: FloatingAvatarProps) {
   const [speaking, setSpeaking] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [avatarReady, setAvatarReady] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [showCaption, setShowCaption] = useState(true);
@@ -210,7 +209,7 @@ export function FloatingAvatar({
         const headOptions: Record<string, unknown> = {
           cameraView: "head",
           avatarMood: "neutral",
-          avatarMute: muted,
+          avatarMute: false,
           lipsyncModules: [],
         };
         if (gttsApiKey) {
@@ -306,13 +305,6 @@ export function FloatingAvatar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  useEffect(() => {
-    const head = headInstanceRef.current;
-    if (head && typeof head.setMute === "function") {
-      head.setMute(muted);
-    }
-  }, [muted]);
-
   const stopSpeaking = () => {
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
@@ -332,7 +324,7 @@ export function FloatingAvatar({
     const utterance = new SpeechSynthesisUtterance(script.trim());
     utterance.rate = 0.98;
     utterance.pitch = 1;
-    utterance.volume = muted ? 0 : 1;
+    utterance.volume = 1;
     const voices = synth.getVoices();
     utterance.voice =
       voices.find(
@@ -486,18 +478,6 @@ export function FloatingAvatar({
             >
               <Mic className="h-3.5 w-3.5" />
               {speaking ? "Stop" : "Speak"}
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 transition-colors hover:bg-zinc-50"
-              onClick={() => setMuted((c) => !c)}
-              title={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? (
-                <VolumeX className="h-3.5 w-3.5" />
-              ) : (
-                <Volume2 className="h-3.5 w-3.5" />
-              )}
             </button>
           </div>
         </div>
