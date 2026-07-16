@@ -266,7 +266,11 @@ export function MCQCheckpoint({
 
   // Main-branch shrink pattern: banner + signal compress after submit so
   // question/options/explanation fit the fixed checkpoint shell.
-  const bannerHeight = submittedLayout ? "h-14" : modalMode ? "h-16" : "h-24";
+  const bannerHeight = submittedLayout
+    ? "h-14"
+    : modalMode
+      ? "h-[4.75rem]"
+      : "h-24";
   const signalWidth = submittedLayout
     ? "w-24 min-w-[6rem]"
     : modalMode
@@ -294,14 +298,36 @@ export function MCQCheckpoint({
             bannerHeight,
           )}
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2e3192]/10 text-[#2e3192]">
-            <ShieldCheck className="h-[18px] w-[18px]" strokeWidth={1.9} />
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-lg bg-[#2e3192]/10 text-[#2e3192]",
+              submittedLayout ? "h-8 w-8" : "h-10 w-10",
+            )}
+          >
+            <ShieldCheck
+              className={submittedLayout ? "h-4 w-4" : "h-5 w-5"}
+              strokeWidth={1.9}
+            />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500 sm:text-[11px]">
+            <p
+              className={cn(
+                "font-bold uppercase tracking-[0.12em] text-zinc-500",
+                submittedLayout
+                  ? "text-[10px] sm:text-[11px]"
+                  : "text-[11px] sm:text-xs",
+              )}
+            >
               Secure checkpoint
             </p>
-            <p className="mt-0.5 line-clamp-2 text-xs font-medium leading-snug text-zinc-600 sm:text-[13px]">
+            <p
+              className={cn(
+                "mt-0.5 line-clamp-2 font-medium leading-snug text-zinc-600",
+                submittedLayout
+                  ? "text-xs sm:text-[13px]"
+                  : "text-[13px] sm:text-sm",
+              )}
+            >
               {submittedLayout
                 ? "Review the explanation, then continue when ready."
                 : "Choose the best policy-aligned response."}
@@ -322,16 +348,15 @@ export function MCQCheckpoint({
     <div
       className={cn(
         "shrink-0",
-        modalMode && "min-h-0 max-h-[5.5rem] overflow-y-auto overscroll-contain",
+        modalMode && "min-h-0 max-h-[6.5rem] overflow-y-auto overscroll-contain",
       )}
     >
       <h2
         className={cn(
           "font-semibold tracking-tight text-zinc-900",
+          // Larger type from the start (pre-submit), not only after feedback.
           modalMode
-            ? submittedLayout
-              ? "text-lg leading-snug"
-              : "text-base leading-snug"
+            ? "text-lg leading-snug"
             : submittedLayout
               ? "text-base leading-snug"
               : "text-lg leading-snug",
@@ -390,7 +415,7 @@ export function MCQCheckpoint({
                 modalMode
                   ? submittedLayout
                     ? "px-3 py-2 text-base leading-snug"
-                    : "px-3.5 py-2.5 text-sm leading-snug"
+                    : "px-3.5 py-2.5 text-base leading-snug"
                   : submittedLayout
                     ? "px-3.5 py-2.5 text-sm"
                     : "px-4 py-3.5 text-base",
