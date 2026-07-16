@@ -330,7 +330,7 @@ export function MCQCheckpoint({
           "font-semibold tracking-tight text-zinc-900",
           modalMode
             ? submittedLayout
-              ? "text-[15px] leading-snug"
+              ? "text-base leading-snug"
               : "text-base leading-snug"
             : submittedLayout
               ? "text-base leading-snug"
@@ -389,7 +389,7 @@ export function MCQCheckpoint({
                 "relative flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border text-left transition-colors duration-100",
                 modalMode
                   ? submittedLayout
-                    ? "px-3 py-2 text-[13.5px] leading-snug"
+                    ? "px-3 py-2 text-sm leading-snug"
                     : "px-3.5 py-2.5 text-sm leading-snug"
                   : submittedLayout
                     ? "px-3.5 py-2.5 text-sm"

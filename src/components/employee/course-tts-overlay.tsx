@@ -153,6 +153,7 @@ export function CourseTtsOverlay({
       ? activeSegment?.scriptText || activeSegment?.rawText
       : activeSegment?.scriptText) ?? "";
 
+  // Keep the avatar visible whenever enabled, even if this beat has no script yet.
   if (!showAvatar) return null;
 
   return (
