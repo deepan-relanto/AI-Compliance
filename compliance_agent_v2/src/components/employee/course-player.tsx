@@ -12,6 +12,7 @@ import { EncouragementRetakeNotice } from "@/components/employee/encouragement-r
 import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import { CourseContentOverview } from "@/components/employee/course-content-overview";
+import { CourseTtsOverlay } from "@/components/employee/course-tts-overlay";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -1336,14 +1337,26 @@ export function CoursePlayer({
                   )}
                 </div>
               ) : phase === "content" && currentContentStep ? (
-                <CourseStepContent
-                  step={currentContentStep}
-                  pdfPage={pdfPage}
-                  pdfPages={pdfPages}
-                  moduleTitle={module.title}
-                  onPdfPages={handlePdfPagesLoaded}
-                  htmlIframeRef={htmlIframeRef}
-                />
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                  <CourseStepContent
+                    step={currentContentStep}
+                    pdfPage={pdfPage}
+                    pdfPages={pdfPages}
+                    moduleTitle={module.title}
+                    onPdfPages={handlePdfPagesLoaded}
+                    htmlIframeRef={htmlIframeRef}
+                  />
+                  {(currentContentStep.stepType === "pdf" ||
+                    currentContentStep.stepType === "scenarios" ||
+                    currentContentStep.stepType === "mindmap") && (
+                    <CourseTtsOverlay
+                      moduleId={module.id}
+                      stepType={currentContentStep.stepType}
+                      iframeRef={htmlIframeRef}
+                      embedSlideIndex={htmlEmbedState?.slideIndex}
+                    />
+                  )}
+                </div>
               ) : phase === "quiz" && !mcqOpen ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
                   <div className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/15 via-zinc-900 to-[#f15a24]/10 px-5 py-4 text-center">

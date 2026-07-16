@@ -61,6 +61,32 @@ const envVars = [
   { key: "NVIDIA_API_KEY", value: env.NVIDIA_API_KEY },
   { key: "NVIDIA_MODEL", value: env.NVIDIA_MODEL || "meta/llama-3.3-70b-instruct" },
   { key: "MAIL_FROM_ADDRESS", value: env.MAIL_FROM_ADDRESS },
+  {
+    key: "NEXT_PUBLIC_TALKINGHEAD_MODEL_URL",
+    value: "/avatars/julia.glb",
+  },
+  {
+    key: "NEXT_PUBLIC_TALKINGHEAD_CDN_URL",
+    value: env.NEXT_PUBLIC_TALKINGHEAD_CDN_URL || "https://esm.sh/@met4citizen/talkinghead?bundle",
+  },
+  {
+    key: "NEXT_PUBLIC_HEADTTS_CDN_URL",
+    value: env.NEXT_PUBLIC_HEADTTS_CDN_URL,
+  },
+  {
+    key: "NEXT_PUBLIC_HEADTTS_WORKER_URL",
+    value: env.NEXT_PUBLIC_HEADTTS_WORKER_URL,
+  },
+  {
+    key: "NEXT_PUBLIC_HEADTTS_DICTIONARY_URL",
+    value: env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL,
+  },
+  {
+    key: "NEXT_PUBLIC_HEADTTS_VOICE",
+    value: env.NEXT_PUBLIC_HEADTTS_VOICE || "af_bella",
+  },
+  { key: "GEMINI_API_KEY", value: env.GEMINI_API_KEY },
+  { key: "GEMINI_MODEL", value: env.GEMINI_MODEL || "gemini-2.5-flash" },
 ].filter((e) => e.value);
 
 await api("PUT", `/services/${SERVICE_ID}/env-vars`, envVars);
