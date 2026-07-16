@@ -1,6 +1,7 @@
 "use client";
 
 import { InviteResultBanner } from "@/components/admin/invite-result-banner";
+import { CourseTtsPanel } from "@/components/admin/course-tts-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,12 +30,13 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-type WizardStep = "info" | CourseStepType | "publish" | "done";
+type WizardStep = "info" | CourseStepType | "tts" | "publish" | "done";
 type MediaKind = "lesson" | "scenarios" | "video" | "mindmap" | "infographic";
 
 const WIZARD_STEPS: WizardStep[] = [
   "info",
   ...COURSE_STEP_ORDER,
+  "tts",
   "publish",
 ];
 
@@ -87,6 +89,11 @@ export function CourseBuilderPanel() {
 
   const markComplete = useCallback((s: WizardStep) => {
     setCompletedSteps((prev) => new Set([...prev, s]));
+  }, []);
+
+  const goToNextWizardStep = useCallback((current: WizardStep) => {
+    const index = WIZARD_STEPS.indexOf(current);
+    setStep(WIZARD_STEPS[index + 1] ?? "publish");
   }, []);
 
   const saveStepConfig = async (
@@ -178,7 +185,7 @@ export function CourseBuilderPanel() {
         setHtmlPreviewUrl(null);
       }
       const nextIdx = COURSE_STEP_ORDER.indexOf(stepType) + 1;
-      setStep(COURSE_STEP_ORDER[nextIdx] ?? "publish");
+      setStep(COURSE_STEP_ORDER[nextIdx] ?? "tts");
       setSuccessMsg(`${COURSE_STEP_LABELS[stepType]} saved.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
@@ -212,7 +219,7 @@ export function CourseBuilderPanel() {
       setQuestionCount(data.imported as number);
       markComplete("quiz");
       setUploadFile(null);
-      setStep("publish");
+      setStep("tts");
       setSuccessMsg(`Imported ${data.imported} quiz question(s). Assign batches to publish.`);
     } catch {
       setError("Invalid JSON file or server error.");
@@ -220,6 +227,27 @@ export function CourseBuilderPanel() {
       setLoading(false);
     }
   };
+
+  const handleSkipStep = useCallback(
+    (skipStep: WizardStep) => {
+      setUploadFile(null);
+      if (htmlPreviewUrl) {
+        URL.revokeObjectURL(htmlPreviewUrl);
+        setHtmlPreviewUrl(null);
+      }
+      markComplete(skipStep);
+      goToNextWizardStep(skipStep);
+      setError(null);
+      const skippedLabel =
+        skipStep === "tts"
+          ? "TTS step"
+          : skipStep === "publish" || skipStep === "done" || skipStep === "info"
+            ? skipStep
+            : COURSE_STEP_LABELS[skipStep];
+      setSuccessMsg(`${skippedLabel} skipped.`);
+    },
+    [goToNextWizardStep, htmlPreviewUrl, markComplete],
+  );
 
   const toggleBatch = (batchId: string) => {
     setSelectedBatchIds((prev) =>
@@ -293,10 +321,12 @@ export function CourseBuilderPanel() {
     [step, htmlPreviewUrl],
   );
 
-  const currentContentStep = step !== "info" && step !== "publish" && step !== "done" ? step : null;
+  const currentContentStep =
+    step !== "info" && step !== "tts" && step !== "publish" && step !== "done" ? step : null;
 
   const stepLabel = useMemo(() => {
     if (step === "info") return "Course details";
+    if (step === "tts") return "TTS script";
     if (step === "publish") return "Publish to batches";
     if (step === "done") return "Complete";
     return COURSE_STEP_LABELS[step];
@@ -329,9 +359,11 @@ export function CourseBuilderPanel() {
             const label =
               s === "info"
                 ? "Details"
-                : s === "publish"
-                  ? "Publish"
-                  : COURSE_STEP_LABELS[s as CourseStepType]?.split(" ")[0] ?? s;
+                : s === "tts"
+                  ? "TTS"
+                  : s === "publish"
+                    ? "Publish"
+                    : COURSE_STEP_LABELS[s as CourseStepType]?.split(" ")[0] ?? s;
             return (
               <button
                 key={s}
@@ -527,6 +559,15 @@ export function CourseBuilderPanel() {
                     )}
                     Upload &amp; continue
                   </Button>
+                  {currentContentStep !== "pdf" && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleSkipStep(currentContentStep)}
+                      disabled={loading}
+                    >
+                      Skip this step
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -558,6 +599,40 @@ export function CourseBuilderPanel() {
                   )}
                   Import quiz &amp; continue
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleSkipStep("quiz")}
+                  disabled={loading}
+                >
+                  Skip this step
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === "tts" && moduleId && (
+            <>
+              <CourseTtsPanel
+                moduleId={moduleId}
+                moduleTitle={title.trim() || "Course"}
+                onContinue={() => {
+                  markComplete("tts");
+                  setStep("publish");
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    handleSkipStep("tts");
+                  }}
+                >
+                  Skip to publish
+                </Button>
               </div>
             </>
           )}
@@ -565,8 +640,9 @@ export function CourseBuilderPanel() {
           {step === "publish" && (
             <>
               <p className="text-sm text-zinc-600">
-                All five bundle steps are ready. Assign this course to one or more batches to make
-                it visible to learners.
+                The content bundle is ready. Review batch assignment below to make this course
+                visible to learners. TTS scripts remain in Neon sandbox tables linked to this
+                course.
               </p>
               <div className="space-y-2">
                 {batches.map((batch) => {
@@ -592,7 +668,7 @@ export function CourseBuilderPanel() {
                 })}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
+                <Button variant="ghost" size="sm" onClick={() => setStep("tts")}>
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>

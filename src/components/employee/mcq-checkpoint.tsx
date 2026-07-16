@@ -77,7 +77,7 @@ function ExplanationLines({ explanation }: { explanation: string }) {
       {lines.map((line) => (
         <li
           key={line}
-          className="relative pl-3.5 text-[13px] font-medium leading-snug text-inherit before:absolute before:left-0 before:top-[0.45rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-55"
+          className="relative pl-3.5 text-sm font-medium leading-snug text-inherit before:absolute before:left-0 before:top-[0.5rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-55"
         >
           {line}
         </li>
@@ -330,7 +330,7 @@ export function MCQCheckpoint({
           "font-semibold tracking-tight text-zinc-900",
           modalMode
             ? submittedLayout
-              ? "text-[0.9375rem] leading-snug"
+              ? "text-[15px] leading-snug"
               : "text-base leading-snug"
             : submittedLayout
               ? "text-base leading-snug"
@@ -389,7 +389,7 @@ export function MCQCheckpoint({
                 "relative flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg border text-left transition-colors duration-100",
                 modalMode
                   ? submittedLayout
-                    ? "px-3 py-2 text-[0.8125rem] leading-snug"
+                    ? "px-3 py-2 text-[13.5px] leading-snug"
                     : "px-3.5 py-2.5 text-sm leading-snug"
                   : submittedLayout
                     ? "px-3.5 py-2.5 text-sm"
@@ -485,7 +485,7 @@ export function MCQCheckpoint({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13.5px] font-semibold tracking-tight">
+            <p className="text-sm font-semibold tracking-tight">
               {!feedbackSettled
                 ? "Answer recorded"
                 : wasCorrect
@@ -514,7 +514,7 @@ export function MCQCheckpoint({
           {answerExplanation ? (
             <ExplanationLines explanation={answerExplanation} />
           ) : (
-            <p className="text-[13px] font-medium leading-snug">
+            <p className="text-sm font-medium leading-snug">
               Your response has been recorded for this checkpoint.
             </p>
           )}
