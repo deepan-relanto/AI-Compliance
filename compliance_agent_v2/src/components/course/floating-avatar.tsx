@@ -52,12 +52,12 @@ type HeadTtsModule = {
 };
 
 /**
- * Kokoro `af_nicole` is whisper-soft but ~116 WPM (feels sluggish).
- * `af_heart` is warm/friendly and natural for training narration.
- * Override with NEXT_PUBLIC_HEADTTS_VOICE.
+ * Kokoro `af_nicole` is whispery/slow; `af_heart` is warm but can feel flat.
+ * `af_bella` is the most pleasant feminine narration voice in community tests.
+ * Pair with a slightly faster speed so it does not feel robotic/dragging.
  */
-const DEFAULT_HEADTTS_VOICE = "af_heart";
-const DEFAULT_HEADTTS_SPEED = 1.08;
+const DEFAULT_HEADTTS_VOICE = "af_bella";
+const DEFAULT_HEADTTS_SPEED = 1.2;
 
 /** Module-level caches so remounts / slide changes do not re-download CDN + GLB. */
 let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
@@ -68,6 +68,8 @@ const warmedModelUrls = new Set<string>();
 let sharedHeadTts: HeadTtsInstance | null = null;
 let sharedHeadTtsVoice: string | null = null;
 let sharedHeadTtsPromise: Promise<HeadTtsInstance | null> | null = null;
+let sharedAudioCtx: AudioContext | null = null;
+let audioUnlocked = false;
 
 /** Live TalkingHead for video-step hard stop only. */
 let activeHeadInstance: TalkingHeadInstance | null = null;
@@ -83,6 +85,42 @@ export function haltAllAvatarAudio(): void {
   }
   try {
     activeHeadInstance?.stopSpeaking?.();
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Call from a real user gesture (Begin / Accept rules) so first-slide autoplay
+ * is allowed by the browser. Safe to call multiple times.
+ */
+export function unlockAvatarAudio(): void {
+  if (typeof window === "undefined") return;
+  audioUnlocked = true;
+  try {
+    getSpeechEngine()?.getVoices();
+  } catch {
+    /* ignore */
+  }
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!sharedAudioCtx) sharedAudioCtx = new AudioCtx();
+    if (sharedAudioCtx.state === "suspended") {
+      void sharedAudioCtx.resume();
+    }
+    // Tiny silent buffer primes playback pipelines that block without a gesture.
+    const buffer = sharedAudioCtx.createBuffer(1, 1, sharedAudioCtx.sampleRate);
+    const source = sharedAudioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(sharedAudioCtx.destination);
+    source.start(0);
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.dispatchEvent(new Event("avatar-audio-unlocked"));
   } catch {
     /* ignore */
   }
@@ -179,6 +217,11 @@ export function warmAvatarAssets(options?: {
 async function ensureSharedHeadTts(headTtsCdnUrl: string): Promise<HeadTtsInstance | null> {
   const voice = resolveVoice();
   if (sharedHeadTts && sharedHeadTtsVoice === voice) return sharedHeadTts;
+  // Voice changed (e.g. heart ? bella) ? drop the stale shared instance.
+  if (sharedHeadTtsVoice && sharedHeadTtsVoice !== voice) {
+    sharedHeadTts = null;
+    sharedHeadTtsPromise = null;
+  }
   if (sharedHeadTtsPromise) return sharedHeadTtsPromise;
 
   sharedHeadTtsPromise = (async (): Promise<HeadTtsInstance | null> => {
@@ -506,9 +549,19 @@ export function FloatingAvatar({
     speakEpoch += 1;
     const epoch = speakEpoch;
 
+    // Resume audio unlocked during Begin / Accept so autoplay is not blocked.
+    unlockAvatarAudio();
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     getSpeechEngine()?.cancel();
+
+    if (head?.audioCtx && head.audioCtx.state === "suspended") {
+      try {
+        await head.audioCtx.resume();
+      } catch {
+        /* ignore */
+      }
+    }
 
     if (
       ttsMode === "headtts" &&
@@ -578,10 +631,11 @@ export function FloatingAvatar({
     // Wait until a real TTS path is ready ? avoid burning the first slide on "none".
     if (avatarLoading || !avatarReady || ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
-    lastAutoScriptRef.current = script;
     const timer = window.setTimeout(() => {
+      // Mark played only when we actually kick speak (survives Strict Mode remount).
+      lastAutoScriptRef.current = script;
       void handleSpeak({ force: true });
-    }, 30);
+    }, 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);

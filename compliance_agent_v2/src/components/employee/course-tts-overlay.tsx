@@ -66,11 +66,14 @@ export function CourseTtsOverlay({
   stepType,
   iframeRef,
   embedSlideIndex,
+  autoPlayEnabled = true,
 }: {
   moduleId: string;
   stepType: string | undefined;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   embedSlideIndex?: number;
+  /** When false, avatar still loads but does not narrate (e.g. content overview). */
+  autoPlayEnabled?: boolean;
 }) {
   const [payload, setPayload] = useState<PlaybackPayload | null>(null);
   const [beat, setBeat] = useState({ slideIndex: 0, fragmentIndex: 0 });
@@ -185,7 +188,9 @@ export function CourseTtsOverlay({
     <FloatingAvatar
       script={script}
       enabled={showAvatar}
-      autoPlay={payload.settings.ttsEnabled && Boolean(script.trim())}
+      autoPlay={
+        autoPlayEnabled && payload.settings.ttsEnabled && Boolean(script.trim())
+      }
       variant="learner"
     />
   );
