@@ -652,6 +652,12 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       window.location.href = "/dashboard";
       return;
     }
+
+    // Require every question recorded client-side before finalize.
+    if (totalQuestions > 0 && answeredCount < totalQuestions) {
+      return;
+    }
+
     if (!user?.username) {
       setShowAcknowledgement(true);
       return;
@@ -688,6 +694,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     reviewOnlyMode,
     user?.username,
     module.id,
+    totalQuestions,
+    answeredCount,
     unlockBadge,
     resetAcknowledgementForm,
     scheduleBadgeFlush,

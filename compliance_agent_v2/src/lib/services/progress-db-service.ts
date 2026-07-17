@@ -342,8 +342,8 @@ export async function startTrainingSessionDb(
         ELSE assessment_progress.current_slide
       END,
       status = CASE
-        WHEN assessment_progress.status IN ('completed', 'permanently_failed') THEN assessment_progress.status
-        WHEN assessment_progress.status = 'failed' AND assessment_progress.score_percent IS NOT NULL THEN 'in_progress'
+        WHEN assessment_progress.status IN ('completed', 'permanently_failed', 'failed')
+          THEN assessment_progress.status
         WHEN assessment_progress.status = 'not_started' THEN 'in_progress'
         ELSE assessment_progress.status
       END,
@@ -484,7 +484,7 @@ export async function validateAndRecordMcqAnswerDb(
   if (
     progressStatus === "completed" ||
     progressStatus === "permanently_failed" ||
-    (progressStatus === "failed" && scorePercent == null)
+    progressStatus === "failed"
   ) {
     return {
       found: true,
@@ -516,33 +516,50 @@ export async function validateAndRecordMcqAnswerDb(
         : Object.keys(answers).length;
   const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
 
+  const nextStatus =
+    progressStatus === "not_started" ? "in_progress" : progressStatus;
+
   setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
-    status:
-      progressStatus === "not_started" || progressStatus === "failed"
-        ? "in_progress"
-        : progressStatus,
+    status: nextStatus,
     mcqAnswers: answers,
     mcqCorrect,
     mcqTotal,
     scorePercent,
   });
 
-  sql`
-    UPDATE assessment_progress
-    SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
-        mcq_correct = ${mcqCorrect},
-        mcq_total = ${mcqTotal},
-        status = CASE
-          WHEN status IN ('not_started', 'failed') THEN 'in_progress'
-          ELSE status
-        END,
-        last_accessed_at = NOW(),
-        updated_at = NOW()
-    WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
-  `.catch((err) => {
+  try {
+    const updated = await sql`
+      UPDATE assessment_progress
+      SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
+          mcq_correct = ${mcqCorrect},
+          mcq_total = ${mcqTotal},
+          status = CASE
+            WHEN status = 'not_started' THEN 'in_progress'
+            ELSE status
+          END,
+          last_accessed_at = NOW(),
+          updated_at = NOW()
+      WHERE user_email = ${params.userEmail}
+        AND module_id = ${params.moduleId}
+        AND status NOT IN ('failed', 'permanently_failed', 'completed')
+      RETURNING status
+    `;
+    if (!updated[0]) {
+      invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+      return {
+        found: true,
+        correct,
+        correctOptionId,
+        mcqCorrect: mcqCorrectStored,
+        mcqTotal: mcqTotalStored,
+        alreadyAnswered: false,
+      };
+    }
+  } catch (err) {
     console.error(err);
     invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
-  });
+    throw err;
+  }
 
   return {
     found: true,
@@ -567,15 +584,6 @@ export async function ensureProgressRow(
 ): Promise<ProgressRow> {
   const existing = await getProgressRow(sql, params.userEmail, params.moduleId);
   if (existing) {
-    if (existing.status === "failed" && existing.score_percent != null) {
-      await sql`
-        UPDATE assessment_progress
-        SET status = 'in_progress', updated_at = NOW()
-        WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
-      `;
-      const migrated = await getProgressRow(sql, params.userEmail, params.moduleId);
-      if (migrated) return migrated;
-    }
     if (
       params.assignedMcqCount &&
       params.assignedMcqCount > 0 &&
@@ -663,10 +671,11 @@ export async function recordMcqAnswerDb(
   const row = await getProgressRow(sql, params.userEmail, params.moduleId);
   if (!row) throw new Error("Progress not found.");
 
-  if (row.status === "completed" || row.status === "permanently_failed") {
-    return { mcqCorrect: row.mcq_correct, mcqTotal: row.mcq_total };
-  }
-  if (row.status === "failed" && row.score_percent == null) {
+  if (
+    row.status === "completed" ||
+    row.status === "permanently_failed" ||
+    row.status === "failed"
+  ) {
     return { mcqCorrect: row.mcq_correct, mcqTotal: row.mcq_total };
   }
 
@@ -683,19 +692,26 @@ export async function recordMcqAnswerDb(
     row.mcq_total > 0 ? row.mcq_total : await getModuleMcqCount(sql, params.moduleId);
   const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
 
-  await sql`
+  const updated = await sql`
     UPDATE assessment_progress
     SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
         mcq_correct = ${mcqCorrect},
         mcq_total = ${mcqTotal},
         status = CASE
-          WHEN status IN ('not_started', 'failed') THEN 'in_progress'
+          WHEN status = 'not_started' THEN 'in_progress'
           ELSE status
         END,
         last_accessed_at = NOW(),
         updated_at = NOW()
-    WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+    WHERE user_email = ${params.userEmail}
+      AND module_id = ${params.moduleId}
+      AND status NOT IN ('failed', 'permanently_failed', 'completed')
+    RETURNING mcq_correct, mcq_total
   `;
+
+  if (!updated[0]) {
+    return { mcqCorrect: row.mcq_correct, mcqTotal: row.mcq_total };
+  }
 
   return { mcqCorrect, mcqTotal };
 }
@@ -716,7 +732,21 @@ export async function finalizeAssessmentDb(
     return { scorePercent: 0, passed: false, canRetake: true, mcqCorrect: 0, mcqTotal: 0 };
   }
 
+  if (
+    row.status === "completed" ||
+    row.status === "permanently_failed" ||
+    row.status === "failed"
+  ) {
+    throw new Error("Assessment cannot be finalized in its current state.");
+  }
+
   const answerCount = countMcqAnswers(row.mcq_answers);
+  if (row.mcq_total > 0 && answerCount < row.mcq_total) {
+    throw new Error(
+      `Cannot finalize: answered ${answerCount} of ${row.mcq_total} questions.`,
+    );
+  }
+
   const { mcqCorrect, mcqTotal, scorePercent } = computeScoreFromAnswers(
     row.mcq_answers,
     row.mcq_total,
@@ -1049,37 +1079,86 @@ export async function failAssessmentAbandonmentDb(
   return { ok: true, status: newStatus };
 }
 
-/** Persist proctor warning state from the client session to Neon. */
+/**
+ * Persist proctor warning events. Server owns count/status:
+ * - never decreases warning_count
+ * - never clears failed/completed from the client
+ * - fails the attempt at >= 3 warnings
+ */
 export async function syncProctorWarningDb(
   sql: Sql,
   params: {
     userEmail: string;
     moduleId: string;
-    warningCount: number;
+    reportedWarningCount?: number;
     warningHistory: { reason: string; timestamp: number }[];
-    status: string;
-    failedReason?: string | null;
+    reportedReason?: string | null;
   },
-): Promise<void> {
-  await sql`
+): Promise<{ warningCount: number; status: string }> {
+  const reported =
+    typeof params.reportedWarningCount === "number" &&
+    Number.isFinite(params.reportedWarningCount)
+      ? Math.max(0, Math.floor(params.reportedWarningCount))
+      : null;
+  const reason =
+    (params.reportedReason ?? "").trim() ||
+    "Proctoring violation limit reached";
+  const historyJson = JSON.stringify(
+    Array.isArray(params.warningHistory) ? params.warningHistory : [],
+  );
+
+  const rows = await sql`
     UPDATE assessment_progress
-    SET warning_count = ${params.warningCount},
-        warning_history = ${JSON.stringify(params.warningHistory)}::jsonb,
-        status = ${params.status},
-        failed_reason = ${params.failedReason ?? null},
+    SET warning_count = GREATEST(
+          warning_count,
+          COALESCE(${reported}, warning_count)
+        ),
+        warning_history = CASE
+          WHEN jsonb_array_length(COALESCE(warning_history, '[]'::jsonb))
+            >= jsonb_array_length(${historyJson}::jsonb)
+            THEN warning_history
+          ELSE ${historyJson}::jsonb
+        END,
+        status = CASE
+          WHEN status IN ('completed', 'permanently_failed', 'failed') THEN status
+          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+            THEN 'failed'
+          ELSE status
+        END,
+        failed_reason = CASE
+          WHEN status IN ('completed', 'permanently_failed') THEN failed_reason
+          WHEN status = 'failed' THEN COALESCE(failed_reason, ${reason})
+          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+            THEN ${reason}
+          ELSE failed_reason
+        END,
         last_failure_at = CASE
-          WHEN ${params.status} IN ('failed', 'permanently_failed') THEN NOW()
+          WHEN status IN ('completed', 'permanently_failed', 'failed') THEN last_failure_at
+          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+            THEN NOW()
           ELSE last_failure_at
         END,
         last_failure_reason = CASE
-          WHEN ${params.status} IN ('failed', 'permanently_failed')
-            THEN ${params.failedReason ?? null}
+          WHEN status IN ('completed', 'permanently_failed') THEN last_failure_reason
+          WHEN status = 'failed' THEN COALESCE(last_failure_reason, ${reason})
+          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+            THEN ${reason}
           ELSE last_failure_reason
         END,
         last_accessed_at = NOW(),
         updated_at = NOW()
     WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+    RETURNING warning_count, status
   `;
+
+  if (!rows[0]) {
+    return { warningCount: reported ?? 0, status: "not_started" };
+  }
+
+  return {
+    warningCount: Number(rows[0].warning_count ?? 0),
+    status: String(rows[0].status ?? "in_progress"),
+  };
 }
 
 export async function listProgressForBatch(sql: Sql, batchId: string) {

@@ -707,11 +707,10 @@ export function CoursePlayer({
   }, [autoStartSession, user?.username, module.id]);
 
   const handleFinishAttempt = useCallback(async () => {
-    // Block finalizing until every prior question is scored. Allow the last
-    // answer to still be in-flight (size === length - 1 on the final index).
+    // Require every question to be recorded client-side before finalize.
     const answered = answeredQuestionIdsRef.current.size;
     const total = moduleMcqs.length;
-    if (total > 0 && answered < total - 1) {
+    if (total > 0 && answered < total) {
       return;
     }
 

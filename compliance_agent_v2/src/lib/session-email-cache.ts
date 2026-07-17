@@ -1,32 +1,17 @@
 /**
- * Short TTL cache for NextAuth session email.
- * Cuts auth() cost during rapid MCQ submits in the same process.
+ * Session email must come from auth() per request.
+ * A process-global cache was removed because concurrent users could inherit
+ * another user's identity (role mix-ups / wrong progress writes).
  */
 
-type CachedSession = {
-  email: string;
-  expiresAt: number;
-};
-
-const TTL_MS = 45_000;
-let cached: CachedSession | null = null;
-
 export function getCachedSessionEmail(): string | null {
-  if (!cached) return null;
-  if (Date.now() > cached.expiresAt) {
-    cached = null;
-    return null;
-  }
-  return cached.email;
+  return null;
 }
 
-export function setCachedSessionEmail(email: string): void {
-  cached = {
-    email: email.trim().toLowerCase(),
-    expiresAt: Date.now() + TTL_MS,
-  };
+export function setCachedSessionEmail(_email: string): void {
+  /* intentionally no-op */
 }
 
 export function clearCachedSessionEmail(): void {
-  cached = null;
+  /* intentionally no-op */
 }

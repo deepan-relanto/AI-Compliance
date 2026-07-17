@@ -9,11 +9,11 @@ import {
 } from "@/lib/review-api";
 import type { AssessmentProgress, ReviewRequest, AuditLogEntry } from "@/lib/types";
 import {
-  ShieldAlert,
   Users,
   AlertOctagon,
   Eye,
   ShieldCheck,
+  ShieldAlert,
   X,
   FileClock,
   CheckCircle,
@@ -28,7 +28,6 @@ import {
 import { useState } from "react";
 import useSWR from "swr";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
-import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 
 type TabType = "violations" | "reviews" | "audit";
@@ -121,9 +120,6 @@ export function MonitoringPanel({
   approveReview = approveReviewRequestApi,
   rejectReview = rejectReviewRequestApi,
 }: MonitoringPanelProps = {}) {
-  const adminUser = useAuthStore((s) => s.user);
-  const adminName = adminUser?.username || "Admin";
-
   // Summary KPI cards (lightweight — loads independently)
   // Pagination and Tabs
   const [page, setPage] = useState(1);
@@ -232,7 +228,7 @@ export function MonitoringPanel({
   const handleApprove = async (reqId: string) => {
     setActionError("");
     try {
-      await approveReview(reqId, adminName);
+      await approveReview(reqId);
       await refreshData();
       setSelectedReview(null);
     } catch (err: unknown) {
@@ -250,7 +246,7 @@ export function MonitoringPanel({
     }
     setActionError("");
     try {
-      await rejectReview(reqId, adminName, adminComment.trim());
+      await rejectReview(reqId, adminComment.trim());
       await refreshData();
       setSelectedReview(null);
       setAdminComment("");

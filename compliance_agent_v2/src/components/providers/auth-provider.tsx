@@ -15,9 +15,15 @@ function SessionSync({ children }: { children: React.ReactNode }) {
 
     if (status === "authenticated" && session?.user?.email) {
       const u = session.user;
+      const role = u.role as AuthUser["role"] | undefined;
+      // Never invent a role — missing claim caused admin↔dashboard bounce loops.
+      if (!role) {
+        setHydrated();
+        return;
+      }
       const authUser: AuthUser = {
         username: u.email!,
-        role: (u.role as AuthUser["role"]) ?? "user",
+        role,
         batchId: u.batchId ?? "",
         displayName: u.displayName ?? u.name ?? u.email!.split("@")[0],
       };
@@ -33,7 +39,7 @@ function SessionSync({ children }: { children: React.ReactNode }) {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider refetchOnWindowFocus>
+    <SessionProvider refetchOnWindowFocus={false}>
       <SessionSync>{children}</SessionSync>
     </SessionProvider>
   );

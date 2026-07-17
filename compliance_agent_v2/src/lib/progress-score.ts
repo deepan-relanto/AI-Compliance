@@ -11,14 +11,12 @@ export function computeScoreFromAnswers(
   const answeredCount = Object.keys(answers).length;
   let mcqCorrect = Object.values(answers).filter(Boolean).length;
 
-  let mcqTotal =
+  // Always use the assigned question count as the denominator when known.
+  // Shrinking to answeredCount inflated scores when finalize raced the last write.
+  const mcqTotal =
     assignedTotal > 0
       ? Math.max(assignedTotal, answeredCount)
       : answeredCount;
-
-  if (answeredCount > 0 && mcqTotal > answeredCount) {
-    mcqTotal = answeredCount;
-  }
 
   if (mcqCorrect > mcqTotal) mcqCorrect = mcqTotal;
 

@@ -30,7 +30,8 @@ export function LoginRedirect() {
       return;
     }
 
-    const role = session.user.role ?? "user";
+    const role = session.user.role;
+    if (!role) return;
     router.replace(resolvePostLoginPath(callbackUrl, role));
   }, [session, status, signedOut, callbackUrl, forEmail, isTraining, router]);
 
