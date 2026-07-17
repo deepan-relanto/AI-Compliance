@@ -87,12 +87,12 @@ export default function DashboardPage() {
       if (
         user?.username !== profile.email ||
         user?.batchId !== profile.batchId ||
-        user?.displayName !== profile.displayName ||
-        user?.role !== profile.role
+        user?.displayName !== profile.displayName
       ) {
         setUser({
           username: profile.email,
-          role: profile.role,
+          // Role comes only from NextAuth — never from learner profile API.
+          role: user?.role ?? "user",
           batchId: profile.batchId,
           displayName: profile.displayName,
         });

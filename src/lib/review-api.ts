@@ -31,14 +31,11 @@ export async function submitReviewRequestApi(input: {
   return data.request as ReviewRequest;
 }
 
-export async function approveReviewRequestApi(
-  requestId: string,
-  adminUsername: string,
-): Promise<void> {
+export async function approveReviewRequestApi(requestId: string): Promise<void> {
   const res = await fetch(`/api/reviews/${encodeURIComponent(requestId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "approve", adminUsername }),
+    body: JSON.stringify({ action: "approve" }),
   });
   const data = await res.json();
   if (!res.ok || !data.ok) {
@@ -48,13 +45,12 @@ export async function approveReviewRequestApi(
 
 export async function rejectReviewRequestApi(
   requestId: string,
-  adminUsername: string,
   comment: string,
 ): Promise<void> {
   const res = await fetch(`/api/reviews/${encodeURIComponent(requestId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "reject", adminUsername, comment }),
+    body: JSON.stringify({ action: "reject", comment }),
   });
   const data = await res.json();
   if (!res.ok || !data.ok) {
@@ -95,12 +91,11 @@ export async function submitCourseReviewRequestApi(input: {
 
 export async function approveCourseReviewRequestApi(
   requestId: string,
-  adminUsername: string,
 ): Promise<void> {
   const res = await fetch(`/api/course-reviews/${encodeURIComponent(requestId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "approve", adminUsername }),
+    body: JSON.stringify({ action: "approve" }),
   });
   const data = await res.json();
   if (!res.ok || !data.ok) {
@@ -110,13 +105,12 @@ export async function approveCourseReviewRequestApi(
 
 export async function rejectCourseReviewRequestApi(
   requestId: string,
-  adminUsername: string,
   comment: string,
 ): Promise<void> {
   const res = await fetch(`/api/course-reviews/${encodeURIComponent(requestId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "reject", adminUsername, comment }),
+    body: JSON.stringify({ action: "reject", comment }),
   });
   const data = await res.json();
   if (!res.ok || !data.ok) {

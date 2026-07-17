@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import {
   approveReviewRequestDb,
@@ -7,19 +8,33 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** PATCH — approve or reject a review request */
+function adminIdentity(
+  session: NonNullable<Awaited<ReturnType<typeof requireAdminSession>>["session"]>,
+): string {
+  return (
+    session.user?.email?.trim().toLowerCase() ||
+    session.user?.name?.trim() ||
+    "admin"
+  );
+}
+
+/** PATCH — approve or reject a course review request (admin only). */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> },
 ) {
   try {
+    const { session, error } = await requireAdminSession();
+    if (error || !session) return error!;
+
     const { requestId } = await params;
     const body = await req.json();
-    const { action, adminUsername, comment } = body;
+    const { action, comment } = body;
+    const adminUsername = adminIdentity(session);
 
-    if (!requestId || !action || !adminUsername) {
+    if (!requestId || !action) {
       return NextResponse.json(
-        { ok: false, error: "requestId, action, and adminUsername are required." },
+        { ok: false, error: "requestId and action are required." },
         { status: 400 },
       );
     }
