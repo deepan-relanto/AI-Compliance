@@ -51,12 +51,11 @@ type HeadTtsModule = {
   HeadTTS?: new (options: Record<string, unknown>) => HeadTtsInstance;
 };
 
-/**
- * Kokoro neural voice via HeadTTS. `af_bella` is the pleasant feminine voice
- * used for learner narration. Do not fall back to browser SpeechSynthesis.
- */
+/** Feminine Kokoro voice; preferred path. Browser TTS is last-resort only. */
 const DEFAULT_HEADTTS_VOICE = "af_bella";
 const DEFAULT_HEADTTS_SPEED = 1.1;
+/** If Kokoro has not connected by then, speak with browser so the session is never silent. */
+const HEADTTS_READY_TIMEOUT_MS = 12000;
 
 /** Module-level caches so remounts / slide changes do not re-download CDN + GLB. */
 let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
@@ -71,10 +70,33 @@ let sharedAudioCtx: AudioContext | null = null;
 /** Live TalkingHead for video-step hard stop only. */
 let activeHeadInstance: TalkingHeadInstance | null = null;
 let speakEpoch = 0;
+let activeDirectSources: AudioBufferSourceNode[] = [];
+
+function getSpeechEngine(): SpeechSynthesis | null {
+  if (typeof window === "undefined") return null;
+  return window.speechSynthesis ?? window.webkitSpeechSynthesis ?? null;
+}
+
+function stopDirectAudioSources(): void {
+  for (const source of activeDirectSources) {
+    try {
+      source.stop();
+    } catch {
+      /* ignore */
+    }
+  }
+  activeDirectSources = [];
+}
 
 /** Stop narration when entering the video step. Keeps instances intact. */
 export function haltAllAvatarAudio(): void {
   speakEpoch += 1;
+  stopDirectAudioSources();
+  try {
+    getSpeechEngine()?.cancel();
+  } catch {
+    /* ignore */
+  }
   try {
     activeHeadInstance?.stopSpeaking?.();
   } catch {
@@ -108,6 +130,11 @@ function installGestureResume(): void {
 export function unlockAvatarAudio(): void {
   if (typeof window === "undefined") return;
   installGestureResume();
+  try {
+    getSpeechEngine()?.getVoices();
+  } catch {
+    /* ignore */
+  }
   try {
     const AudioCtx =
       window.AudioContext ||
@@ -186,7 +213,7 @@ function defaultHeadTtsCdn(): string {
   );
 }
 
-/** Prefetch GLB + HeadTTS so first slide can speak with the AI voice sooner. */
+/** Prefetch GLB + HeadTTS so first slide can speak sooner. */
 export function warmAvatarAssets(options?: {
   modelUrl?: string | null;
   talkingHeadCdnUrl?: string;
@@ -236,8 +263,9 @@ async function ensureSharedHeadTts(headTtsCdnUrl?: string): Promise<HeadTtsInsta
       const { HeadTTS } = await loadHeadTtsModule(cdn);
       if (!HeadTTS) return null;
       const speed = resolveSpeed();
+      // Wasm-first: more reliable on locked-down laptops than WebGPU-first.
       const headTts = new HeadTTS({
-        endpoints: ["webgpu", "wasm"],
+        endpoints: ["wasm", "webgpu"],
         dtypeWasm: "fp16",
         dtypeWebgpu: "fp32",
         workerModule:
@@ -272,6 +300,132 @@ async function ensureSharedHeadTts(headTtsCdnUrl?: string): Promise<HeadTtsInsta
   return sharedHeadTtsPromise;
 }
 
+function getPlaybackAudioContext(head: TalkingHeadInstance | null): AudioContext | null {
+  if (head?.audioCtx) return head.audioCtx;
+  if (sharedAudioCtx) return sharedAudioCtx;
+  if (typeof window === "undefined") return null;
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    sharedAudioCtx = new AudioCtx();
+    return sharedAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+async function playHeadTtsPayloadDirect(
+  data: unknown,
+  head: TalkingHeadInstance | null,
+  epoch: number,
+): Promise<void> {
+  if (epoch !== speakEpoch) return;
+  const payload = data as { audio?: ArrayBuffer | AudioBuffer | ArrayBufferView };
+  const audioCtx = getPlaybackAudioContext(head);
+  if (!audioCtx) throw new Error("No AudioContext for direct playback");
+  resumeAudioContext(audioCtx);
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume().catch(() => undefined);
+  }
+
+  let buffer: AudioBuffer | null =
+    payload.audio instanceof AudioBuffer ? payload.audio : null;
+  if (!buffer && payload.audio) {
+    try {
+      if (payload.audio instanceof ArrayBuffer) {
+        buffer = await audioCtx.decodeAudioData(payload.audio.slice(0));
+      } else if (ArrayBuffer.isView(payload.audio)) {
+        const view = payload.audio;
+        const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+        buffer = await audioCtx.decodeAudioData(bytes.slice().buffer);
+      }
+    } catch (err) {
+      console.error("[avatar] Failed to decode HeadTTS WAV", err);
+      throw err;
+    }
+  }
+  if (!buffer) throw new Error("HeadTTS payload has no decodable audio");
+
+  await new Promise<void>((resolve, reject) => {
+    if (epoch !== speakEpoch) {
+      resolve();
+      return;
+    }
+    try {
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      activeDirectSources.push(source);
+      source.onended = () => {
+        activeDirectSources = activeDirectSources.filter((s) => s !== source);
+        resolve();
+      };
+      source.start(0);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function createFakeTalkingAudio(
+  script: string,
+  audioCtx: AudioContext,
+): {
+  audio: AudioBuffer;
+  words: string[];
+  wtimes: number[];
+  wdurations: number[];
+  visemes: string[];
+  vtimes: number[];
+  vdurations: number[];
+} {
+  const words = script.split(/\s+/).filter(Boolean);
+  const visemeList = [
+    "aa",
+    "E",
+    "I",
+    "O",
+    "U",
+    "PP",
+    "FF",
+    "TH",
+    "DD",
+    "kk",
+    "CH",
+    "SS",
+    "nn",
+    "RR",
+  ];
+  const wtimes: number[] = [];
+  const wdurations: number[] = [];
+  const visemes: string[] = [];
+  const vtimes: number[] = [];
+  const vdurations: number[] = [];
+  let currentMs = 0;
+  for (const word of words) {
+    const wordDur = Math.max(150, word.length * 15 + 100);
+    wtimes.push(currentMs);
+    wdurations.push(wordDur);
+    const visemeDur = wordDur / 2;
+    visemes.push(visemeList[Math.floor(Math.random() * visemeList.length)]);
+    vtimes.push(currentMs);
+    vdurations.push(visemeDur);
+    visemes.push(visemeList[Math.floor(Math.random() * visemeList.length)]);
+    vtimes.push(currentMs + visemeDur);
+    vdurations.push(visemeDur);
+    currentMs += wordDur + 50;
+  }
+  const durationSecs = currentMs / 1000;
+  const sampleRate = audioCtx.sampleRate || 44100;
+  const buffer = audioCtx.createBuffer(
+    1,
+    Math.max(1, Math.ceil(sampleRate * durationSecs)),
+    sampleRate,
+  );
+  return { audio: buffer, words, wtimes, wdurations, visemes, vtimes, vdurations };
+}
+
 export type FloatingAvatarProps = {
   script: string;
   enabled: boolean;
@@ -292,9 +446,10 @@ export function FloatingAvatar({
   const [speaking, setSpeaking] = useState(false);
   const [avatarReady, setAvatarReady] = useState(false);
   const [avatarLoading, setAvatarLoading] = useState(false);
-  const [voiceLoading, setVoiceLoading] = useState(false);
   const [showCaption, setShowCaption] = useState(true);
-  const [ttsMode, setTtsMode] = useState<"headtts" | "gtts" | "none">("none");
+  const [ttsMode, setTtsMode] = useState<"headtts" | "gtts" | "browser" | "none">(
+    "none",
+  );
   const headRef = useRef<HTMLDivElement | null>(null);
   const headInstanceRef = useRef<TalkingHeadInstance | null>(null);
   const headTtsRef = useRef<HeadTtsInstance | null>(null);
@@ -321,13 +476,10 @@ export function FloatingAvatar({
     warmAvatarAssets({ modelUrl, talkingHeadCdnUrl, headTtsCdnUrl });
     installGestureResume();
     setAvatarLoading(true);
-    setVoiceLoading(true);
 
     (async () => {
       try {
         const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
-
-        // Kick HeadTTS as early as possible - do not race it against a browser fallback.
         const headTtsWarm = gttsApiKey
           ? Promise.resolve(null)
           : ensureSharedHeadTts(headTtsCdnUrl);
@@ -378,39 +530,42 @@ export function FloatingAvatar({
 
         if (gttsApiKey) {
           setTtsMode("gtts");
-          setVoiceLoading(false);
           return;
         }
 
-        // Wait for the Kokoro / HeadTTS engine - this IS the voice product.
-        const headTts = await headTtsWarm;
-        if (cancelled) return;
-        if (headTts?.synthesize) {
-          headTtsRef.current = headTts;
+        // Allow autoplay immediately (browser last-resort) while Kokoro finishes warming.
+        if (sharedHeadTts?.synthesize) {
+          headTtsRef.current = sharedHeadTts;
           setTtsMode("headtts");
         } else {
-          console.error("[avatar] HeadTTS unavailable - AI voice cannot start");
-          setTtsMode("none");
+          setTtsMode("browser");
         }
-        setVoiceLoading(false);
+
+        const TIMEOUT = Symbol("headtts-timeout");
+        const raced = await Promise.race([
+          headTtsWarm,
+          new Promise<typeof TIMEOUT>((resolve) =>
+            window.setTimeout(() => resolve(TIMEOUT), HEADTTS_READY_TIMEOUT_MS),
+          ),
+        ]);
+        if (cancelled) return;
+
+        if (raced !== TIMEOUT && raced?.synthesize) {
+          headTtsRef.current = raced;
+          setTtsMode("headtts");
+        } else if (raced === TIMEOUT) {
+          void headTtsWarm.then((late) => {
+            if (cancelled || !late?.synthesize) return;
+            headTtsRef.current = late;
+            setTtsMode("headtts");
+          });
+        }
       } catch (err) {
         console.error("[avatar] TalkingHead init failed", err);
         if (!cancelled) {
           setAvatarReady(false);
           setAvatarLoading(false);
-          setVoiceLoading(false);
-          // Still try to get HeadTTS so we can play AI audio without the 3D head.
-          try {
-            const headTts = await ensureSharedHeadTts(headTtsCdnUrl);
-            if (!cancelled && headTts?.synthesize) {
-              headTtsRef.current = headTts;
-              setTtsMode("headtts");
-            } else {
-              setTtsMode("none");
-            }
-          } catch {
-            setTtsMode("none");
-          }
+          setTtsMode("browser");
         }
       }
     })();
@@ -418,6 +573,7 @@ export function FloatingAvatar({
     return () => {
       cancelled = true;
       speakEpoch += 1;
+      stopDirectAudioSources();
       const head = headInstanceRef.current;
       try {
         head?.stopSpeaking?.();
@@ -427,6 +583,7 @@ export function FloatingAvatar({
       if (activeHeadInstance === headInstanceRef.current) activeHeadInstance = null;
       if (typeof head?.stop === "function") head.stop();
       headInstanceRef.current = null;
+      // Keep shared HeadTTS warm across remounts; only drop this mount's ref.
       headTtsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -434,9 +591,64 @@ export function FloatingAvatar({
 
   const stopSpeaking = () => {
     speakEpoch += 1;
+    stopDirectAudioSources();
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+    getSpeechEngine()?.cancel();
     setSpeaking(false);
+  };
+
+  const handleFallbackSpeak = (epoch: number) => {
+    const synth = getSpeechEngine();
+    const head = headInstanceRef.current;
+    const text = scriptRef.current.trim();
+    if (!synth || !text) return;
+    synth.cancel();
+    if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.05;
+    utterance.volume = 1;
+    const voices = synth.getVoices();
+    utterance.voice =
+      voices.find(
+        (voice) =>
+          /^en[-_]/i.test(voice.lang) &&
+          /(samantha|zira|aria|jenny|natural|neural|female)/i.test(voice.name),
+      ) ??
+      voices.find((voice) => /^en[-_](US|GB)/i.test(voice.lang)) ??
+      null;
+    utterance.onstart = () => {
+      if (epoch !== speakEpoch) return;
+      setSpeaking(true);
+      if (head && typeof head.speakAudio === "function") {
+        try {
+          const audioCtx = getPlaybackAudioContext(head);
+          if (audioCtx) {
+            head.speakAudio(createFakeTalkingAudio(text, audioCtx));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    const keepAlive = window.setInterval(() => {
+      if (epoch !== speakEpoch) {
+        window.clearInterval(keepAlive);
+        return;
+      }
+      if (synth.paused) synth.resume();
+    }, 3000);
+    const finish = () => {
+      window.clearInterval(keepAlive);
+      if (epoch !== speakEpoch) return;
+      setSpeaking(false);
+      if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+    };
+    utterance.onend = finish;
+    utterance.onerror = finish;
+    synth.speak(utterance);
   };
 
   const handleSpeak = async (opts?: { force?: boolean }) => {
@@ -453,6 +665,8 @@ export function FloatingAvatar({
     unlockAvatarAudio();
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+    getSpeechEngine()?.cancel();
+    stopDirectAudioSources();
 
     try {
       if (head?.audioCtx?.state === "suspended") {
@@ -465,7 +679,6 @@ export function FloatingAvatar({
       /* ignore */
     }
 
-    // Google TTS path only when explicitly configured.
     if (ttsMode === "gtts" && avatarReady && typeof head?.speakText === "function") {
       try {
         setSpeaking(true);
@@ -478,51 +691,62 @@ export function FloatingAvatar({
       return;
     }
 
-    // Resolve / wait for Kokoro HeadTTS - never use browser SpeechSynthesis.
-    let engine = headTtsRef.current;
-    if (!engine?.synthesize) {
-      setVoiceLoading(true);
+    // Prefer HeadTTS when available (or still loading ? try resolve once).
+    let engine = headTtsRef.current ?? sharedHeadTts;
+    if (!engine?.synthesize && ttsMode !== "browser") {
       engine = (await ensureSharedHeadTts()) ?? null;
-      setVoiceLoading(false);
       if (engine?.synthesize) {
         headTtsRef.current = engine;
         setTtsMode("headtts");
       }
     }
-    if (!engine?.synthesize) {
-      console.error("[avatar] AI voice engine not ready");
-      return;
+
+    if (engine?.synthesize) {
+      try {
+        setSpeaking(true);
+        const messages = await engine.synthesize({
+          input: text.slice(0, 500),
+        });
+        if (epoch !== speakEpoch) return;
+        for (const message of messages ?? []) {
+          if (epoch !== speakEpoch) return;
+          if (message.type === "error") {
+            throw new Error("HeadTTS synthesis failed");
+          }
+          if (message.type === "audio") {
+            // Proven contract from 9cb268c: pass message.data through unchanged.
+            if (head && typeof head.speakAudio === "function") {
+              try {
+                await Promise.resolve(head.speakAudio(message.data));
+                continue;
+              } catch (err) {
+                console.warn("[avatar] speakAudio failed; playing Kokoro WAV directly", err);
+              }
+            }
+            await playHeadTtsPayloadDirect(message.data, head, epoch);
+          }
+        }
+        return;
+      } catch (err) {
+        console.error("[avatar] HeadTTS speak failed; falling back to browser", err);
+        if (epoch !== speakEpoch) return;
+        setTtsMode("browser");
+        handleFallbackSpeak(epoch);
+        return;
+      } finally {
+        if (epoch === speakEpoch) setSpeaking(false);
+      }
     }
 
-    try {
-      setSpeaking(true);
-      const messages = await engine.synthesize({
-        input: text.slice(0, 500),
-      });
-      if (epoch !== speakEpoch) return;
-      for (const message of messages ?? []) {
-        if (epoch !== speakEpoch) return;
-        if (message.type === "error") {
-          throw new Error("HeadTTS synthesis failed");
-        }
-        if (message.type === "audio") {
-          if (!head || typeof head.speakAudio !== "function") {
-            throw new Error("TalkingHead audio player unavailable");
-          }
-          await Promise.resolve(head.speakAudio(message.data));
-        }
-      }
-    } catch (err) {
-      console.error("[avatar] AI voice playback failed", err);
-    } finally {
-      if (epoch === speakEpoch) setSpeaking(false);
-    }
+    // Last resort: never leave the learner in silence.
+    handleFallbackSpeak(epoch);
   };
 
   useEffect(() => {
     if (!autoPlay || !enabled || !script.trim()) return;
-    // Only autoplay once the AI voice (HeadTTS) or Google TTS is ready.
-    if (avatarLoading || voiceLoading || ttsMode === "none") return;
+    // Match 9cb268c: autoplay once avatar load finishes ? do not wait forever on Kokoro.
+    if (avatarLoading) return;
+    if (ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
 
     let cancelled = false;
@@ -532,7 +756,7 @@ export function FloatingAvatar({
       kickedOff = true;
       lastAutoScriptRef.current = script;
       void handleSpeak({ force: true });
-    }, 80);
+    }, 50);
 
     return () => {
       cancelled = true;
@@ -542,7 +766,7 @@ export function FloatingAvatar({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, enabled, script, avatarReady, avatarLoading, voiceLoading, ttsMode]);
+  }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);
 
   useEffect(() => {
     return () => {
@@ -552,19 +776,18 @@ export function FloatingAvatar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const busy = avatarLoading || voiceLoading;
   const statusLabel =
     !enabled
       ? "Enable avatar in settings to activate."
-      : voiceLoading
-        ? "Loading AI voice (Kokoro)..."
-        : avatarLoading
-          ? "Loading avatar model..."
-          : ttsMode === "headtts"
-            ? `AI voice ready (${resolveVoice()}).`
-            : ttsMode === "gtts"
-              ? "Google TTS active."
-              : "AI voice unavailable.";
+      : avatarLoading
+        ? "Loading avatar model..."
+        : ttsMode === "headtts"
+          ? `AI voice ready (${resolveVoice()}).`
+          : ttsMode === "gtts"
+            ? "Google TTS active."
+            : ttsMode === "browser"
+              ? "Backup voice ready (AI still warming)."
+              : "Preparing narration...";
 
   return (
     <div
@@ -587,7 +810,7 @@ export function FloatingAvatar({
                 ? "Narration will play when a script is available for this slide."
                 : "Generate a TTS script to preview the talking avatar narration.")}
           </p>
-          {(variant === "admin" || voiceLoading || ttsMode === "none") && (
+          {variant === "admin" && (
             <p className="mt-1 text-[11px] text-zinc-500">{statusLabel}</p>
           )}
           <div className="mt-2 flex items-center gap-2">
@@ -598,10 +821,10 @@ export function FloatingAvatar({
                 speaking ? "bg-red-500" : "bg-[#2e3192] hover:bg-[#3d42a8]",
               )}
               onClick={() => void handleSpeak()}
-              disabled={!script.trim() || busy || ttsMode === "none"}
+              disabled={!script.trim() || avatarLoading}
             >
               <Mic className="h-3.5 w-3.5" />
-              {speaking ? "Stop" : busy ? "Loading?" : "Speak"}
+              {speaking ? "Stop" : avatarLoading ? "Loading..." : "Speak"}
             </button>
           </div>
         </div>
@@ -627,9 +850,9 @@ export function FloatingAvatar({
             speaking ? "grayscale-0 opacity-100" : "grayscale opacity-70",
           )}
         />
-        {(busy || !avatarReady) && (
+        {(avatarLoading || !avatarReady) && (
           <div className="absolute inset-0 flex items-center justify-center">
-            {busy ? (
+            {avatarLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-[#2e3192]/60" />
             ) : (
               <div
