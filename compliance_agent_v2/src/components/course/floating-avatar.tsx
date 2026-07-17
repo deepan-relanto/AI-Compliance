@@ -651,13 +651,13 @@ export function FloatingAvatar({
     !enabled
       ? "Enable avatar in settings to activate."
       : avatarLoading
-        ? "Loading avatar model?"
+        ? "Loading avatar model..."
         : !avatarReady
-          ? "Using fallback preview ? avatar model unavailable."
+          ? "Using fallback preview - avatar model unavailable."
           : ttsMode === "gtts"
-            ? "Google TTS · TalkingHead lip-sync active."
+            ? "Google TTS Â· TalkingHead lip-sync active."
             : ttsMode === "headtts"
-              ? "Neural HeadTTS · TalkingHead lip-sync active."
+              ? "Neural HeadTTS Â· TalkingHead lip-sync active."
               : "TalkingHead avatar ready.";
 
   return (
