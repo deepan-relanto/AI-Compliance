@@ -124,14 +124,10 @@ export function unlockAvatarAudio(): void {
   } catch {
     /* ignore */
   }
-  // TalkingHead often owns a separate AudioContext created after Begin ? resume that too.
+  // TalkingHead owns its own AudioContext wired to its audio graph.
+  // Only resume it here; never replace it or playback breaks silently.
   try {
     resumeAudioContext(activeHeadInstance?.audioCtx);
-    if (sharedAudioCtx && activeHeadInstance && !activeHeadInstance.audioCtx) {
-      activeHeadInstance.audioCtx = sharedAudioCtx;
-    } else if (sharedAudioCtx && activeHeadInstance?.audioCtx) {
-      resumeAudioContext(activeHeadInstance.audioCtx);
-    }
   } catch {
     /* ignore */
   }
@@ -451,13 +447,9 @@ export function FloatingAvatar({
           return;
         }
 
-        // Reuse the gesture-unlocked context so first-slide autoplay is not muted.
-        if (sharedAudioCtx) {
-          head.audioCtx = sharedAudioCtx;
-          resumeAudioContext(sharedAudioCtx);
-        } else if (head.audioCtx) {
-          resumeAudioContext(head.audioCtx);
-        }
+        // Resume TalkingHead's own context (do NOT swap it - its audio graph
+        // is wired to this context and replacing it kills playback entirely).
+        resumeAudioContext(head.audioCtx);
 
         headInstanceRef.current = head;
         activeHeadInstance = head;
@@ -579,14 +571,9 @@ export function FloatingAvatar({
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     getSpeechEngine()?.cancel();
 
-    if (sharedAudioCtx && head && !head.audioCtx) {
-      head.audioCtx = sharedAudioCtx;
-    }
     try {
       if (head?.audioCtx?.state === "suspended") {
         await head.audioCtx.resume();
-      } else if (sharedAudioCtx?.state === "suspended") {
-        await sharedAudioCtx.resume();
       }
     } catch {
       /* ignore */
