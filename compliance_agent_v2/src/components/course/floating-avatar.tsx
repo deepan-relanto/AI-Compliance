@@ -36,17 +36,6 @@ type HeadTtsMessage = {
   data: unknown;
 };
 
-type HeadTtsAudioPayload = {
-  audio?: ArrayBuffer | AudioBuffer | Float32Array | number[];
-  words?: string[];
-  wtimes?: number[];
-  wdurations?: number[];
-  visemes?: string[];
-  vtimes?: number[];
-  vdurations?: number[];
-  audioEncoding?: string;
-};
-
 type HeadTtsInstance = {
   connect?: () => Promise<void>;
   setup?: (options: Record<string, unknown>) => Promise<unknown>;
@@ -67,9 +56,7 @@ type HeadTtsModule = {
  * used for learner narration. Do not fall back to browser SpeechSynthesis.
  */
 const DEFAULT_HEADTTS_VOICE = "af_bella";
-const DEFAULT_HEADTTS_SPEED = 1.2;
-/** HeadTTS REST/client hard limit for a single string input. */
-const HEADTTS_MAX_CHARS = 480;
+const DEFAULT_HEADTTS_SPEED = 1.1;
 
 /** Module-level caches so remounts / slide changes do not re-download CDN + GLB. */
 let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
@@ -80,33 +67,19 @@ let sharedHeadTts: HeadTtsInstance | null = null;
 let sharedHeadTtsVoice: string | null = null;
 let sharedHeadTtsPromise: Promise<HeadTtsInstance | null> | null = null;
 let sharedAudioCtx: AudioContext | null = null;
-let audioUnlocked = false;
 
 /** Live TalkingHead for video-step hard stop only. */
 let activeHeadInstance: TalkingHeadInstance | null = null;
 let speakEpoch = 0;
-let activeAudioSources: AudioBufferSourceNode[] = [];
 
 /** Stop narration when entering the video step. Keeps instances intact. */
 export function haltAllAvatarAudio(): void {
   speakEpoch += 1;
-  stopDirectAudioSources();
   try {
     activeHeadInstance?.stopSpeaking?.();
   } catch {
     /* ignore */
   }
-}
-
-function stopDirectAudioSources(): void {
-  for (const source of activeAudioSources) {
-    try {
-      source.stop();
-    } catch {
-      /* ignore */
-    }
-  }
-  activeAudioSources = [];
 }
 
 function resumeAudioContext(ctx: AudioContext | null | undefined): void {
@@ -134,7 +107,6 @@ function installGestureResume(): void {
  */
 export function unlockAvatarAudio(): void {
   if (typeof window === "undefined") return;
-  audioUnlocked = true;
   installGestureResume();
   try {
     const AudioCtx =
@@ -265,9 +237,9 @@ async function ensureSharedHeadTts(headTtsCdnUrl?: string): Promise<HeadTtsInsta
       if (!HeadTTS) return null;
       const speed = resolveSpeed();
       const headTts = new HeadTTS({
-        endpoints: ["wasm", "webgpu"],
+        endpoints: ["webgpu", "wasm"],
         dtypeWasm: "fp16",
-        dtypeWebgpu: "fp16",
+        dtypeWebgpu: "fp32",
         workerModule:
           process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
           "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
@@ -298,123 +270,6 @@ async function ensureSharedHeadTts(headTtsCdnUrl?: string): Promise<HeadTtsInsta
   })();
 
   return sharedHeadTtsPromise;
-}
-
-/** Split narration into HeadTTS-safe chunks (<= 480 chars), preferring sentence breaks. */
-function chunkNarration(text: string): string[] {
-  const cleaned = text.replace(/\s+/g, " ").trim();
-  if (!cleaned) return [];
-  if (cleaned.length <= HEADTTS_MAX_CHARS) return [cleaned];
-
-  const chunks: string[] = [];
-  let remaining = cleaned;
-  while (remaining.length > HEADTTS_MAX_CHARS) {
-    const window = remaining.slice(0, HEADTTS_MAX_CHARS);
-    const breakAt = Math.max(
-      window.lastIndexOf(". "),
-      window.lastIndexOf("! "),
-      window.lastIndexOf("? "),
-      window.lastIndexOf("; "),
-      window.lastIndexOf(", "),
-      window.lastIndexOf(" "),
-    );
-    const cut = breakAt > 40 ? breakAt + 1 : HEADTTS_MAX_CHARS;
-    chunks.push(remaining.slice(0, cut).trim());
-    remaining = remaining.slice(cut).trim();
-  }
-  if (remaining) chunks.push(remaining);
-  return chunks.filter(Boolean);
-}
-
-function getPlaybackAudioContext(head: TalkingHeadInstance | null): AudioContext | null {
-  if (head?.audioCtx) return head.audioCtx;
-  if (sharedAudioCtx) return sharedAudioCtx;
-  if (typeof window === "undefined") return null;
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    sharedAudioCtx = new AudioCtx();
-    return sharedAudioCtx;
-  } catch {
-    return null;
-  }
-}
-
-async function decodeHeadTtsAudio(
-  payload: HeadTtsAudioPayload,
-  audioCtx: AudioContext,
-): Promise<AudioBuffer | null> {
-  const raw = payload.audio;
-  if (!raw) return null;
-  if (raw instanceof AudioBuffer) return raw;
-
-  try {
-    if (raw instanceof ArrayBuffer) {
-      const copy = raw.slice(0);
-      return await audioCtx.decodeAudioData(copy);
-    }
-    if (ArrayBuffer.isView(raw)) {
-      const view = raw as ArrayBufferView;
-      const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-      const copy = bytes.slice().buffer;
-      return await audioCtx.decodeAudioData(copy);
-    }
-  } catch (err) {
-    console.error("[avatar] Failed to decode HeadTTS WAV", err);
-  }
-  return null;
-}
-
-async function playAiAudioPayload(
-  payload: HeadTtsAudioPayload,
-  head: TalkingHeadInstance | null,
-  epoch: number,
-): Promise<void> {
-  if (epoch !== speakEpoch) return;
-  const audioCtx = getPlaybackAudioContext(head);
-  if (!audioCtx) throw new Error("No AudioContext for AI voice");
-  resumeAudioContext(audioCtx);
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume().catch(() => undefined);
-  }
-
-  const buffer = await decodeHeadTtsAudio(payload, audioCtx);
-  const speakData: HeadTtsAudioPayload = buffer
-    ? { ...payload, audio: buffer }
-    : payload;
-
-  // Prefer TalkingHead lip-sync + playback when available.
-  if (head && typeof head.speakAudio === "function") {
-    try {
-      await Promise.resolve(head.speakAudio(speakData));
-      return;
-    } catch (err) {
-      console.warn("[avatar] speakAudio failed; playing Kokoro buffer directly", err);
-    }
-  }
-
-  if (!buffer) throw new Error("HeadTTS returned no decodable audio");
-
-  await new Promise<void>((resolve, reject) => {
-    if (epoch !== speakEpoch) {
-      resolve();
-      return;
-    }
-    try {
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      activeAudioSources.push(source);
-      source.onended = () => {
-        activeAudioSources = activeAudioSources.filter((s) => s !== source);
-        resolve();
-      };
-      source.start(0);
-    } catch (err) {
-      reject(err);
-    }
-  });
 }
 
 export type FloatingAvatarProps = {
@@ -563,7 +418,6 @@ export function FloatingAvatar({
     return () => {
       cancelled = true;
       speakEpoch += 1;
-      stopDirectAudioSources();
       const head = headInstanceRef.current;
       try {
         head?.stopSpeaking?.();
@@ -580,7 +434,6 @@ export function FloatingAvatar({
 
   const stopSpeaking = () => {
     speakEpoch += 1;
-    stopDirectAudioSources();
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     setSpeaking(false);
@@ -600,7 +453,6 @@ export function FloatingAvatar({
     unlockAvatarAudio();
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
-    stopDirectAudioSources();
 
     try {
       if (head?.audioCtx?.state === "suspended") {
@@ -642,33 +494,22 @@ export function FloatingAvatar({
       return;
     }
 
-    const chunks = chunkNarration(text);
-    if (chunks.length === 0) return;
-
-    const speed = resolveSpeed();
-    const voice = resolveVoice();
-
     try {
       setSpeaking(true);
-      for (const chunk of chunks) {
+      const messages = await engine.synthesize({
+        input: text.slice(0, 500),
+      });
+      if (epoch !== speakEpoch) return;
+      for (const message of messages ?? []) {
         if (epoch !== speakEpoch) return;
-        const messages = await engine.synthesize!(
-          { input: chunk, voice, speed },
-          undefined,
-          (error) => {
-            console.error("[avatar] HeadTTS synthesize error", error);
-          },
-        );
-        if (epoch !== speakEpoch) return;
-
-        const audioMessages = (messages ?? []).filter((m) => m.type === "audio");
-        if (audioMessages.length === 0) {
-          throw new Error("HeadTTS returned no audio for chunk");
+        if (message.type === "error") {
+          throw new Error("HeadTTS synthesis failed");
         }
-
-        for (const message of audioMessages) {
-          if (epoch !== speakEpoch) return;
-          await playAiAudioPayload(message.data as HeadTtsAudioPayload, head, epoch);
+        if (message.type === "audio") {
+          if (!head || typeof head.speakAudio !== "function") {
+            throw new Error("TalkingHead audio player unavailable");
+          }
+          await Promise.resolve(head.speakAudio(message.data));
         }
       }
     } catch (err) {
