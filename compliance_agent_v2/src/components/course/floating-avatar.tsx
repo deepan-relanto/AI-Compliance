@@ -215,23 +215,15 @@ export function warmAvatarAssets(options?: {
 
 async function ensureSharedHeadTts(headTtsCdnUrl: string): Promise<HeadTtsInstance | null> {
   const voice = resolveVoice();
-  const cacheKey = `${voice}|nosplit|${resolveSpeed()}`;
-  if (sharedHeadTts && sharedHeadTtsVoice === cacheKey) return sharedHeadTts;
-  if (sharedHeadTtsPromise && sharedHeadTtsVoice === cacheKey) {
-    return sharedHeadTtsPromise;
-  }
-
-  // Invalidate any in-flight / stale instance built with different options.
-  sharedHeadTts = null;
-  sharedHeadTtsVoice = cacheKey;
-  sharedHeadTtsPromise = null;
+  if (sharedHeadTts && sharedHeadTtsVoice === voice) return sharedHeadTts;
+  if (sharedHeadTtsPromise) return sharedHeadTtsPromise;
 
   sharedHeadTtsPromise = (async (): Promise<HeadTtsInstance | null> => {
     try {
       const { HeadTTS } = await loadHeadTtsModule(headTtsCdnUrl);
       if (!HeadTTS) return null;
       const speed = resolveSpeed();
-      // One continuous clip - split sentences cut audio after ~2s on chunk errors.
+      // Proven config from working commit 383f0e2 ? streaming chunks per sentence.
       const headTts = new HeadTTS({
         endpoints: ["wasm", "webgpu"],
         dtypeWasm: "fp16",
@@ -246,7 +238,7 @@ async function ensureSharedHeadTts(headTtsCdnUrl: string): Promise<HeadTtsInstan
         defaultVoice: voice,
         defaultLanguage: "en-us",
         defaultSpeed: speed,
-        splitSentences: false,
+        splitSentences: true,
       });
       await headTts.connect?.();
       await headTts.setup?.({
@@ -256,44 +248,15 @@ async function ensureSharedHeadTts(headTtsCdnUrl: string): Promise<HeadTtsInstan
         audioEncoding: "wav",
       });
       sharedHeadTts = headTts;
-      sharedHeadTtsVoice = cacheKey;
+      sharedHeadTtsVoice = voice;
       return headTts;
     } catch {
       sharedHeadTtsPromise = null;
-      sharedHeadTtsVoice = null;
       return null;
     }
   })();
 
   return sharedHeadTtsPromise;
-}
-
-function estimateAudioDurationMs(data: unknown): number {
-  if (!data || typeof data !== "object") return 0;
-  const rec = data as Record<string, unknown>;
-  const wdurations = Array.isArray(rec.wdurations)
-    ? (rec.wdurations as number[])
-    : [];
-  if (wdurations.length > 0) {
-    const words = Array.isArray(rec.words) ? (rec.words as unknown[]).length : 0;
-    const sum = wdurations.reduce((a, b) => a + (Number(b) || 0), 0);
-    const wtimes = Array.isArray(rec.wtimes) ? (rec.wtimes as number[]) : [];
-    const lastStart = wtimes.length > 0 ? Number(wtimes[wtimes.length - 1]) || 0 : 0;
-    const lastDur = Number(wdurations[wdurations.length - 1]) || 0;
-    return Math.max(sum, lastStart + lastDur, words * 180);
-  }
-  const audio = rec.audio;
-  if (audio && typeof audio === "object" && "duration" in audio) {
-    const dur = Number((audio as { duration?: number }).duration);
-    if (Number.isFinite(dur) && dur > 0) return Math.ceil(dur * 1000);
-  }
-  return 0;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
 }
 
 function createFakeTalkingAudio(
@@ -606,39 +569,38 @@ export function FloatingAvatar({
         setSpeaking(true);
         const speed = resolveSpeed();
         const voice = resolveVoice();
-        // Await the full result first (no streaming callback). Streaming + await
-        // speakAudio previously cut audio after the first sentence (~2s) when a
-        // later chunk failed and the catch path called stopSpeaking().
-        const messages = await engine.synthesize({
-          input: text.slice(0, 700),
-          voice,
-          speed,
-        });
-        if (epoch !== speakEpoch) return;
-
-        const audioMessages = (messages ?? []).filter(
-          (message) => message.type === "audio",
+        // Proven streaming contract (383f0e2): feed each audio chunk to
+        // TalkingHead's queue as it arrives so playback starts immediately and
+        // continues across sentences via the engine's own queue.
+        let streamed = false;
+        const messages = await engine.synthesize(
+          {
+            input: text.slice(0, 700),
+            voice,
+            speed,
+          },
+          async (message) => {
+            if (epoch !== speakEpoch) return;
+            if (message.type === "error") throw new Error("HeadTTS synthesis failed");
+            if (message.type === "audio" && typeof head.speakAudio === "function") {
+              streamed = true;
+              await Promise.resolve(head.speakAudio(message.data));
+            }
+          },
         );
-        if (audioMessages.length === 0) {
-          throw new Error("HeadTTS returned no audio");
-        }
-
-        let durationMs = 0;
-        for (const message of audioMessages) {
-          if (epoch !== speakEpoch) return;
-          // Queue into TalkingHead - do not await; speakAudio returns when queued.
-          head.speakAudio(message.data);
-          durationMs += Math.max(estimateAudioDurationMs(message.data), 1500);
-        }
-
-        // Keep UI in "speaking" until queued audio should finish.
-        const waitMs = Math.min(Math.max(durationMs, 2500), 120_000);
-        await sleep(waitMs);
         if (epoch !== speakEpoch) return;
+        if (!streamed) {
+          for (const message of messages ?? []) {
+            if (epoch !== speakEpoch) return;
+            if (message.type === "error") throw new Error("HeadTTS synthesis failed");
+            if (message.type === "audio") {
+              await Promise.resolve(head.speakAudio(message.data));
+            }
+          }
+        }
       } catch (err) {
         console.error("[avatar] HeadTTS speak failed; falling back to browser", err);
         if (epoch !== speakEpoch) return;
-        if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
         setTtsMode("browser");
         handleFallbackSpeak(epoch);
         return;
