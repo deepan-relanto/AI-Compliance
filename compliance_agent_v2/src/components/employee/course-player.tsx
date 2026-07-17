@@ -13,7 +13,7 @@ import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import { CourseContentOverview } from "@/components/employee/course-content-overview";
 import { CourseTtsOverlay } from "@/components/employee/course-tts-overlay";
-import { haltAllAvatarAudio } from "@/components/course/floating-avatar";
+import { haltAllAvatarAudio, warmAvatarAssets } from "@/components/course/floating-avatar";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -252,6 +252,11 @@ export function CoursePlayer({
   const totalPossibleScore = totalQuestions * POINTS_PER_MCQ;
   const liveScore = correctAnswers * POINTS_PER_MCQ;
   const totalSlides = Math.max(contentSteps.length, 1);
+
+  // Prefetch avatar GLB + HeadTTS while the learner is still on overview/rules.
+  useEffect(() => {
+    warmAvatarAssets();
+  }, []);
 
   const handleProctorLockout = useCallback(() => {
     setIsFailed(true);

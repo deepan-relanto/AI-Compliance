@@ -347,12 +347,12 @@ export function CourseStepContent({
             <span className="truncate text-xs text-zinc-400">{step.config.originalName}</span>
           )}
         </div>
-        <div className="relative min-h-0 flex-1 bg-zinc-900">
+        <div className="relative min-h-0 flex-1 overflow-auto bg-zinc-900 p-2 sm:p-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={url}
             alt={step.config.originalName ?? "Infographic"}
-            className="absolute inset-0 h-full w-full object-contain"
+            className="mx-auto block h-auto max-h-full w-auto max-w-full object-contain"
           />
         </div>
       </div>
