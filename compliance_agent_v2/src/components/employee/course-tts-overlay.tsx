@@ -126,14 +126,23 @@ export function CourseTtsOverlay({
     if (!payload?.available) return;
     const tick = () => {
       if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
-        setBeat((prev) => ({
-          slideIndex: embedSlideIndex,
-          fragmentIndex: prev.slideIndex === embedSlideIndex ? prev.fragmentIndex : 0,
-        }));
+        setBeat((prev) => {
+          if (prev.slideIndex === embedSlideIndex) return prev;
+          return { slideIndex: embedSlideIndex, fragmentIndex: 0 };
+        });
         return;
       }
       const fromDom = readBeatFromIframe(iframeRef.current);
-      if (fromDom) setBeat(fromDom);
+      if (!fromDom) return;
+      setBeat((prev) => {
+        if (
+          prev.slideIndex === fromDom.slideIndex &&
+          prev.fragmentIndex === fromDom.fragmentIndex
+        ) {
+          return prev;
+        }
+        return fromDom;
+      });
     };
     tick();
     syncRef.current = window.setInterval(tick, 200);
@@ -162,9 +171,10 @@ export function CourseTtsOverlay({
         (segment) =>
           segment.slideIndex === beat.slideIndex && segment.fragmentIndex === 0,
       );
-    return exact && isSpeakableNarration(exact.scriptText)
-      ? exact
-      : slideLevel ?? exact ?? null;
+    // Prefer full-slide narration so fragment polling cannot chop audio mid-sentence.
+    if (slideLevel && isSpeakableNarration(slideLevel.scriptText)) return slideLevel;
+    if (exact && isSpeakableNarration(exact.scriptText)) return exact;
+    return slideLevel ?? exact ?? null;
   }, [payload, stepType, beat]);
 
   if (!payload?.available) return null;
