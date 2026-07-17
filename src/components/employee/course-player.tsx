@@ -13,7 +13,7 @@ import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import { CourseContentOverview } from "@/components/employee/course-content-overview";
 import { CourseTtsOverlay } from "@/components/employee/course-tts-overlay";
-import { haltAllAvatarAudio, warmAvatarAssets } from "@/components/course/floating-avatar";
+import { haltAllAvatarAudio, unlockAvatarAudio, warmAvatarAssets } from "@/components/course/floating-avatar";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -201,6 +201,8 @@ export function CoursePlayer({
   const [proctorRestartLoading, setProctorRestartLoading] = useState(false);
   const [awaitingRetakeRestart, setAwaitingRetakeRestart] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  /** Suppress fail overlay while navigating away after Exit confirm. */
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const [showProctorRules, setShowProctorRules] = useState(!autoStartSession);
   const [sessionStarted, setSessionStarted] = useState(autoStartSession);
   const [showContentOverview, setShowContentOverview] = useState(false);
@@ -658,6 +660,7 @@ export function CoursePlayer({
     setShowProctorRules(false);
     setSessionStarted(true);
     setSessionStartMs(Date.now());
+    unlockAvatarAudio();
     enterFullscreen();
     if (contentSteps.length === 0 && !quizOnlyMode) {
       startQuizPhase();
@@ -1198,7 +1201,7 @@ export function CoursePlayer({
   };
 
   if (!sessionStarted) {
-    if (integrityHydrated && isFailed && dbStatus !== "not_started") {
+    if (integrityHydrated && !isNavigatingAway && isFailed && dbStatus !== "not_started") {
       return (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
           <CourseProctorFailOverlay
@@ -1321,7 +1324,10 @@ export function CoursePlayer({
           durationMinutes={module.durationMinutes}
           steps={contentSteps}
           questionCount={moduleMcqs.length}
-          onBegin={() => setShowContentOverview(false)}
+          onBegin={() => {
+            unlockAvatarAudio();
+            setShowContentOverview(false);
+          }}
         />
       ) : (
         <>
@@ -1401,16 +1407,6 @@ export function CoursePlayer({
                     onPdfPages={handlePdfPagesLoaded}
                     htmlIframeRef={htmlIframeRef}
                   />
-                  {(currentContentStep.stepType === "pdf" ||
-                    currentContentStep.stepType === "scenarios" ||
-                    currentContentStep.stepType === "mindmap") && (
-                    <CourseTtsOverlay
-                      moduleId={module.id}
-                      stepType={currentContentStep.stepType}
-                      iframeRef={htmlIframeRef}
-                      embedSlideIndex={htmlEmbedState?.slideIndex}
-                    />
-                  )}
                 </div>
               ) : phase === "quiz" &&
                 !mcqOpen &&
@@ -1576,11 +1572,41 @@ export function CoursePlayer({
         />
       )}
 
+      {/* Keep avatar mounted across overview → first slide so narration can start immediately. */}
+      {sessionStarted &&
+        phase === "content" &&
+        currentContentStep &&
+        (currentContentStep.stepType === "pdf" ||
+          currentContentStep.stepType === "scenarios" ||
+          currentContentStep.stepType === "mindmap") && (
+          <div
+            className={cn(
+              "pointer-events-none fixed inset-0 z-[60]",
+              showingOverview && "invisible",
+            )}
+            aria-hidden={showingOverview}
+          >
+            <div className="pointer-events-auto absolute bottom-3 right-3">
+              <CourseTtsOverlay
+                moduleId={module.id}
+                stepType={currentContentStep.stepType}
+                iframeRef={htmlIframeRef}
+                embedSlideIndex={htmlEmbedState?.slideIndex ?? 0}
+                autoPlayEnabled={!showingOverview}
+              />
+            </div>
+          </div>
+        )}
+
       {showExitModal && (
         <CourseExitModal
           onCancel={() => setShowExitModal(false)}
           onConfirm={() => {
             void (async () => {
+              // Mark exiting FIRST so the admin-review overlay never flashes.
+              isExitingRef.current = true;
+              setIsNavigatingAway(true);
+              setShowExitModal(false);
               if (user?.username && sessionStarted) {
                 const reason = activeWarningReason
                   ? "Assessment abandoned after exiting fullscreen"
@@ -1591,16 +1617,15 @@ export function CoursePlayer({
                   reason,
                 );
                 if (updated) {
-                  setIsFailed(true);
-                  setDbStatus(updated.status);
-                  await syncCourseAbandonmentFailure({
+                  // Persist failure for the next open — do NOT setIsFailed here
+                  // or the review overlay flashes before dashboard navigation.
+                  void syncCourseAbandonmentFailure({
                     userEmail: user.username,
                     moduleId: module.id,
                     reason: updated.failedReason ?? reason,
                   });
                 }
               }
-              isExitingRef.current = true;
               if (document.fullscreenElement) {
                 await document.exitFullscreen().catch(() => undefined);
               }
@@ -1610,7 +1635,9 @@ export function CoursePlayer({
         />
       )}
 
-      {integrityHydrated && (isFailed || awaitingRetakeRestart) && (
+      {integrityHydrated &&
+        !isNavigatingAway &&
+        (isFailed || awaitingRetakeRestart) && (
         <CourseProctorFailOverlay
           liveWarningCount={liveWarningCount}
           liveWarningHistory={liveWarningHistory}
