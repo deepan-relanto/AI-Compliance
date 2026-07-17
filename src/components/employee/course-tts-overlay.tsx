@@ -104,23 +104,36 @@ export function CourseTtsOverlay({
     };
   }, [moduleId]);
 
+  // Prefer the reliable embed postMessage index so slide 0 speaks immediately.
+  useEffect(() => {
+    if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
+      setBeat((prev) => {
+        if (prev.slideIndex === embedSlideIndex) return prev;
+        return { slideIndex: embedSlideIndex, fragmentIndex: 0 };
+      });
+    }
+  }, [embedSlideIndex]);
+
+  // Reset to first beat when the content step changes (lesson ? scenarios ? mindmap).
+  useEffect(() => {
+    setBeat({ slideIndex: 0, fragmentIndex: 0 });
+  }, [stepType]);
+
   useEffect(() => {
     if (!payload?.available) return;
     const tick = () => {
-      const fromDom = readBeatFromIframe(iframeRef.current);
-      if (fromDom) {
-        setBeat(fromDom);
-        return;
-      }
       if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
         setBeat((prev) => ({
           slideIndex: embedSlideIndex,
           fragmentIndex: prev.slideIndex === embedSlideIndex ? prev.fragmentIndex : 0,
         }));
+        return;
       }
+      const fromDom = readBeatFromIframe(iframeRef.current);
+      if (fromDom) setBeat(fromDom);
     };
     tick();
-    syncRef.current = window.setInterval(tick, 250);
+    syncRef.current = window.setInterval(tick, 200);
     return () => {
       if (syncRef.current != null) {
         window.clearInterval(syncRef.current);
