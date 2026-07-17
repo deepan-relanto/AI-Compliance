@@ -53,9 +53,13 @@ function assetHeaders(
   filename: string,
   extra?: Record<string, string>,
 ) {
+  // Images must not stick for an hour — patched infographics (e.g. watermark
+  // removal) would otherwise keep serving the old bytes from browser cache.
   const cacheControl = isHtmlAsset(filename, mimeType)
     ? "private, no-cache, must-revalidate"
-    : "public, max-age=3600";
+    : mimeType.startsWith("image/")
+      ? "public, max-age=60, must-revalidate"
+      : "public, max-age=3600";
   return {
     "Content-Type": mimeType,
     "Content-Length": String(length),
