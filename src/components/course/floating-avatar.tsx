@@ -94,6 +94,13 @@ export function haltAllAvatarAudio(): void {
  * Call from a real user gesture (Begin / Accept rules) so first-slide autoplay
  * is allowed by the browser. Safe to call multiple times.
  */
+function resumeAudioContext(ctx: AudioContext | null | undefined): void {
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    void ctx.resume().catch(() => undefined);
+  }
+}
+
 export function unlockAvatarAudio(): void {
   if (typeof window === "undefined") return;
   audioUnlocked = true;
@@ -107,15 +114,24 @@ export function unlockAvatarAudio(): void {
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!sharedAudioCtx) sharedAudioCtx = new AudioCtx();
-    if (sharedAudioCtx.state === "suspended") {
-      void sharedAudioCtx.resume();
-    }
+    resumeAudioContext(sharedAudioCtx);
     // Tiny silent buffer primes playback pipelines that block without a gesture.
     const buffer = sharedAudioCtx.createBuffer(1, 1, sharedAudioCtx.sampleRate);
     const source = sharedAudioCtx.createBufferSource();
     source.buffer = buffer;
     source.connect(sharedAudioCtx.destination);
     source.start(0);
+  } catch {
+    /* ignore */
+  }
+  // TalkingHead often owns a separate AudioContext created after Begin ? resume that too.
+  try {
+    resumeAudioContext(activeHeadInstance?.audioCtx);
+    if (sharedAudioCtx && activeHeadInstance && !activeHeadInstance.audioCtx) {
+      activeHeadInstance.audioCtx = sharedAudioCtx;
+    } else if (sharedAudioCtx && activeHeadInstance?.audioCtx) {
+      resumeAudioContext(activeHeadInstance.audioCtx);
+    }
   } catch {
     /* ignore */
   }
@@ -435,6 +451,14 @@ export function FloatingAvatar({
           return;
         }
 
+        // Reuse the gesture-unlocked context so first-slide autoplay is not muted.
+        if (sharedAudioCtx) {
+          head.audioCtx = sharedAudioCtx;
+          resumeAudioContext(sharedAudioCtx);
+        } else if (head.audioCtx) {
+          resumeAudioContext(head.audioCtx);
+        }
+
         headInstanceRef.current = head;
         activeHeadInstance = head;
         setAvatarReady(true);
@@ -555,12 +579,17 @@ export function FloatingAvatar({
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     getSpeechEngine()?.cancel();
 
-    if (head?.audioCtx && head.audioCtx.state === "suspended") {
-      try {
+    if (sharedAudioCtx && head && !head.audioCtx) {
+      head.audioCtx = sharedAudioCtx;
+    }
+    try {
+      if (head?.audioCtx?.state === "suspended") {
         await head.audioCtx.resume();
-      } catch {
-        /* ignore */
+      } else if (sharedAudioCtx?.state === "suspended") {
+        await sharedAudioCtx.resume();
       }
+    } catch {
+      /* ignore */
     }
 
     if (
@@ -605,6 +634,7 @@ export function FloatingAvatar({
         handleFallbackSpeak(epoch);
         return;
       } finally {
+        // speakAudio awaits playback; clear speaking only if this request is still current.
         if (epoch === speakEpoch) setSpeaking(false);
       }
       return;
@@ -628,20 +658,32 @@ export function FloatingAvatar({
 
   useEffect(() => {
     if (!autoPlay || !enabled || !script.trim()) return;
-    // Wait until a real TTS path is ready ? avoid burning the first slide on "none".
     if (avatarLoading || !avatarReady || ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
+
+    let cancelled = false;
+    let kickedOff = false;
     const timer = window.setTimeout(() => {
-      // Mark played only when we actually kick speak (survives Strict Mode remount).
+      if (cancelled) return;
+      kickedOff = true;
       lastAutoScriptRef.current = script;
       void handleSpeak({ force: true });
-    }, 0);
-    return () => window.clearTimeout(timer);
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      // Strict Mode / remount: allow the next mount to autoplay the same script.
+      if (!kickedOff && lastAutoScriptRef.current === script) {
+        lastAutoScriptRef.current = "";
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);
 
   useEffect(() => {
     return () => {
+      lastAutoScriptRef.current = "";
       stopSpeaking();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -655,15 +697,19 @@ export function FloatingAvatar({
         : !avatarReady
           ? "Using fallback preview - avatar model unavailable."
           : ttsMode === "gtts"
-            ? "Google TTS · TalkingHead lip-sync active."
+            ? "Google TTS - TalkingHead lip-sync active."
             : ttsMode === "headtts"
-              ? "Neural HeadTTS · TalkingHead lip-sync active."
+              ? "Neural HeadTTS - TalkingHead lip-sync active."
               : "TalkingHead avatar ready.";
 
   return (
     <div
       className={cn(
-        "pointer-events-auto absolute bottom-3 right-3 z-20 flex max-w-[calc(100%-1.5rem)] items-end gap-3",
+        "pointer-events-auto z-[80] flex max-w-[min(300px,calc(100vw-1.5rem))] items-end gap-2",
+        // Fixed to the viewport so overflow-hidden course chrome cannot clip the narrator.
+        variant === "learner"
+          ? "fixed bottom-20 right-3 sm:bottom-[4.5rem]"
+          : "absolute bottom-3 right-3 z-20",
         className,
       )}
     >

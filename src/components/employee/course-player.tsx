@@ -1407,6 +1407,16 @@ export function CoursePlayer({
                     onPdfPages={handlePdfPagesLoaded}
                     htmlIframeRef={htmlIframeRef}
                   />
+                  {(currentContentStep.stepType === "pdf" ||
+                    currentContentStep.stepType === "scenarios" ||
+                    currentContentStep.stepType === "mindmap") && (
+                    <CourseTtsOverlay
+                      moduleId={module.id}
+                      stepType={currentContentStep.stepType}
+                      iframeRef={htmlIframeRef}
+                      embedSlideIndex={htmlEmbedState?.slideIndex ?? 0}
+                    />
+                  )}
                 </div>
               ) : phase === "quiz" &&
                 !mcqOpen &&
@@ -1571,32 +1581,6 @@ export function CoursePlayer({
           onContinue={() => void handleWarningContinue()}
         />
       )}
-
-      {/* Keep avatar mounted across overview → first slide so narration can start immediately. */}
-      {sessionStarted &&
-        phase === "content" &&
-        currentContentStep &&
-        (currentContentStep.stepType === "pdf" ||
-          currentContentStep.stepType === "scenarios" ||
-          currentContentStep.stepType === "mindmap") && (
-          <div
-            className={cn(
-              "pointer-events-none fixed inset-0 z-[60]",
-              showingOverview && "invisible",
-            )}
-            aria-hidden={showingOverview}
-          >
-            <div className="pointer-events-auto absolute bottom-3 right-3">
-              <CourseTtsOverlay
-                moduleId={module.id}
-                stepType={currentContentStep.stepType}
-                iframeRef={htmlIframeRef}
-                embedSlideIndex={htmlEmbedState?.slideIndex ?? 0}
-                autoPlayEnabled={!showingOverview}
-              />
-            </div>
-          </div>
-        )}
 
       {showExitModal && (
         <CourseExitModal
