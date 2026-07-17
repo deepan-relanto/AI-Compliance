@@ -77,7 +77,7 @@ function ExplanationLines({ explanation }: { explanation: string }) {
       {lines.map((line) => (
         <li
           key={line}
-          className="relative pl-3.5 text-base font-medium leading-snug text-inherit before:absolute before:left-0 before:top-[0.6rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-55"
+          className="relative pl-3.5 text-sm font-medium leading-snug text-inherit before:absolute before:left-0 before:top-[0.5rem] before:h-1 before:w-1 before:rounded-full before:bg-current before:opacity-55"
         >
           {line}
         </li>
@@ -485,7 +485,7 @@ export function MCQCheckpoint({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold tracking-tight">
+            <p className="text-sm font-semibold tracking-tight">
               {!feedbackSettled
                 ? "Answer recorded"
                 : wasCorrect
@@ -514,7 +514,7 @@ export function MCQCheckpoint({
           {answerExplanation ? (
             <ExplanationLines explanation={answerExplanation} />
           ) : (
-            <p className="text-base font-medium leading-snug">
+            <p className="text-sm font-medium leading-snug">
               Your response has been recorded for this checkpoint.
             </p>
           )}
