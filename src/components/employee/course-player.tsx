@@ -699,6 +699,14 @@ export function CoursePlayer({
   }, [autoStartSession, user?.username, module.id]);
 
   const handleFinishAttempt = useCallback(async () => {
+    // Block finalizing until every prior question is scored. Allow the last
+    // answer to still be in-flight (size === length - 1 on the final index).
+    const answered = answeredQuestionIdsRef.current.size;
+    const total = moduleMcqs.length;
+    if (total > 0 && answered < total - 1) {
+      return;
+    }
+
     if (!user?.username) {
       setShowAcknowledgement(true);
       return;
@@ -734,6 +742,7 @@ export function CoursePlayer({
   }, [
     user?.username,
     module.id,
+    moduleMcqs.length,
     unlockBadge,
     resetAcknowledgementForm,
     scheduleBadgeFlush,
@@ -809,10 +818,13 @@ export function CoursePlayer({
   }, []);
 
   const finishTrainingCompletion = useCallback(() => {
-    setShowFinalQa(false);
+    // Keep final-QA / score chrome suppressed and park on a blank dark stage
+    // so "Ready for the quiz" never flashes behind the completion notice.
     setShowAcknowledgement(false);
     setShowScoreResult(false);
     setMcqOpen(false);
+    setPhase("quiz");
+    setShowFinalQa(true);
     if (user?.username) {
       markCompleted(user.username, module.id);
       void syncCourseProgressComplete(user.username, module.id);
@@ -939,8 +951,18 @@ export function CoursePlayer({
       setMcqOpen(true);
       return;
     }
-    // Keep the last MCQ open until finish sets the score/completion screen,
-    // otherwise "Ready for the quiz" flashes in the background.
+    // Final question only — require this checkpoint to be in the answered set
+    // (Continue is only shown after Submit, which records the answer).
+    if (!answeredQuestionIdsRef.current.has(gateMcq.id)) {
+      // Answer may still be validating; wait one frame for onAnswered, then finish.
+      window.setTimeout(() => {
+        if (answeredQuestionIdsRef.current.has(gateMcq.id)) {
+          void handleFinishAttempt();
+        }
+      }, 400);
+      return;
+    }
+    // Keep the last MCQ open until finish sets the score/completion screen.
     void handleFinishAttempt();
   };
 
@@ -1323,6 +1345,14 @@ export function CoursePlayer({
               onBack={() => setShowAcknowledgement(false)}
               onSubmit={() => void handleAcknowledgementSubmit()}
             />
+          ) : completionNotice?.variant === "success" ? (
+            <motion.div
+              key="submitted-blank"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex min-h-0 flex-1 bg-zinc-950"
+              aria-hidden
+            />
           ) : !showFinalQa ? (
             <motion.div
               key={quizOnlyMode ? "quiz-only" : `${contentStepIndex}-${pdfPage}`}
@@ -1380,7 +1410,10 @@ export function CoursePlayer({
                     />
                   )}
                 </div>
-              ) : phase === "quiz" && !mcqOpen && !showScoreResult ? (
+              ) : phase === "quiz" &&
+                !mcqOpen &&
+                !showScoreResult &&
+                !completionNotice ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
                   <div className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/15 via-zinc-900 to-[#f15a24]/10 px-5 py-4 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">

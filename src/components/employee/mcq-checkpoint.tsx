@@ -649,9 +649,10 @@ export function MCQCheckpoint({
           <Button
             variant="primary"
             className="w-full text-sm font-semibold"
+            disabled={validating}
             onClick={handleContinue}
           >
-            Continue to next question
+            {validating ? "Confirming…" : "Continue to next question"}
           </Button>
         )}
       </div>

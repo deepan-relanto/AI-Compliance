@@ -543,24 +543,27 @@ export function FloatingAvatar({
     handleFallbackSpeak(gen);
   };
 
+  // Auto-narrate whenever the slide script changes. Do NOT halt in this
+  // effect's cleanup on every dep flicker (ttsMode/avatarReady) — that was
+  // killing playback after the first slide and blocking later slides.
   useEffect(() => {
     if (!autoPlay || !enabled || !script.trim()) return;
+    if (avatarLoading || !avatarReady || ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
-    if (avatarLoading) return;
     lastAutoScriptRef.current = script;
-    stopSpeaking();
+    haltAllAvatarAudio();
     const timer = window.setTimeout(() => {
       void handleSpeak({ force: true });
-    }, 50);
+    }, 120);
     return () => {
       window.clearTimeout(timer);
-      haltAllAvatarAudio();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);
 
   useEffect(() => {
     return () => {
+      lastAutoScriptRef.current = "";
       haltAllAvatarAudio();
       setSpeaking(false);
     };
