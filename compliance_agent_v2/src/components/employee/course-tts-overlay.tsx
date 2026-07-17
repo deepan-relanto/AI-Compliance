@@ -2,6 +2,7 @@
 
 import {
   FloatingAvatar,
+  haltAllAvatarAudio,
   warmAvatarAssets,
 } from "@/components/course/floating-avatar";
 import { isSpeakableNarration, sanitizeNarrationSource } from "@/lib/tts-narration";
@@ -101,8 +102,15 @@ export function CourseTtsOverlay({
       });
     return () => {
       cancelled = true;
+      haltAllAvatarAudio();
     };
   }, [moduleId]);
+
+  useEffect(() => {
+    return () => {
+      haltAllAvatarAudio();
+    };
+  }, []);
 
   useEffect(() => {
     if (!payload?.available) return;

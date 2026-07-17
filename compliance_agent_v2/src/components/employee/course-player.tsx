@@ -13,6 +13,7 @@ import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import { CourseContentOverview } from "@/components/employee/course-content-overview";
 import { CourseTtsOverlay } from "@/components/employee/course-tts-overlay";
+import { haltAllAvatarAudio } from "@/components/course/floating-avatar";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -990,6 +991,16 @@ export function CoursePlayer({
       setPdfReady(true);
     }
   }, [contentStepIndex, currentContentStep?.config.pageCount, isPdfStep]);
+
+  // Hard-stop narration when leaving TTS-eligible slides (e.g. into video).
+  useEffect(() => {
+    const stepType = currentContentStep?.stepType;
+    const ttsEligible =
+      stepType === "pdf" || stepType === "scenarios" || stepType === "mindmap";
+    if (!ttsEligible || phase !== "content") {
+      haltAllAvatarAudio();
+    }
+  }, [contentStepIndex, currentContentStep?.stepType, phase]);
 
   useEffect(() => {
     const onEmbedMessage = (event: MessageEvent) => {
