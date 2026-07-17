@@ -2,7 +2,6 @@
 
 import {
   FloatingAvatar,
-  haltAllAvatarAudio,
   warmAvatarAssets,
 } from "@/components/course/floating-avatar";
 import { isSpeakableNarration, sanitizeNarrationSource } from "@/lib/tts-narration";
@@ -102,57 +101,26 @@ export function CourseTtsOverlay({
       });
     return () => {
       cancelled = true;
-      haltAllAvatarAudio();
     };
   }, [moduleId]);
 
   useEffect(() => {
-    return () => {
-      haltAllAvatarAudio();
-    };
-  }, []);
-
-  // Prefer the embed postMessage slide index (reliable on Next), then DOM.
-  useEffect(() => {
-    if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
-      setBeat((prev) => {
-        if (prev.slideIndex === embedSlideIndex) return prev;
-        return { slideIndex: embedSlideIndex, fragmentIndex: 0 };
-      });
-    }
-  }, [embedSlideIndex]);
-
-  useEffect(() => {
     if (!payload?.available) return;
     const tick = () => {
-      if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
-        const fromDom = readBeatFromIframe(iframeRef.current);
-        // Keep slide from embed; only adopt fragment progress from DOM.
-        if (fromDom && fromDom.slideIndex === embedSlideIndex) {
-          setBeat((prev) =>
-            prev.slideIndex === fromDom.slideIndex &&
-            prev.fragmentIndex === fromDom.fragmentIndex
-              ? prev
-              : {
-                  slideIndex: embedSlideIndex,
-                  fragmentIndex: fromDom.fragmentIndex,
-                },
-          );
-        }
-        return;
-      }
       const fromDom = readBeatFromIframe(iframeRef.current);
       if (fromDom) {
-        setBeat((prev) =>
-          prev.slideIndex === fromDom.slideIndex &&
-          prev.fragmentIndex === fromDom.fragmentIndex
-            ? prev
-            : fromDom,
-        );
+        setBeat(fromDom);
+        return;
+      }
+      if (typeof embedSlideIndex === "number" && embedSlideIndex >= 0) {
+        setBeat((prev) => ({
+          slideIndex: embedSlideIndex,
+          fragmentIndex: prev.slideIndex === embedSlideIndex ? prev.fragmentIndex : 0,
+        }));
       }
     };
     tick();
-    syncRef.current = window.setInterval(tick, 200);
+    syncRef.current = window.setInterval(tick, 250);
     return () => {
       if (syncRef.current != null) {
         window.clearInterval(syncRef.current);
@@ -161,43 +129,26 @@ export function CourseTtsOverlay({
     };
   }, [payload?.available, iframeRef, embedSlideIndex]);
 
-  // Reset beat when the content step type changes (pdf → scenarios → mindmap).
-  useEffect(() => {
-    setBeat({ slideIndex: 0, fragmentIndex: 0 });
-    haltAllAvatarAudio();
-  }, [stepType]);
-
   const activeSegment = useMemo(() => {
     if (!payload?.available || !stepType) return null;
     const forStep = payload.segments.filter(
       (segment) =>
         segment.sourceStepType === stepType ||
-        (stepType === "pdf" && segment.sourceStepType === "pdf") ||
-        (stepType === "scenarios" && segment.sourceStepType === "scenarios") ||
-        (stepType === "mindmap" && segment.sourceStepType === "mindmap"),
+        (stepType === "pdf" && segment.sourceStepType === "pdf"),
     );
-    const pool = forStep.length > 0 ? forStep : [];
-    if (pool.length === 0) return null;
-
+    const pool = forStep.length > 0 ? forStep : payload.segments;
     const exact = pool.find(
-      (segment) =>
-        segment.slideIndex === beat.slideIndex &&
-        segment.fragmentIndex === beat.fragmentIndex,
-    );
+        (segment) =>
+          segment.slideIndex === beat.slideIndex &&
+          segment.fragmentIndex === beat.fragmentIndex,
+      );
     const slideLevel = pool.find(
-      (segment) =>
-        segment.slideIndex === beat.slideIndex && segment.fragmentIndex === 0,
-    );
-    // Prefer slide-level narration (full slide script) over fragment scraps.
-    const preferred = slideLevel ?? exact ?? null;
-    if (!preferred) {
-      // Closest earlier slide script so department/mindmap never go silent.
-      const earlier = [...pool]
-        .filter((segment) => segment.slideIndex <= beat.slideIndex)
-        .sort((a, b) => b.slideIndex - a.slideIndex || a.fragmentIndex - b.fragmentIndex);
-      return earlier[0] ?? pool[0] ?? null;
-    }
-    return preferred;
+        (segment) =>
+          segment.slideIndex === beat.slideIndex && segment.fragmentIndex === 0,
+      );
+    return exact && isSpeakableNarration(exact.scriptText)
+      ? exact
+      : slideLevel ?? exact ?? null;
   }, [payload, stepType, beat]);
 
   if (!payload?.available) return null;
