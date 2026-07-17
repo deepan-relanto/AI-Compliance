@@ -87,7 +87,7 @@ const envVars = [
   },
   {
     key: "NEXT_PUBLIC_HEADTTS_SPEED",
-    value: env.NEXT_PUBLIC_HEADTTS_SPEED || "1.2",
+    value: env.NEXT_PUBLIC_HEADTTS_SPEED || "1.1",
   },
   { key: "GEMINI_API_KEY", value: env.GEMINI_API_KEY },
   { key: "GEMINI_MODEL", value: env.GEMINI_MODEL || "gemini-2.5-flash" },
@@ -111,9 +111,7 @@ if (service?.suspended === "suspended") {
   await api("POST", `/services/${SERVICE_ID}/resume`, {});
 }
 
-const deploy = await api("POST", `/services/${SERVICE_ID}/deploys`, {
-  clearCache: "clear",
-});
+const deploy = await api("POST", `/services/${SERVICE_ID}/deploys`, {});
 console.log("Deploy triggered:", deploy?.id ?? deploy);
 
 console.log("\nProduction URL:", PROD_URL);
