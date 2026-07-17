@@ -1014,12 +1014,9 @@ export function CoursePlayer({
     }
   }, [contentStepIndex, currentContentStep?.config.pageCount, isPdfStep]);
 
-  // Hard-stop narration when leaving TTS-eligible slides (e.g. into video).
+  // Stop avatar narration only on the video step (leave all other slides alone).
   useEffect(() => {
-    const stepType = currentContentStep?.stepType;
-    const ttsEligible =
-      stepType === "pdf" || stepType === "scenarios" || stepType === "mindmap";
-    if (!ttsEligible || phase !== "content") {
+    if (phase === "content" && currentContentStep?.stepType === "video") {
       haltAllAvatarAudio();
     }
   }, [contentStepIndex, currentContentStep?.stepType, phase]);

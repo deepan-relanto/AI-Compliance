@@ -58,41 +58,32 @@ let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
 let headTtsImportPromise: Promise<HeadTtsModule> | null = null;
 const warmedModelUrls = new Set<string>();
 
-/** Live instances so course-player can hard-stop audio after the overlay unmounts. */
+/** Live instances ? used only for video-step hard stop. Do not tear down mid-slide. */
 let activeHeadInstance: TalkingHeadInstance | null = null;
 let activeHeadTts: HeadTtsInstance | null = null;
-let speakGeneration = 0;
 
-function getSpeechEngine(): SpeechSynthesis | null {
-  if (typeof window === "undefined") return null;
-  return window.speechSynthesis ?? window.webkitSpeechSynthesis ?? null;
-}
-
-/**
- * Cancel browser TTS, TalkingHead speech, and HeadTTS.
- * Safe to call from course-player when leaving slides for video.
- * Does not tear down the 3D avatar instance (use head.stop on unmount).
- */
+/** Stop narration when entering the video step. Keeps the avatar instance intact. */
 export function haltAllAvatarAudio(): void {
-  speakGeneration += 1;
   try {
     getSpeechEngine()?.cancel();
   } catch {
     /* ignore */
   }
-  const head = activeHeadInstance;
-  if (typeof head?.stopSpeaking === "function") {
-    try {
-      head.stopSpeaking();
-    } catch {
-      /* ignore */
-    }
+  try {
+    activeHeadInstance?.stopSpeaking?.();
+  } catch {
+    /* ignore */
   }
   try {
     activeHeadTts?.clear?.();
   } catch {
     /* ignore */
   }
+}
+
+function getSpeechEngine(): SpeechSynthesis | null {
+  if (typeof window === "undefined") return null;
+  return window.speechSynthesis ?? window.webkitSpeechSynthesis ?? null;
 }
 
 export function normalizeTalkingHeadCdnUrl(input: string | undefined): string {
@@ -269,7 +260,6 @@ export function FloatingAvatar({
   const headInstanceRef = useRef<TalkingHeadInstance | null>(null);
   const headTtsRef = useRef<HeadTtsInstance | null>(null);
   const lastAutoScriptRef = useRef<string>("");
-  const speakGenRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -283,7 +273,6 @@ export function FloatingAvatar({
       "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
 
     if (!enabled || !modelUrl || typeof window === "undefined") {
-      haltAllAvatarAudio();
       setAvatarReady(false);
       setAvatarLoading(false);
       setTtsMode("none");
@@ -405,39 +394,30 @@ export function FloatingAvatar({
 
     return () => {
       cancelled = true;
-      haltAllAvatarAudio();
       const head = headInstanceRef.current;
-      if (typeof head?.stop === "function") {
-        try {
-          head.stop();
-        } catch {
-          /* ignore */
-        }
-      }
-      if (activeHeadInstance === headInstanceRef.current) {
-        activeHeadInstance = null;
-      }
-      if (activeHeadTts === headTtsRef.current) {
-        activeHeadTts = null;
-      }
+      if (typeof head?.stop === "function") head.stop();
+      headTtsRef.current?.clear?.();
+      if (activeHeadTts === headTtsRef.current) activeHeadTts = null;
+      if (activeHeadInstance === headInstanceRef.current) activeHeadInstance = null;
       headTtsRef.current = null;
       headInstanceRef.current = null;
-      setSpeaking(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const stopSpeaking = () => {
-    haltAllAvatarAudio();
-    speakGenRef.current = speakGeneration;
+    const head = headInstanceRef.current;
+    if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+    const synth = getSpeechEngine();
+    synth?.cancel();
+    headTtsRef.current?.clear?.();
     setSpeaking(false);
   };
 
-  const handleFallbackSpeak = (gen: number) => {
+  const handleFallbackSpeak = () => {
     const synth = getSpeechEngine();
     const head = headInstanceRef.current;
     if (!synth || !script.trim()) return;
-    if (gen !== speakGeneration) return;
     synth.cancel();
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
 
@@ -455,10 +435,6 @@ export function FloatingAvatar({
       voices.find((voice) => /^en[-_](US|GB)/i.test(voice.lang)) ??
       null;
     utterance.onstart = () => {
-      if (gen !== speakGeneration) {
-        synth.cancel();
-        return;
-      }
       setSpeaking(true);
       if (head && typeof head.speakAudio === "function") {
         try {
@@ -474,11 +450,11 @@ export function FloatingAvatar({
       }
     };
     utterance.onend = () => {
-      if (gen === speakGeneration) setSpeaking(false);
+      setSpeaking(false);
       if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     };
     utterance.onerror = () => {
-      if (gen === speakGeneration) setSpeaking(false);
+      setSpeaking(false);
       if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     };
     synth.speak(utterance);
@@ -491,11 +467,9 @@ export function FloatingAvatar({
       return;
     }
 
-    haltAllAvatarAudio();
-    const gen = speakGeneration;
-    speakGenRef.current = gen;
-
     const head = headInstanceRef.current;
+    if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
+    getSpeechEngine()?.cancel();
 
     if (
       ttsMode === "headtts" &&
@@ -508,9 +482,7 @@ export function FloatingAvatar({
         const messages = await headTtsRef.current.synthesize({
           input: script.trim().slice(0, 500),
         });
-        if (gen !== speakGeneration) return;
         for (const message of messages ?? []) {
-          if (gen !== speakGeneration) return;
           if (message.type === "error") throw new Error("HeadTTS synthesis failed");
           if (message.type === "audio") {
             await Promise.resolve(head.speakAudio(message.data));
@@ -518,54 +490,45 @@ export function FloatingAvatar({
         }
         return;
       } catch {
-        if (gen !== speakGeneration) return;
         setTtsMode("browser");
-        handleFallbackSpeak(gen);
+        handleFallbackSpeak();
         return;
       } finally {
-        if (gen === speakGeneration) setSpeaking(false);
+        setSpeaking(false);
       }
     }
 
     if (ttsMode === "gtts" && avatarReady && typeof head?.speakText === "function") {
       try {
-        if (gen !== speakGeneration) return;
         setSpeaking(true);
         await Promise.resolve(head.speakText(script.trim()));
       } catch {
         // ignore
       } finally {
-        if (gen === speakGeneration) setSpeaking(false);
+        setSpeaking(false);
       }
       return;
     }
 
-    handleFallbackSpeak(gen);
+    handleFallbackSpeak();
   };
 
-  // Auto-narrate whenever the slide script changes. Do NOT halt in this
-  // effect's cleanup on every dep flicker (ttsMode/avatarReady) — that was
-  // killing playback after the first slide and blocking later slides.
   useEffect(() => {
     if (!autoPlay || !enabled || !script.trim()) return;
-    if (avatarLoading || !avatarReady || ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
+    if (avatarLoading) return;
     lastAutoScriptRef.current = script;
-    haltAllAvatarAudio();
+    stopSpeaking();
     const timer = window.setTimeout(() => {
       void handleSpeak({ force: true });
-    }, 120);
-    return () => {
-      window.clearTimeout(timer);
-    };
+    }, 50);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);
 
   useEffect(() => {
     return () => {
-      lastAutoScriptRef.current = "";
-      haltAllAvatarAudio();
-      setSpeaking(false);
+      stopSpeaking();
     };
   }, []);
 
