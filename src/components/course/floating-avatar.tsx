@@ -565,44 +565,58 @@ export function FloatingAvatar({
       engine?.synthesize &&
       typeof head?.speakAudio === "function"
     ) {
+      // Track whether we successfully queued ANY audio. The whole point is to be
+      // non-destructive: once a sentence is playing, a later per-sentence error
+      // must NOT cut it or tear the whole utterance down.
+      let queuedAny = false;
+      const queueAudio = (data: unknown) => {
+        if (epoch !== speakEpoch) return;
+        if (typeof head?.speakAudio !== "function") return;
+        try {
+          head.speakAudio(data as never);
+          queuedAny = true;
+        } catch (chunkErr) {
+          // Swallow a single bad chunk; keep the rest of the sentences playing.
+          console.warn("[avatar] speakAudio chunk skipped", chunkErr);
+        }
+      };
       try {
         setSpeaking(true);
         const speed = resolveSpeed();
         const voice = resolveVoice();
-        // Proven streaming contract (383f0e2): feed each audio chunk to
-        // TalkingHead's queue as it arrives so playback starts immediately and
-        // continues across sentences via the engine's own queue.
-        let streamed = false;
+        // Feed each audio chunk to TalkingHead's queue as it arrives so playback
+        // starts immediately and continues across sentences. The callback NEVER
+        // throws ? an error message on a later sentence must not reject the whole
+        // synthesis and trigger a destructive fallback.
         const messages = await engine.synthesize(
           {
             input: text.slice(0, 700),
             voice,
             speed,
           },
-          async (message) => {
+          (message) => {
             if (epoch !== speakEpoch) return;
-            if (message.type === "error") throw new Error("HeadTTS synthesis failed");
-            if (message.type === "audio" && typeof head.speakAudio === "function") {
-              streamed = true;
-              await Promise.resolve(head.speakAudio(message.data));
-            }
+            if (message?.type === "audio") queueAudio(message.data);
           },
         );
         if (epoch !== speakEpoch) return;
-        if (!streamed) {
+        // If the library didn't drive the callback, queue from the returned array.
+        if (!queuedAny) {
           for (const message of messages ?? []) {
             if (epoch !== speakEpoch) return;
-            if (message.type === "error") throw new Error("HeadTTS synthesis failed");
-            if (message.type === "audio") {
-              await Promise.resolve(head.speakAudio(message.data));
-            }
+            if (message?.type === "audio") queueAudio(message.data);
           }
         }
+        // Only fall back when we produced NOTHING ? never when audio is playing.
+        if (!queuedAny) throw new Error("HeadTTS returned no audio");
       } catch (err) {
-        console.error("[avatar] HeadTTS speak failed; falling back to browser", err);
+        console.error("[avatar] HeadTTS speak failed", err);
         if (epoch !== speakEpoch) return;
-        setTtsMode("browser");
-        handleFallbackSpeak(epoch);
+        // Do not cut good audio: only switch to the browser voice if silent.
+        if (!queuedAny) {
+          setTtsMode("browser");
+          handleFallbackSpeak(epoch);
+        }
         return;
       } finally {
         if (epoch === speakEpoch) setSpeaking(false);
