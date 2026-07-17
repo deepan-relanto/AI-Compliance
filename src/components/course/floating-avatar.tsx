@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { cn } from "@/lib/utils";
 import { Loader2, Mic } from "lucide-react";
@@ -40,7 +40,7 @@ type HeadTtsInstance = {
   connect?: () => Promise<void>;
   setup?: (options: Record<string, unknown>) => Promise<unknown>;
   synthesize?: (
-    options: { input: string; voice?: string; speed?: number },
+    options: { input: string },
     onMessage?: (message: HeadTtsMessage) => void,
     onError?: (error: unknown) => void,
   ) => Promise<HeadTtsMessage[]>;
@@ -51,31 +51,18 @@ type HeadTtsModule = {
   HeadTTS?: new (options: Record<string, unknown>) => HeadTtsInstance;
 };
 
-/**
- * Kokoro `af_nicole` is whisper-soft but ~116 WPM (feels sluggish).
- * `af_heart` is warm/friendly and natural for training narration.
- * Override with NEXT_PUBLIC_HEADTTS_VOICE.
- */
-const DEFAULT_HEADTTS_VOICE = "af_heart";
-const DEFAULT_HEADTTS_SPEED = 1.08;
+const DEFAULT_HEADTTS_VOICE = "af_nicole";
 
 /** Module-level caches so remounts / slide changes do not re-download CDN + GLB. */
 let talkingHeadImportPromise: Promise<TalkingHeadModule> | null = null;
 let headTtsImportPromise: Promise<HeadTtsModule> | null = null;
 const warmedModelUrls = new Set<string>();
 
-/** Shared HeadTTS instance across remounts ? model load is the slow part. */
-let sharedHeadTts: HeadTtsInstance | null = null;
-let sharedHeadTtsVoice: string | null = null;
-let sharedHeadTtsPromise: Promise<HeadTtsInstance | null> | null = null;
-
-/** Live TalkingHead for video-step hard stop only. */
+/** Live TalkingHead for video-step hard stop / audio unlock (player wiring). */
 let activeHeadInstance: TalkingHeadInstance | null = null;
-let speakEpoch = 0;
 
 /** Stop narration when entering the video step. Keeps instances intact. */
 export function haltAllAvatarAudio(): void {
-  speakEpoch += 1;
   try {
     getSpeechEngine()?.cancel();
   } catch {
@@ -166,16 +153,7 @@ function loadHeadTtsModule(cdnUrl: string): Promise<HeadTtsModule> {
   return headTtsImportPromise;
 }
 
-function resolveVoice(): string {
-  return process.env.NEXT_PUBLIC_HEADTTS_VOICE?.trim() || DEFAULT_HEADTTS_VOICE;
-}
-
-function resolveSpeed(): number {
-  const raw = Number(process.env.NEXT_PUBLIC_HEADTTS_SPEED ?? DEFAULT_HEADTTS_SPEED);
-  return Number.isFinite(raw) && raw > 0.5 && raw < 2 ? raw : DEFAULT_HEADTTS_SPEED;
-}
-
-/** Prefetch GLB + CDN modules so first slide can speak sooner. */
+/** Prefetch the GLB (+ CDN modules) so the avatar circle fills faster on first show. */
 export function warmAvatarAssets(options?: {
   modelUrl?: string | null;
   talkingHeadCdnUrl?: string;
@@ -196,7 +174,6 @@ export function warmAvatarAssets(options?: {
 
   void loadTalkingHeadModule(talkingHeadCdnUrl).catch(() => undefined);
   void loadHeadTtsModule(headTtsCdnUrl).catch(() => undefined);
-  void ensureSharedHeadTts(headTtsCdnUrl);
 
   if (!modelUrl || warmedModelUrls.has(modelUrl)) return;
   warmedModelUrls.add(modelUrl);
@@ -211,52 +188,6 @@ export function warmAvatarAssets(options?: {
   void fetch(modelUrl, { credentials: "same-origin", cache: "force-cache" }).catch(
     () => undefined,
   );
-}
-
-async function ensureSharedHeadTts(headTtsCdnUrl: string): Promise<HeadTtsInstance | null> {
-  const voice = resolveVoice();
-  if (sharedHeadTts && sharedHeadTtsVoice === voice) return sharedHeadTts;
-  if (sharedHeadTtsPromise) return sharedHeadTtsPromise;
-
-  sharedHeadTtsPromise = (async (): Promise<HeadTtsInstance | null> => {
-    try {
-      const { HeadTTS } = await loadHeadTtsModule(headTtsCdnUrl);
-      if (!HeadTTS) return null;
-      const speed = resolveSpeed();
-      // Proven config from working commit 383f0e2 ? streaming chunks per sentence.
-      const headTts = new HeadTTS({
-        endpoints: ["wasm", "webgpu"],
-        dtypeWasm: "fp16",
-        dtypeWebgpu: "fp16",
-        workerModule:
-          process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
-          "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
-        dictionaryURL:
-          process.env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL?.trim() ||
-          "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
-        voices: [voice],
-        defaultVoice: voice,
-        defaultLanguage: "en-us",
-        defaultSpeed: speed,
-        splitSentences: true,
-      });
-      await headTts.connect?.();
-      await headTts.setup?.({
-        voice,
-        language: "en-us",
-        speed,
-        audioEncoding: "wav",
-      });
-      sharedHeadTts = headTts;
-      sharedHeadTtsVoice = voice;
-      return headTts;
-    } catch {
-      sharedHeadTtsPromise = null;
-      return null;
-    }
-  })();
-
-  return sharedHeadTtsPromise;
 }
 
 function createFakeTalkingAudio(
@@ -298,7 +229,7 @@ function createFakeTalkingAudio(
   let currentMs = 0;
 
   for (const word of words) {
-    const wordDur = Math.max(120, word.length * 12 + 80);
+    const wordDur = Math.max(150, word.length * 15 + 100);
     wtimes.push(currentMs);
     wdurations.push(wordDur);
 
@@ -310,7 +241,7 @@ function createFakeTalkingAudio(
     vtimes.push(currentMs + visemeDur);
     vdurations.push(visemeDur);
 
-    currentMs += wordDur + 30;
+    currentMs += wordDur + 50;
   }
 
   const durationSecs = currentMs / 1000;
@@ -360,8 +291,6 @@ export function FloatingAvatar({
   const headInstanceRef = useRef<TalkingHeadInstance | null>(null);
   const headTtsRef = useRef<HeadTtsInstance | null>(null);
   const lastAutoScriptRef = useRef<string>("");
-  const scriptRef = useRef(script);
-  scriptRef.current = script;
 
   useEffect(() => {
     let cancelled = false;
@@ -386,14 +315,48 @@ export function FloatingAvatar({
 
     (async () => {
       try {
-        const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
-        const headTtsWarm = gttsApiKey
-          ? Promise.resolve(null)
-          : ensureSharedHeadTts(headTtsCdnUrl);
+        // Kick HeadTTS warm-up in parallel with the 3D model load.
+        const headTtsWarm = (async (): Promise<HeadTtsInstance | null> => {
+          const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
+          if (gttsApiKey) return null;
+          try {
+            const { HeadTTS } = await loadHeadTtsModule(headTtsCdnUrl);
+            if (!HeadTTS || cancelled) return null;
+            const voice =
+              process.env.NEXT_PUBLIC_HEADTTS_VOICE?.trim() || DEFAULT_HEADTTS_VOICE;
+            const headTts = new HeadTTS({
+              endpoints: ["webgpu", "wasm"],
+              dtypeWebgpu: "fp32",
+              dtypeWasm: "fp16",
+              workerModule:
+                process.env.NEXT_PUBLIC_HEADTTS_WORKER_URL?.trim() ||
+                "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
+              dictionaryURL:
+                process.env.NEXT_PUBLIC_HEADTTS_DICTIONARY_URL?.trim() ||
+                "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
+              voices: [voice],
+              defaultVoice: voice,
+              defaultLanguage: "en-us",
+              defaultSpeed: 1,
+              splitSentences: true,
+            });
+            await headTts.connect?.();
+            await headTts.setup?.({
+              voice,
+              language: "en-us",
+              speed: 1,
+              audioEncoding: "wav",
+            });
+            return cancelled ? null : headTts;
+          } catch {
+            return null;
+          }
+        })();
 
         const { TalkingHead } = await loadTalkingHeadModule(talkingHeadCdnUrl);
         if (cancelled || !headRef.current || !TalkingHead) return;
 
+        const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
         const gttsVoice =
           process.env.NEXT_PUBLIC_GOOGLE_TTS_VOICE?.trim() || "en-US-Neural2-F";
         const gttsLang = process.env.NEXT_PUBLIC_GOOGLE_TTS_LANG?.trim() || "en-US";
@@ -440,7 +403,10 @@ export function FloatingAvatar({
         }
 
         const headTts = await headTtsWarm;
-        if (cancelled) return;
+        if (cancelled) {
+          headTts?.clear?.();
+          return;
+        }
         if (headTts) {
           headTtsRef.current = headTts;
           setTtsMode("headtts");
@@ -458,41 +424,35 @@ export function FloatingAvatar({
 
     return () => {
       cancelled = true;
-      speakEpoch += 1;
       const head = headInstanceRef.current;
-      try {
-        head?.stopSpeaking?.();
-      } catch {
-        /* ignore */
-      }
-      // Keep shared HeadTTS warm ? only tear down this mount's 3D head.
-      if (activeHeadInstance === headInstanceRef.current) activeHeadInstance = null;
+      if (activeHeadInstance === head) activeHeadInstance = null;
       if (typeof head?.stop === "function") head.stop();
-      headInstanceRef.current = null;
+      headTtsRef.current?.clear?.();
       headTtsRef.current = null;
+      headInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   const stopSpeaking = () => {
-    speakEpoch += 1;
     const head = headInstanceRef.current;
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
-    getSpeechEngine()?.cancel();
+    const synth = getSpeechEngine();
+    synth?.cancel();
+    headTtsRef.current?.clear?.();
     setSpeaking(false);
   };
 
-  const handleFallbackSpeak = (epoch: number) => {
+  const handleFallbackSpeak = () => {
     const synth = getSpeechEngine();
     const head = headInstanceRef.current;
-    const text = scriptRef.current.trim();
-    if (!synth || !text) return;
+    if (!synth || !script.trim()) return;
     synth.cancel();
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.05;
+    const utterance = new SpeechSynthesisUtterance(script.trim());
+    utterance.rate = 0.98;
+    utterance.pitch = 1;
     utterance.volume = 1;
     const voices = synth.getVoices();
     utterance.voice =
@@ -504,7 +464,6 @@ export function FloatingAvatar({
       voices.find((voice) => /^en[-_](US|GB)/i.test(voice.lang)) ??
       null;
     utterance.onstart = () => {
-      if (epoch !== speakEpoch) return;
       setSpeaking(true);
       if (head && typeof head.speakAudio === "function") {
         try {
@@ -512,20 +471,18 @@ export function FloatingAvatar({
             window.AudioContext ||
             (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
           const audioCtx = head.audioCtx || new AudioCtx();
-          const fakeAudio = createFakeTalkingAudio(text, audioCtx);
+          const fakeAudio = createFakeTalkingAudio(script.trim(), audioCtx);
           head.speakAudio(fakeAudio);
-        } catch {
-          /* ignore */
+        } catch (e) {
+          console.error("Failed to start fake lip sync:", e);
         }
       }
     };
     utterance.onend = () => {
-      if (epoch !== speakEpoch) return;
       setSpeaking(false);
       if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     };
     utterance.onerror = () => {
-      if (epoch !== speakEpoch) return;
       setSpeaking(false);
       if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     };
@@ -533,126 +490,68 @@ export function FloatingAvatar({
   };
 
   const handleSpeak = async (opts?: { force?: boolean }) => {
-    const text = scriptRef.current.trim();
-    if (!text) return;
+    if (!script.trim()) return;
     if (speaking && !opts?.force) {
       stopSpeaking();
       return;
     }
 
-    speakEpoch += 1;
-    const epoch = speakEpoch;
-
-    unlockAvatarAudio();
-
     const head = headInstanceRef.current;
-    // Only clear the queue when starting a brand-new utterance.
     if (typeof head?.stopSpeaking === "function") head.stopSpeaking();
     getSpeechEngine()?.cancel();
 
-    try {
-      if (head?.audioCtx?.state === "suspended") {
-        await head.audioCtx.resume();
-      }
-    } catch {
-      /* ignore */
-    }
-
-    // Prefer HeadTTS whenever the engine is ready (don't depend only on ttsMode race).
-    const engine = headTtsRef.current ?? sharedHeadTts;
     if (
+      ttsMode === "headtts" &&
       avatarReady &&
-      engine?.synthesize &&
+      headTtsRef.current?.synthesize &&
       typeof head?.speakAudio === "function"
     ) {
-      // Track whether we successfully queued ANY audio. The whole point is to be
-      // non-destructive: once a sentence is playing, a later per-sentence error
-      // must NOT cut it or tear the whole utterance down.
-      let queuedAny = false;
-      const queueAudio = (data: unknown) => {
-        if (epoch !== speakEpoch) return;
-        if (typeof head?.speakAudio !== "function") return;
-        try {
-          head.speakAudio(data as never);
-          queuedAny = true;
-        } catch (chunkErr) {
-          // Swallow a single bad chunk; keep the rest of the sentences playing.
-          console.warn("[avatar] speakAudio chunk skipped", chunkErr);
-        }
-      };
       try {
         setSpeaking(true);
-        const speed = resolveSpeed();
-        const voice = resolveVoice();
-        // Feed each audio chunk to TalkingHead's queue as it arrives so playback
-        // starts immediately and continues across sentences. The callback NEVER
-        // throws ? an error message on a later sentence must not reject the whole
-        // synthesis and trigger a destructive fallback.
-        const messages = await engine.synthesize(
-          {
-            input: text.slice(0, 700),
-            voice,
-            speed,
-          },
-          (message) => {
-            if (epoch !== speakEpoch) return;
-            if (message?.type === "audio") queueAudio(message.data);
-          },
-        );
-        if (epoch !== speakEpoch) return;
-        // If the library didn't drive the callback, queue from the returned array.
-        if (!queuedAny) {
-          for (const message of messages ?? []) {
-            if (epoch !== speakEpoch) return;
-            if (message?.type === "audio") queueAudio(message.data);
+        const messages = await headTtsRef.current.synthesize({
+          input: script.trim().slice(0, 500),
+        });
+        for (const message of messages ?? []) {
+          if (message.type === "error") throw new Error("HeadTTS synthesis failed");
+          if (message.type === "audio") {
+            await Promise.resolve(head.speakAudio(message.data));
           }
         }
-        // Only fall back when we produced NOTHING ? never when audio is playing.
-        if (!queuedAny) throw new Error("HeadTTS returned no audio");
-      } catch (err) {
-        console.error("[avatar] HeadTTS speak failed", err);
-        if (epoch !== speakEpoch) return;
-        // Do not cut good audio: only switch to the browser voice if silent.
-        if (!queuedAny) {
-          setTtsMode("browser");
-          handleFallbackSpeak(epoch);
-        }
+        return;
+      } catch {
+        setTtsMode("browser");
+        handleFallbackSpeak();
         return;
       } finally {
-        if (epoch === speakEpoch) setSpeaking(false);
+        setSpeaking(false);
       }
-      return;
     }
 
     if (ttsMode === "gtts" && avatarReady && typeof head?.speakText === "function") {
       try {
         setSpeaking(true);
-        await Promise.resolve(head.speakText(text));
+        await Promise.resolve(head.speakText(script.trim()));
       } catch {
-        /* ignore */
+        // ignore
       } finally {
-        if (epoch === speakEpoch) setSpeaking(false);
+        setSpeaking(false);
       }
       return;
     }
 
-    if (ttsMode === "none" || !avatarReady) return;
-    handleFallbackSpeak(epoch);
+    handleFallbackSpeak();
   };
 
   useEffect(() => {
     if (!autoPlay || !enabled || !script.trim()) return;
-    // Wait until a real TTS path is ready ? avoid burning the first slide on "none".
-    if (avatarLoading || !avatarReady || ttsMode === "none") return;
     if (script === lastAutoScriptRef.current) return;
+    if (avatarLoading) return;
     lastAutoScriptRef.current = script;
+    stopSpeaking();
     const timer = window.setTimeout(() => {
       void handleSpeak({ force: true });
-    }, 30);
-    return () => {
-      window.clearTimeout(timer);
-      // Do NOT stopSpeaking here ? Strict Mode / dep churn was cutting audio ~2s in.
-    };
+    }, 50);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, enabled, script, avatarReady, avatarLoading, ttsMode]);
 
@@ -660,20 +559,19 @@ export function FloatingAvatar({
     return () => {
       stopSpeaking();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const statusLabel =
     !enabled
       ? "Enable avatar in settings to activate."
       : avatarLoading
-        ? "Loading avatar model?"
+        ? "Loading avatar modelΓÇª"
         : !avatarReady
-          ? "Using fallback preview ? avatar model unavailable."
+          ? "Using fallback preview ΓÇö avatar model unavailable."
           : ttsMode === "gtts"
-            ? "Google TTS ? TalkingHead lip-sync active."
+            ? "Google TTS ┬╖ TalkingHead lip-sync active."
             : ttsMode === "headtts"
-              ? "Neural HeadTTS ? TalkingHead lip-sync active."
+              ? "Neural HeadTTS ┬╖ TalkingHead lip-sync active."
               : "TalkingHead avatar ready.";
 
   return (
@@ -721,19 +619,13 @@ export function FloatingAvatar({
         title={showCaption ? "Hide narrator text" : "Show narrator text"}
         onClick={() => setShowCaption((visible) => !visible)}
         className={cn(
-          "relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-full border-4 shadow-2xl transition-all duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2e3192]/45",
+          "relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-full border-4 border-white shadow-2xl ring-2 ring-[#2e3192]/20 transition-all duration-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#2e3192]/45",
           speaking
-            ? "border-white ring-2 ring-[#f15a24]/70 bg-gradient-to-br from-[#2e3192] via-[#3d42a8] to-[#f15a24]"
-            : "border-zinc-300 ring-1 ring-zinc-300/60 bg-zinc-200",
+            ? "bg-gradient-to-br from-[#2e3192] via-[#3d42a8] to-[#f15a24]"
+            : "bg-gradient-to-br from-zinc-200 via-white to-zinc-100",
         )}
       >
-        <div
-          ref={headRef}
-          className={cn(
-            "absolute inset-0 transition-[filter,opacity] duration-200",
-            speaking ? "grayscale-0 opacity-100" : "grayscale opacity-70",
-          )}
-        />
+        <div ref={headRef} className="absolute inset-0" />
         {(avatarLoading || !avatarReady) && (
           <div className="absolute inset-0 flex items-center justify-center">
             {avatarLoading ? (
