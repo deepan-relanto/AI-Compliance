@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import {
   isAllowedCourseAsset,
   type CourseAssetKind,
@@ -14,6 +15,9 @@ const KINDS = new Set<CourseAssetKind>(["lesson", "scenarios", "video", "mindmap
 
 /** POST multipart: kind=lesson|scenarios|video|mindmap|infographic, file=... */
 export async function POST(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   let formData: FormData;
   try {
     formData = await req.formData();

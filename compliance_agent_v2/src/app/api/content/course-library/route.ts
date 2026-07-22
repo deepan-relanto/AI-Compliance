@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { CACHE_TTL, cachedFetch } from "@/lib/api-cache";
 import { getSql } from "@/lib/db";
 import { listCourseLibraryDb } from "@/lib/services/course-service";
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 /** GET — published course bundles available for reuse */
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const library = await cachedFetch("content:course-library", CACHE_TTL.courseLibrary, async () => {
       const sql = getSql();

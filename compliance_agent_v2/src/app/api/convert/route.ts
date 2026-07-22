@@ -8,6 +8,7 @@
  * This route contains zero business logic — it is a thin HTTP adapter.
  */
 
+import { requireAdminSession } from "@/lib/api-admin";
 import {
   isPdfUpload,
   MAX_FILE_SIZE_BYTES,
@@ -21,6 +22,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   let formData: FormData;
   try {
     formData = await req.formData();

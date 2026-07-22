@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { CACHE_TTL, cachedFetch } from "@/lib/api-cache";
 import { getSql } from "@/lib/db";
 import { NextResponse } from "next/server";
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 /** GET — published compliance modules available for reuse (with MCQ counts) */
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const library = await cachedFetch(
       "content:compliance-library",

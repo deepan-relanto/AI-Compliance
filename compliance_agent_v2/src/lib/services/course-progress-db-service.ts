@@ -301,6 +301,7 @@ export async function startTrainingSessionDb(
           AND module_id = ${params.moduleId}
           AND status IN ('not_started', 'in_progress')
       `;
+      invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
     }
   }
 
@@ -378,6 +379,8 @@ export async function validateAndRecordMcqAnswerDb(
   mcqCorrect: number;
   mcqTotal: number;
   alreadyAnswered: boolean;
+  attemptLocked?: boolean;
+  persisted?: boolean;
 }> {
   const picked =
     params.optionIds && params.optionIds.length > 0
@@ -414,6 +417,7 @@ export async function validateAndRecordMcqAnswerDb(
       mcqCorrect: 0,
       mcqTotal: 0,
       alreadyAnswered: false,
+      persisted: false,
     };
   }
 
@@ -454,23 +458,21 @@ export async function validateAndRecordMcqAnswerDb(
   const scorePercent = snapshot?.scorePercent ?? null;
 
   if (!progressStatus) {
+    const dbTotal = await getModuleMcqCount(sql, params.moduleId);
     void startTrainingSessionDb(sql, {
       userEmail: params.userEmail,
       moduleId: params.moduleId,
       moduleTitle: params.moduleTitle,
       batchId: params.batchId,
       totalSlides: params.totalSlides,
-      assignedMcqCount: params.assignedMcqCount,
+      assignedMcqCount: dbTotal > 0 ? dbTotal : undefined,
     }).catch((err) => {
       console.error(err);
       invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
     });
     progressStatus = "in_progress";
     mcqCorrectStored = 0;
-    mcqTotalStored =
-      params.assignedMcqCount && params.assignedMcqCount > 0
-        ? params.assignedMcqCount
-        : 0;
+    mcqTotalStored = dbTotal;
     mcqAnswers = {};
     setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
       status: progressStatus,
@@ -488,51 +490,52 @@ export async function validateAndRecordMcqAnswerDb(
   ) {
     return {
       found: true,
-      correct,
+      correct: false,
       correctOptionId,
       mcqCorrect: mcqCorrectStored,
       mcqTotal: mcqTotalStored,
       alreadyAnswered: false,
+      attemptLocked: true,
+      persisted: false,
     };
   }
 
   if (Object.prototype.hasOwnProperty.call(mcqAnswers, params.questionId)) {
     return {
       found: true,
-      correct,
+      correct: Boolean(mcqAnswers[params.questionId]),
       correctOptionId,
       mcqCorrect: mcqCorrectStored,
       mcqTotal: mcqTotalStored,
       alreadyAnswered: true,
+      persisted: true,
     };
   }
 
-  const answers = { ...mcqAnswers, [params.questionId]: correct };
+  const patch = { [params.questionId]: correct };
   const assignedTotal =
     mcqTotalStored > 0
       ? mcqTotalStored
-      : params.assignedMcqCount && params.assignedMcqCount > 0
-        ? params.assignedMcqCount
-        : Object.keys(answers).length;
-  const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(answers, assignedTotal);
-
-  const nextStatus =
-    progressStatus === "not_started" ? "in_progress" : progressStatus;
-
-  setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
-    status: nextStatus,
-    mcqAnswers: answers,
-    mcqCorrect,
-    mcqTotal,
-    scorePercent,
-  });
+      : await getModuleMcqCount(sql, params.moduleId);
+  const answers = { ...mcqAnswers, ...patch };
+  const { mcqCorrect, mcqTotal } = computeScoreFromAnswers(
+    answers,
+    assignedTotal > 0 ? assignedTotal : Object.keys(answers).length,
+  );
 
   try {
     const updated = await sql`
       UPDATE course_progress
-      SET mcq_answers = ${JSON.stringify(answers)}::jsonb,
-          mcq_correct = ${mcqCorrect},
-          mcq_total = ${mcqTotal},
+      SET mcq_answers = mcq_answers || ${JSON.stringify(patch)}::jsonb,
+          mcq_correct = (
+            SELECT COUNT(*)::int
+            FROM jsonb_each(mcq_answers || ${JSON.stringify(patch)}::jsonb) AS e(k, v)
+            WHERE v = 'true'::jsonb
+          ),
+          mcq_total = CASE
+            WHEN mcq_total > 0 THEN mcq_total
+            ELSE ${mcqTotal}
+          END,
           status = CASE
             WHEN status = 'not_started' THEN 'in_progress'
             ELSE status
@@ -542,33 +545,78 @@ export async function validateAndRecordMcqAnswerDb(
       WHERE user_email = ${params.userEmail}
         AND module_id = ${params.moduleId}
         AND status NOT IN ('failed', 'permanently_failed', 'completed')
-      RETURNING status
+        AND NOT (mcq_answers ? ${params.questionId})
+      RETURNING status, mcq_correct, mcq_total, mcq_answers
     `;
     if (!updated[0]) {
       invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+      // Re-check: already answered concurrently, or attempt locked.
+      const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+      if (
+        row &&
+        (row.status === "failed" ||
+          row.status === "permanently_failed" ||
+          row.status === "completed")
+      ) {
+        return {
+          found: true,
+          correct: false,
+          correctOptionId,
+          mcqCorrect: row.mcq_correct,
+          mcqTotal: row.mcq_total,
+          alreadyAnswered: false,
+          attemptLocked: true,
+          persisted: false,
+        };
+      }
+      if (row && Object.prototype.hasOwnProperty.call(row.mcq_answers, params.questionId)) {
+        return {
+          found: true,
+          correct: Boolean(row.mcq_answers[params.questionId]),
+          correctOptionId,
+          mcqCorrect: row.mcq_correct,
+          mcqTotal: row.mcq_total,
+          alreadyAnswered: true,
+          persisted: true,
+        };
+      }
       return {
         found: true,
-        correct,
+        correct: false,
         correctOptionId,
         mcqCorrect: mcqCorrectStored,
         mcqTotal: mcqTotalStored,
         alreadyAnswered: false,
+        attemptLocked: true,
+        persisted: false,
       };
     }
+
+    const persistedAnswers = parseMcqAnswers(updated[0].mcq_answers);
+    const persistedCorrect = Number(updated[0].mcq_correct ?? mcqCorrect);
+    const persistedTotal = Number(updated[0].mcq_total ?? mcqTotal);
+    setLearnerProgressSnapshot(params.userEmail, params.moduleId, {
+      status: String(updated[0].status ?? "in_progress"),
+      mcqAnswers: persistedAnswers,
+      mcqCorrect: persistedCorrect,
+      mcqTotal: persistedTotal,
+      scorePercent,
+    });
+
+    return {
+      found: true,
+      correct: Boolean(persistedAnswers[params.questionId]),
+      correctOptionId,
+      mcqCorrect: persistedCorrect,
+      mcqTotal: persistedTotal,
+      alreadyAnswered: false,
+      persisted: true,
+    };
   } catch (err) {
     console.error(err);
     invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
     throw err;
   }
-
-  return {
-    found: true,
-    correct,
-    correctOptionId,
-    mcqCorrect,
-    mcqTotal,
-    alreadyAnswered: false,
-  };
 }
 
 export async function ensureProgressRow(
@@ -795,6 +843,7 @@ export async function finalizeAssessmentDb(
     `;
   }
 
+  invalidateLearnerProgressSnapshot(userEmail, moduleId);
   return { scorePercent, passed, canRetake, mcqCorrect, mcqTotal };
 }
 
@@ -805,11 +854,27 @@ export async function saveAcknowledgementDb(
     userEmail: string;
     moduleId: string;
     moduleTitle: string;
-    feedbackRequired: boolean;
     signatureName: string;
     digitalSignature: string;
   },
-): Promise<void> {
+): Promise<{ completed: boolean; feedbackRequired: boolean }> {
+  const moduleRows = await sql`
+    SELECT feedback_required FROM course_modules WHERE id = ${params.moduleId} LIMIT 1
+  `;
+  const feedbackRequired = Boolean(moduleRows[0]?.feedback_required);
+
+  const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+  if (!row) {
+    throw new Error("Progress not found for acknowledgement.");
+  }
+  if (row.status === "failed" || row.status === "permanently_failed") {
+    throw new Error("Cannot acknowledge a failed attempt.");
+  }
+
+  const scorePercent = row.score_percent;
+  const passed =
+    scorePercent != null && isPassingScore(Number(scorePercent));
+
   const ack = {
     userId: params.userEmail,
     userName: params.signatureName,
@@ -823,7 +888,8 @@ export async function saveAcknowledgementDb(
 
   const ackJson = JSON.stringify(ack);
 
-  if (!params.feedbackRequired) {
+  // Never trust the client: complete only when score already passes AND feedback is not required.
+  if (!feedbackRequired && passed) {
     await sql`
       UPDATE course_progress
       SET acknowledgement = ${ackJson}::jsonb,
@@ -832,16 +898,31 @@ export async function saveAcknowledgementDb(
           last_accessed_at = NOW(),
           updated_at = NOW()
       WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+        AND score_percent IS NOT NULL
+        AND score_percent >= ${PASS_THRESHOLD_PERCENT}
+        AND status NOT IN ('failed', 'permanently_failed')
     `;
-  } else {
-    await sql`
-      UPDATE course_progress
-      SET acknowledgement = ${ackJson}::jsonb,
-          last_accessed_at = NOW(),
-          updated_at = NOW()
-      WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
-    `;
+    invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+    return { completed: true, feedbackRequired };
   }
+
+  await sql`
+    UPDATE course_progress
+    SET acknowledgement = ${ackJson}::jsonb,
+        last_accessed_at = NOW(),
+        updated_at = NOW()
+    WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
+      AND status NOT IN ('failed', 'permanently_failed')
+  `;
+  invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+
+  if (!passed) {
+    throw new Error(
+      "Acknowledgement saved, but completion requires a passing score.",
+    );
+  }
+
+  return { completed: false, feedbackRequired };
 }
 
 /** Mark assessment completed after required feedback is submitted (passing score only). */
@@ -887,6 +968,7 @@ export async function resetInProgressAttemptDb(
       AND module_id = ${moduleId}
       AND status = 'in_progress'
   `;
+  invalidateLearnerProgressSnapshot(userEmail, moduleId);
 }
 
 export async function startScoreRetakeDb(
@@ -935,6 +1017,7 @@ export async function startScoreRetakeDb(
     WHERE user_email = ${userEmail} AND module_id = ${moduleId}
   `;
 
+  invalidateLearnerProgressSnapshot(userEmail, moduleId);
   return { ok: true };
 }
 
@@ -1076,6 +1159,7 @@ export async function failAssessmentAbandonmentDb(
     WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
   `;
 
+  invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
   return { ok: true, status: newStatus };
 }
 
@@ -1155,9 +1239,14 @@ export async function syncProctorWarningDb(
     return { warningCount: reported ?? 0, status: "not_started" };
   }
 
+  const nextStatus = String(rows[0].status ?? "in_progress");
+  if (nextStatus === "failed" || nextStatus === "permanently_failed") {
+    invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+  }
+
   return {
     warningCount: Number(rows[0].warning_count ?? 0),
-    status: String(rows[0].status ?? "in_progress"),
+    status: nextStatus,
   };
 }
 

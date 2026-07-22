@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
       userEmail,
       moduleId,
       moduleTitle,
-      feedbackRequired,
       signatureName,
       digitalSignature,
     } = await req.json();
@@ -33,18 +32,22 @@ export async function POST(req: NextRequest) {
     if (!access.ok) return access.response;
 
     const sql = getSql();
-    await saveAcknowledgementDb(sql, {
+    const result = await saveAcknowledgementDb(sql, {
       userEmail: access.email,
       moduleId,
       moduleTitle,
-      feedbackRequired: Boolean(feedbackRequired),
       signatureName: String(signatureName),
       digitalSignature: String(digitalSignature),
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      completed: result.completed,
+      feedbackRequired: result.feedbackRequired,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save acknowledgement";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    const status = message.includes("passing score") ? 409 : 500;
+    return NextResponse.json({ ok: false, message }, { status });
   }
 }

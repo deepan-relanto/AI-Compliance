@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { makeAssessmentId } from "@/lib/assessment-id";
 import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
@@ -18,6 +19,9 @@ export const maxDuration = 300;
 
 /** POST — persist uploaded assessment, assign batches, generate or reuse MCQs */
 export async function POST(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const body = await req.json();
     const {

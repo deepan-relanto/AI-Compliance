@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,10 +10,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await auth();
-  if (session?.user?.role !== "admin") {
-    return NextResponse.json({ ok: false, message: "Admin only." }, { status: 403 });
-  }
+  const { error } = await requireAdminSession();
+  if (error) return error;
 
   const { id } = await params;
   const forceResend =

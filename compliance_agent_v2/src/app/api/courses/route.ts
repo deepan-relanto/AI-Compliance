@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { createCourseModuleDb } from "@/lib/services/course-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -6,6 +7,9 @@ export const dynamic = "force-dynamic";
 
 /** POST — create a course module (admin question bank; no AI generation). */
 export async function POST(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const body = await req.json();
     const { title, description, durationMinutes, batchIds, feedbackRequired } = body;

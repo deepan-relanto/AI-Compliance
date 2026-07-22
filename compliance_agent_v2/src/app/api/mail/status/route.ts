@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getGraphMailConfig } from "@/lib/graph-mail-config";
 import { verifyGraphMailPermission } from "@/lib/services/graph-mail-service";
 import { NextResponse } from "next/server";
@@ -6,6 +7,9 @@ export const dynamic = "force-dynamic";
 
 /** GET — Graph mail configuration + token check (no secrets returned). */
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   const cfg = getGraphMailConfig();
   const tokenCheck = cfg.isConfigured
     ? await verifyGraphMailPermission()

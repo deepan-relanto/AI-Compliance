@@ -12,8 +12,6 @@ import { EncouragementRetakeNotice } from "@/components/employee/encouragement-r
 import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { CourseStepContent } from "@/components/employee/course-step-content";
 import { CourseContentOverview } from "@/components/employee/course-content-overview";
-import { CourseTtsOverlay } from "@/components/employee/course-tts-overlay";
-import { haltAllAvatarAudio, unlockAvatarAudio, warmAvatarAssets } from "@/components/course/floating-avatar";
 import {
   CourseAcknowledgementPanel,
   CourseExitModal,
@@ -255,11 +253,6 @@ export function CoursePlayer({
   const totalPossibleScore = totalQuestions * POINTS_PER_MCQ;
   const liveScore = correctAnswers * POINTS_PER_MCQ;
   const totalSlides = Math.max(contentSteps.length, 1);
-
-  // Prefetch avatar GLB + HeadTTS while the learner is still on overview/rules.
-  useEffect(() => {
-    warmAvatarAssets();
-  }, []);
 
   const handleProctorLockout = useCallback(() => {
     setIsFailed(true);
@@ -661,7 +654,6 @@ export function CoursePlayer({
     setShowProctorRules(false);
     setSessionStarted(true);
     setSessionStartMs(Date.now());
-    unlockAvatarAudio();
     enterFullscreen();
     if (contentSteps.length === 0 && !quizOnlyMode) {
       startQuizPhase();
@@ -719,7 +711,14 @@ export function CoursePlayer({
     if (!user?.username) {
       setMcqOpen(false);
       setQuizFinalizing(false);
-      setShowAcknowledgement(true);
+      setCompletionNotice({
+        title: "Sign-in required",
+        message: "Your session expired before scoring. Please sign in again and retry.",
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
       return;
     }
 
@@ -748,14 +747,26 @@ export function CoursePlayer({
       scheduleBadgeFlush(450);
       return;
     }
-    setMcqOpen(false);
+    // Finalize failed — never open signature without a scored attempt.
     setQuizFinalizing(false);
-    resetAcknowledgementForm();
-    setShowAcknowledgement(true);
+    setShowAcknowledgement(false);
+    if (moduleMcqs.length) {
+      setGateMcq(moduleMcqs[Math.min(quizIndex, moduleMcqs.length - 1)] ?? FALLBACK_MCQ);
+      setMcqOpen(true);
+    }
+    setCompletionNotice({
+      title: "Could not score attempt",
+      message: "Your answers could not be finalized. Please retry the last question or contact your administrator.",
+      variant: "info",
+      acknowledgeLabel: "OK",
+      showAcknowledgeButton: true,
+      onAcknowledge: () => setCompletionNotice(null),
+    });
   }, [
     user?.username,
     module.id,
-    moduleMcqs.length,
+    moduleMcqs,
+    quizIndex,
     unlockBadge,
     resetAcknowledgementForm,
     scheduleBadgeFlush,
@@ -983,6 +994,7 @@ export function CoursePlayer({
 
   const checkpointOpen =
     mcqOpen &&
+    !isFailed &&
     !quizFinalizing &&
     !showAcknowledgement &&
     !showFinalQa &&
@@ -1002,6 +1014,7 @@ export function CoursePlayer({
     if (
       !sessionStarted ||
       !quizOnlyMode ||
+      isFailed ||
       quizFinalizing ||
       showAcknowledgement ||
       showFinalQa ||
@@ -1016,6 +1029,7 @@ export function CoursePlayer({
   }, [
     sessionStarted,
     quizOnlyMode,
+    isFailed,
     quizIndex,
     moduleMcqs,
     quizFinalizing,
@@ -1023,6 +1037,13 @@ export function CoursePlayer({
     showFinalQa,
     showScoreResult,
   ]);
+
+  useEffect(() => {
+    if (!isFailed) return;
+    setMcqOpen(false);
+    setQuizFinalizing(false);
+    answeredQuestionIdsRef.current = new Set();
+  }, [isFailed]);
 
   useEffect(() => {
     setPdfPage(1);
@@ -1041,13 +1062,6 @@ export function CoursePlayer({
       setPdfReady(true);
     }
   }, [contentStepIndex, currentContentStep?.config.pageCount, isPdfStep]);
-
-  // Stop avatar narration only on the video step (leave all other slides alone).
-  useEffect(() => {
-    if (phase === "content" && currentContentStep?.stepType === "video") {
-      haltAllAvatarAudio();
-    }
-  }, [contentStepIndex, currentContentStep?.stepType, phase]);
 
   useEffect(() => {
     const onEmbedMessage = (event: MessageEvent) => {
@@ -1345,7 +1359,6 @@ export function CoursePlayer({
           steps={contentSteps}
           questionCount={moduleMcqs.length}
           onBegin={() => {
-            unlockAvatarAudio();
             setShowContentOverview(false);
           }}
         />
@@ -1432,16 +1445,6 @@ export function CoursePlayer({
                     onPdfPages={handlePdfPagesLoaded}
                     htmlIframeRef={htmlIframeRef}
                   />
-                  {(currentContentStep.stepType === "pdf" ||
-                    currentContentStep.stepType === "scenarios" ||
-                    currentContentStep.stepType === "mindmap") && (
-                    <CourseTtsOverlay
-                      moduleId={module.id}
-                      stepType={currentContentStep.stepType}
-                      iframeRef={htmlIframeRef}
-                      embedSlideIndex={htmlEmbedState?.slideIndex ?? 0}
-                    />
-                  )}
                 </div>
               ) : phase === "quiz" &&
                 !mcqOpen &&

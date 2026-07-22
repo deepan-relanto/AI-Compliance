@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import {
   isMultiSelectPrompt,
@@ -75,6 +76,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { id: moduleId } = await params;
     const body = await req.json();

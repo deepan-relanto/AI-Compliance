@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import {
   getMonitoringSummary,
@@ -44,6 +45,9 @@ const SORT_MODES = new Set<MonitoringSort>(["time", "warnings"]);
 
 /** GET /api/course-monitoring — course-only monitoring (separate tables). */
 export async function GET(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { searchParams } = new URL(req.url);
     const tab = (searchParams.get("tab") ?? "violations") as

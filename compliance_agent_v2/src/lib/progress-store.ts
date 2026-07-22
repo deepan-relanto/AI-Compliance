@@ -8,7 +8,7 @@
  */
 
 import type { ModuleStatus, WarningHistoryEntry, AssessmentAcknowledgement } from "./types";
-import { SCORE_QUIZ_RETAKE_MARKER } from "./constants";
+import { SCORE_QUIZ_RETAKE_MARKER, isPassingScore } from "./constants";
 import { logAudit } from "./audit-store";
 
 export interface AssessmentProgress {
@@ -207,7 +207,8 @@ export function markCompleted(username: string, moduleId: string): void {
 
 /**
  * Saves training acknowledgement record for a user and module.
- * If feedback is NOT required, marks the assessment as completed.
+ * Completes only when feedback is not required AND local score already passes.
+ * Callers may pass feedbackRequired for UX, but completion still requires a passing score.
  */
 export function saveAcknowledgement(
   username: string,
@@ -238,7 +239,10 @@ export function saveAcknowledgement(
     lastAccessedAt: timestamp,
   };
 
-  if (!feedbackRequired) {
+  const passed =
+    existing.scorePercent != null && isPassingScore(Number(existing.scorePercent));
+
+  if (!feedbackRequired && passed) {
     all[k].status = "completed";
     all[k].completedAt = timestamp;
   }
@@ -246,7 +250,7 @@ export function saveAcknowledgement(
   writeAll(all);
 
   logAudit("Acknowledgement Accepted", username, `Accepted training acknowledgement for ${existing.moduleTitle}.`);
-  if (!feedbackRequired) {
+  if (!feedbackRequired && passed) {
     logAudit("Assessment Completed", username, `Successfully completed ${existing.moduleTitle}.`);
   }
 }

@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import {
   getBatchPerformance,
@@ -12,6 +13,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ batchId: string }> },
 ) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { batchId } = await params;
     const trackParam = req.nextUrl.searchParams.get("track");

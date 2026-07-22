@@ -1,3 +1,4 @@
+import { requireSessionEmail } from "@/lib/api-session";
 import { getPdfBuffer } from "@/lib/services/pdf-storage-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -7,6 +8,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ filename: string }> },
 ) {
+  const session = await requireSessionEmail();
+  if (!session.ok) return session.response;
+
   const { filename } = await params;
 
   if (!UPLOAD_FILENAME.test(filename)) {
