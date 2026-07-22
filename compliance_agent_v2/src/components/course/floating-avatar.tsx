@@ -304,6 +304,11 @@ export function FloatingAvatar({
       "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm";
 
     if (!enabled || !modelUrl || typeof window === "undefined") {
+      if (enabled && !modelUrl) {
+        console.warn(
+          "[FloatingAvatar] Skipping init — NEXT_PUBLIC_TALKINGHEAD_MODEL_URL is missing or invalid.",
+        );
+      }
       setAvatarReady(false);
       setAvatarLoading(false);
       setTtsMode("none");
@@ -348,13 +353,26 @@ export function FloatingAvatar({
               audioEncoding: "wav",
             });
             return cancelled ? null : headTts;
-          } catch {
+          } catch (err) {
+            console.error("[FloatingAvatar] HeadTTS warm-up failed:", err, {
+              headTtsCdnUrl,
+            });
             return null;
           }
         })();
 
         const { TalkingHead } = await loadTalkingHeadModule(talkingHeadCdnUrl);
-        if (cancelled || !headRef.current || !TalkingHead) return;
+        if (cancelled || !headRef.current || !TalkingHead) {
+          if (!cancelled && !TalkingHead) {
+            console.error("[FloatingAvatar] TalkingHead module missing after load.", {
+              talkingHeadCdnUrl,
+            });
+          }
+          if (!cancelled && !headRef.current) {
+            console.error("[FloatingAvatar] Avatar mount ref is null — DOM not ready.");
+          }
+          return;
+        }
 
         const gttsApiKey = process.env.NEXT_PUBLIC_GOOGLE_TTS_API_KEY?.trim();
         const gttsVoice =
@@ -413,7 +431,12 @@ export function FloatingAvatar({
         } else {
           setTtsMode("browser");
         }
-      } catch {
+      } catch (err) {
+        console.error("[FloatingAvatar] TalkingHead initialization failed:", err, {
+          modelUrl,
+          talkingHeadCdnUrl,
+          headTtsCdnUrl,
+        });
         if (!cancelled) {
           setAvatarReady(false);
           setAvatarLoading(false);
