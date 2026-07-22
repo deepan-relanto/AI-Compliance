@@ -1499,7 +1499,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
         </footer>
       )}
 
-      <MCQCheckpoint {...checkpointProps} variant="modal" />
+      <MCQCheckpoint key={gateMcq.id} {...checkpointProps} variant="modal" />
 
       {showScoreResult && scoreResult?.passed && !showAcknowledgement && !showFinalQa && (
         <FinalResultScreen

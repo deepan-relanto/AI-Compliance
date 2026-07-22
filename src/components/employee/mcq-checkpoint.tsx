@@ -113,17 +113,27 @@ export function MCQCheckpoint({
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const resetForm = useCallback(() => {
+    setSelected([]);
+    setSubmitted(false);
+    setWasCorrect(false);
+    setCorrectOptionId(null);
+    setAnswerExplanation(null);
+    setValidating(false);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     if (!open) {
-      setSelected([]);
-      setSubmitted(false);
-      setWasCorrect(false);
-      setCorrectOptionId(null);
-      setAnswerExplanation(null);
-      setValidating(false);
-      setError(null);
+      resetForm();
     }
-  }, [open, question.id]);
+  }, [open, resetForm]);
+
+  // Parent may batch mcqOpen false→true in one tick; always reset when the
+  // question changes so prior submitted/correct UI cannot leak forward.
+  useEffect(() => {
+    resetForm();
+  }, [question.id, resetForm]);
 
   const displayPrompt = useMemo(
     () => stripGeneratedCheckpointPrefix(question.prompt),
@@ -252,10 +262,13 @@ export function MCQCheckpoint({
   };
 
   const handleContinue = () => {
-    // Do not reset submitted UI here — on the last question the parent keeps
-    // this modal open while finalize runs; resetting would flash the unanswered
-    // form. State clears when `open`/`question.id` change (see effect above).
+    const isLast =
+      totalCheckpoints > 0 && checkpointNumber >= totalCheckpoints;
     onContinue(wasCorrect);
+    // Keep submitted UI on the final question while finalize runs; reset for all others.
+    if (!isLast) {
+      resetForm();
+    }
   };
 
   const panelMode = variant === "panel";

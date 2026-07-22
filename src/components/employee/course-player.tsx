@@ -960,10 +960,8 @@ export function CoursePlayer({
     scheduleBadgeFlush(420);
     const next = quizIndex + 1;
     if (next < moduleMcqs.length) {
-      setMcqOpen(false);
       setQuizIndex(next);
       setGateMcq(moduleMcqs[next] ?? FALLBACK_MCQ);
-      setMcqOpen(true);
       return;
     }
     // Close immediately so the last question never flashes unanswered while
@@ -1548,7 +1546,7 @@ export function CoursePlayer({
         </>
       )}
 
-      <MCQCheckpoint {...checkpointProps} variant="modal" />
+      <MCQCheckpoint key={gateMcq.id} {...checkpointProps} variant="modal" />
 
       {showScoreResult && scoreResult?.passed && !showAcknowledgement && !showFinalQa && (
         <FinalResultScreen
