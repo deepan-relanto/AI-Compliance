@@ -47,6 +47,13 @@ function formatDate(): string {
   });
 }
 
+function formatTime(): string {
+  return new Date().toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const quickActions = [
   {
     href: "/admin/upload",
@@ -272,6 +279,7 @@ export default function AdminPage() {
   const user = useAuthStore((s) => s.user);
   const [data, setData] = useState<AnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clock, setClock] = useState(formatTime);
 
   useEffect(() => {
     fetch("/api/analytics")
@@ -280,6 +288,13 @@ export default function AdminPage() {
         if (d.ok) setData(d as AnalyticsPayload);
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const tick = () => setClock(formatTime());
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
   }, []);
 
   const adminName = useMemo(() => {
@@ -338,13 +353,16 @@ export default function AdminPage() {
             className="pointer-events-none absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#f15a24] via-[#fdba8c] to-transparent"
           />
 
-          <div className="relative flex flex-col gap-7 p-6 sm:p-8 lg:gap-8 lg:p-9">
-            {/* Top: greeting + actions */}
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:p-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0 max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#fdba8c]">
                     {formatDate()}
+                  </p>
+                  <span className="hidden h-1 w-1 rounded-full bg-white/35 sm:inline-block" />
+                  <p className="text-[11px] font-medium tabular-nums tracking-wide text-white/55">
+                    {clock}
                   </p>
                   <span className="hidden h-1 w-1 rounded-full bg-white/35 sm:inline-block" />
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/85">
@@ -366,11 +384,11 @@ export default function AdminPage() {
                   </span>
                 </div>
 
-                <h1 className="mt-3 text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.03em] text-white sm:text-[2.15rem]">
+                <h1 className="mt-2.5 text-[1.55rem] font-semibold leading-[1.15] tracking-[-0.03em] !text-white sm:text-[1.85rem]">
                   {greeting()},{" "}
-                  <span className="text-white">{adminName}</span>
+                  <span className="!text-white">{adminName}</span>
                 </h1>
-                <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-white/78 sm:text-[15px]">
+                <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-white/78 sm:text-[14px]">
                   Your Relanto compliance command view — live health, learner
                   activity, and the next action to keep training on track.
                 </p>
@@ -393,65 +411,6 @@ export default function AdminPage() {
                   <ArrowUpRight className="h-3.5 w-3.5 opacity-80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </Link>
               </div>
-            </div>
-
-            {/* Bottom: live pulse strip — fills the banner, not empty space */}
-            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/12 bg-white/10 sm:grid-cols-4">
-              {[
-                {
-                  label: "Compliance",
-                  value:
-                    summary?.avgScore != null
-                      ? `${clamp(summary.avgScore)}%`
-                      : loading
-                        ? "…"
-                        : "—",
-                  hint:
-                    summary?.completedCount != null
-                      ? `${summary.completedCount} passed`
-                      : "Avg score",
-                },
-                {
-                  label: "Active now",
-                  value: loading
-                    ? "…"
-                    : String(summary?.inProgressCount ?? 0),
-                  hint:
-                    (summary?.inProgressCount ?? 0) > 0
-                      ? "In training"
-                      : "No live sessions",
-                },
-                {
-                  label: "Learners",
-                  value: loading
-                    ? "…"
-                    : String(summary?.totalLearners ?? 0),
-                  hint: `${summary?.totalBatches ?? 0} batches`,
-                },
-                {
-                  label: "Pass rate",
-                  value:
-                    summary?.passRate != null
-                      ? `${clamp(summary.passRate)}%`
-                      : loading
-                        ? "…"
-                        : "—",
-                  hint: `${summary?.publishedModules ?? 0} modules`,
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="bg-[#12143a]/55 px-4 py-3.5 backdrop-blur-sm transition-colors duration-200 hover:bg-[#12143a]/35 sm:px-5 sm:py-4"
-                >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
-                    {stat.label}
-                  </p>
-                  <p className="mt-1.5 text-[1.35rem] font-semibold tracking-[-0.03em] text-white tabular-nums sm:text-[1.5rem]">
-                    {stat.value}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-white/55">{stat.hint}</p>
-                </div>
-              ))}
             </div>
           </div>
         </section>

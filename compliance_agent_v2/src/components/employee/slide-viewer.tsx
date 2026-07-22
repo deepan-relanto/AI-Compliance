@@ -209,6 +209,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   const [sessionStartError, setSessionStartError] = useState<string | null>(null);
   const [quizOnlyIndex, setQuizOnlyIndex] = useState(0);
   const [forceQuizOnlyRetake, setForceQuizOnlyRetake] = useState(false);
+  const [quizFinalizing, setQuizFinalizing] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -655,10 +656,13 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
 
     // Require every question recorded client-side before finalize.
     if (totalQuestions > 0 && answeredCount < totalQuestions) {
+      setQuizFinalizing(false);
       return;
     }
 
     if (!user?.username) {
+      setMcqOpen(false);
+      setQuizFinalizing(false);
       setShowAcknowledgement(true);
       return;
     }
@@ -683,11 +687,13 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       setShowAcknowledgement(false);
       setShowFinalQa(false);
       setCompletionNotice(null);
+      setQuizFinalizing(false);
       setShowScoreResult(true);
       scheduleBadgeFlush(450);
       return;
     }
     setMcqOpen(false);
+    setQuizFinalizing(false);
     resetAcknowledgementForm();
     setShowAcknowledgement(true);
   }, [
@@ -705,6 +711,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     if (isFailed) return;
     if (quizOnlyMode) {
       if (!moduleMcqs.length) {
+        setQuizFinalizing(true);
         void handleFinishAttempt();
         return;
       }
@@ -714,6 +721,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
         if (next < moduleMcqs.length) {
           setQuizOnlyIndex(next);
         } else {
+          setQuizFinalizing(true);
+          setMcqOpen(false);
           void handleFinishAttempt();
         }
         return;
@@ -726,6 +735,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       return;
     }
     if (isLastSlide) {
+      setQuizFinalizing(true);
+      setMcqOpen(false);
       void handleFinishAttempt();
       return;
     }
@@ -874,6 +885,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     resetAcknowledgementForm();
     setShowAcknowledgement(false);
     setForceQuizOnlyRetake(true);
+    setQuizFinalizing(false);
     resetGamificationState();
     void enterFullscreen();
     if (moduleMcqs.length) {
@@ -917,17 +929,20 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
 
   const handleMcqContinue = () => {
     if (isFailed) return;
-    setMcqOpen(false);
     scheduleBadgeFlush(420);
     if (quizOnlyMode) {
       const next = quizOnlyIndex + 1;
       if (next < moduleMcqs.length) {
+        setMcqOpen(false);
         setQuizOnlyIndex(next);
-      } else {
-        void handleFinishAttempt();
+        return;
       }
+      setQuizFinalizing(true);
+      setMcqOpen(false);
+      void handleFinishAttempt();
       return;
     }
+    setMcqOpen(false);
     if (!isLastSlide) {
       setSlideIndex((i) => Math.min(i + 1, totalSlides - 1));
     }
@@ -935,6 +950,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
 
   const checkpointOpen =
     mcqOpen &&
+    !quizFinalizing &&
     !isFailed &&
     !activeWarningReason &&
     !showAcknowledgement &&
@@ -1028,6 +1044,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       !sessionStarted ||
       !quizOnlyMode ||
       isFailed ||
+      quizFinalizing ||
       showAcknowledgement ||
       showFinalQa ||
       showScoreResult
@@ -1044,6 +1061,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     isFailed,
     quizOnlyIndex,
     moduleMcqs,
+    quizFinalizing,
     showAcknowledgement,
     showFinalQa,
     showScoreResult,

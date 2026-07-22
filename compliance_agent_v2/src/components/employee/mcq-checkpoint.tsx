@@ -252,12 +252,10 @@ export function MCQCheckpoint({
   };
 
   const handleContinue = () => {
+    // Do not reset submitted UI here — on the last question the parent keeps
+    // this modal open while finalize runs; resetting would flash the unanswered
+    // form. State clears when `open`/`question.id` change (see effect above).
     onContinue(wasCorrect);
-    setSelected([]);
-    setSubmitted(false);
-    setWasCorrect(false);
-    setCorrectOptionId(null);
-    setAnswerExplanation(null);
   };
 
   const panelMode = variant === "panel";
@@ -652,7 +650,11 @@ export function MCQCheckpoint({
             disabled={validating}
             onClick={handleContinue}
           >
-            {validating ? "Confirming…" : "Continue to next question"}
+            {validating
+              ? "Confirming…"
+              : checkpointNumber >= totalCheckpoints && totalCheckpoints > 0
+                ? "Continue"
+                : "Continue to next question"}
           </Button>
         )}
       </div>
