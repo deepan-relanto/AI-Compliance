@@ -1,7 +1,6 @@
 "use client";
 
 import { InviteResultBanner } from "@/components/admin/invite-result-banner";
-import { CourseTtsPanel } from "@/components/admin/course-tts-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,13 +29,12 @@ import {
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-type WizardStep = "info" | CourseStepType | "tts" | "publish" | "done";
+type WizardStep = "info" | CourseStepType | "publish" | "done";
 type MediaKind = "lesson" | "scenarios" | "video" | "mindmap" | "infographic";
 
 const WIZARD_STEPS: WizardStep[] = [
   "info",
   ...COURSE_STEP_ORDER,
-  "tts",
   "publish",
 ];
 
@@ -185,7 +183,7 @@ export function CourseBuilderPanel() {
         setHtmlPreviewUrl(null);
       }
       const nextIdx = COURSE_STEP_ORDER.indexOf(stepType) + 1;
-      setStep(COURSE_STEP_ORDER[nextIdx] ?? "tts");
+      setStep(COURSE_STEP_ORDER[nextIdx] ?? "publish");
       setSuccessMsg(`${COURSE_STEP_LABELS[stepType]} saved.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
@@ -219,7 +217,7 @@ export function CourseBuilderPanel() {
       setQuestionCount(data.imported as number);
       markComplete("quiz");
       setUploadFile(null);
-      setStep("tts");
+      setStep("publish");
       setSuccessMsg(`Imported ${data.imported} quiz question(s). Assign batches to publish.`);
     } catch {
       setError("Invalid JSON file or server error.");
@@ -239,11 +237,9 @@ export function CourseBuilderPanel() {
       goToNextWizardStep(skipStep);
       setError(null);
       const skippedLabel =
-        skipStep === "tts"
-          ? "TTS step"
-          : skipStep === "publish" || skipStep === "done" || skipStep === "info"
-            ? skipStep
-            : COURSE_STEP_LABELS[skipStep];
+        skipStep === "publish" || skipStep === "done" || skipStep === "info"
+          ? skipStep
+          : COURSE_STEP_LABELS[skipStep];
       setSuccessMsg(`${skippedLabel} skipped.`);
     },
     [goToNextWizardStep, htmlPreviewUrl, markComplete],
@@ -322,11 +318,10 @@ export function CourseBuilderPanel() {
   );
 
   const currentContentStep =
-    step !== "info" && step !== "tts" && step !== "publish" && step !== "done" ? step : null;
+    step !== "info" && step !== "publish" && step !== "done" ? step : null;
 
   const stepLabel = useMemo(() => {
     if (step === "info") return "Course details";
-    if (step === "tts") return "TTS script";
     if (step === "publish") return "Publish to batches";
     if (step === "done") return "Complete";
     return COURSE_STEP_LABELS[step];
@@ -359,9 +354,7 @@ export function CourseBuilderPanel() {
             const label =
               s === "info"
                 ? "Details"
-                : s === "tts"
-                  ? "TTS"
-                  : s === "publish"
+                : s === "publish"
                     ? "Publish"
                     : COURSE_STEP_LABELS[s as CourseStepType]?.split(" ")[0] ?? s;
             return (
@@ -610,39 +603,11 @@ export function CourseBuilderPanel() {
             </>
           )}
 
-          {step === "tts" && moduleId && (
-            <>
-              <CourseTtsPanel
-                moduleId={moduleId}
-                moduleTitle={title.trim() || "Course"}
-                onContinue={() => {
-                  markComplete("tts");
-                  setStep("publish");
-                }}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    handleSkipStep("tts");
-                  }}
-                >
-                  Skip to publish
-                </Button>
-              </div>
-            </>
-          )}
-
           {step === "publish" && (
             <>
               <p className="text-sm text-zinc-600">
                 The content bundle is ready. Review batch assignment below to make this course
-                visible to learners. TTS scripts remain in Neon sandbox tables linked to this
-                course.
+                visible to learners.
               </p>
               <div className="space-y-2">
                 {batches.map((batch) => {
@@ -668,7 +633,7 @@ export function CourseBuilderPanel() {
                 })}
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setStep("tts")}>
+                <Button variant="ghost" size="sm" onClick={() => setStep("quiz")}>
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </Button>

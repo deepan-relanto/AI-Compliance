@@ -3,6 +3,7 @@ import {
   getCourseAssetMeta,
   readCourseAssetRange,
 } from "@/lib/services/course-asset-service";
+import { requireSessionEmail } from "@/lib/api-session";
 import { patchHtmlCourseAsset } from "@/lib/html-embed-patch";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -58,8 +59,8 @@ function assetHeaders(
   const cacheControl = isHtmlAsset(filename, mimeType)
     ? "private, no-cache, must-revalidate"
     : mimeType.startsWith("image/")
-      ? "public, max-age=60, must-revalidate"
-      : "public, max-age=3600";
+      ? "private, max-age=60, must-revalidate"
+      : "private, max-age=3600";
   return {
     "Content-Type": mimeType,
     "Content-Length": String(length),
@@ -100,6 +101,9 @@ function streamAssetResponse(assetUrl: string, mimeType: string, size: number, f
 }
 
 async function serveAsset(req: NextRequest, filename: string) {
+  const session = await requireSessionEmail();
+  if (!session.ok) return session.response;
+
   if (!ASSET_FILENAME.test(filename)) {
     return NextResponse.json({ ok: false, message: "Invalid file." }, { status: 400 });
   }

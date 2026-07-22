@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { getAnalytics } from "@/lib/services/analytics-service";
 import { cacheGet, cacheSet, CACHE_KEYS } from "@/lib/api-cache";
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 /** GET — organization-wide analytics for admin dashboard */
 export async function GET(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const trackParam = req.nextUrl.searchParams.get("track");
     const track = trackParam === "course" ? "course" : "compliance";

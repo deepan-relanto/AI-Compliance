@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const cached = cacheGet<object[]>(CACHE_KEYS.batches);
     if (cached) {

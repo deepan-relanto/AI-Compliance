@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import { reuseCourseModuleDb } from "@/lib/services/course-service";
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 /** POST — clone a published course bundle to new batches and email learners */
 export async function POST(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const body = await req.json();
     const { sourceModuleId, title, description, batchIds } = body;

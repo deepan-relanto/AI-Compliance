@@ -1,4 +1,5 @@
 import type { getSql } from "@/lib/db";
+import { invalidateLearnerProgressSnapshot } from "@/lib/learner-progress-cache";
 import { sendRetakeApprovalEmail } from "@/lib/services/training-notification-service";
 import type { ReviewRequest } from "@/lib/types";
 
@@ -258,6 +259,7 @@ export async function approveReviewRequestDb(
           updated_at = NOW()
       WHERE user_email = ${request.username} AND module_id = ${request.moduleId}
     `;
+    invalidateLearnerProgressSnapshot(request.username, request.moduleId);
     await sql`
       UPDATE review_requests
       SET status = 'Rejected',
@@ -314,6 +316,8 @@ export async function approveReviewRequestDb(
         updated_at = NOW()
     WHERE user_email = ${request.username} AND module_id = ${request.moduleId}
   `;
+
+  invalidateLearnerProgressSnapshot(request.username, request.moduleId);
 
   await sql`
     UPDATE review_requests

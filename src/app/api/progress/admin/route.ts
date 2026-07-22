@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import {
   listAllProgressAdmin,
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 
 /** GET ?batchId= optional — admin view of learner scores */
 export async function GET(req: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const batchId = req.nextUrl.searchParams.get("batchId");
     const sql = getSql();

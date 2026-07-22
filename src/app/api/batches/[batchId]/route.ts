@@ -14,6 +14,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ batchId: string }> },
 ) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { batchId } = await params;
     const sql = getSql();

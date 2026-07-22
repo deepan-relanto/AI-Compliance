@@ -663,7 +663,14 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     if (!user?.username) {
       setMcqOpen(false);
       setQuizFinalizing(false);
-      setShowAcknowledgement(true);
+      setCompletionNotice({
+        title: "Sign-in required",
+        message: "Your session expired before scoring. Please sign in again and retry.",
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
       return;
     }
 
@@ -692,16 +699,28 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       scheduleBadgeFlush(450);
       return;
     }
-    setMcqOpen(false);
     setQuizFinalizing(false);
-    resetAcknowledgementForm();
-    setShowAcknowledgement(true);
+    setShowAcknowledgement(false);
+    if (moduleMcqs.length) {
+      setGateMcq(moduleMcqs[Math.min(quizOnlyIndex, moduleMcqs.length - 1)] ?? FALLBACK_MCQ);
+      setMcqOpen(true);
+    }
+    setCompletionNotice({
+      title: "Could not score attempt",
+      message: "Your answers could not be finalized. Please retry the last question or contact your administrator.",
+      variant: "info",
+      acknowledgeLabel: "OK",
+      showAcknowledgeButton: true,
+      onAcknowledge: () => setCompletionNotice(null),
+    });
   }, [
     reviewOnlyMode,
     user?.username,
     module.id,
     totalQuestions,
     answeredCount,
+    moduleMcqs,
+    quizOnlyIndex,
     unlockBadge,
     resetAcknowledgementForm,
     scheduleBadgeFlush,
@@ -1070,6 +1089,8 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   useEffect(() => {
     if (!isFailed) return;
     setMcqOpen(false);
+    setQuizFinalizing(false);
+    answeredQuestionIdsRef.current = new Set();
   }, [isFailed]);
 
   const handleSubmitIntegrityReview = useCallback(

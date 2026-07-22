@@ -215,14 +215,41 @@ export function MCQCheckpoint({
         );
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          onAnswered(false, { questionId: submittedQuestionId });
+          // Do not count this question as answered when the server did not persist.
           if (submittedQuestionId === question.id) {
             setSubmitted(false);
             setWasCorrect(false);
             setCorrectOptionId(null);
             setAnswerExplanation(null);
-            setError(data.error ?? "Could not validate your answer.");
+            setError(
+              data.code === "ATTEMPT_LOCKED"
+                ? "This attempt is locked. Your answer was not saved."
+                : (data.error ?? "Could not validate your answer."),
+            );
           }
+          return;
+        }
+        if (data.alreadyAnswered) {
+          // Previously persisted — treat as answered for continue UX, use stored correctness.
+          const correct = Boolean(data.correct);
+          const resolvedCorrectId = data.correctOptionId ?? null;
+          const correctLabel =
+            question.options.find((opt) => opt.id === resolvedCorrectId)?.label ??
+            provisionalLabel;
+          if (submittedQuestionId === question.id) {
+            setWasCorrect(correct);
+            setCorrectOptionId(resolvedCorrectId);
+            setAnswerExplanation(
+              normalizeMcqExplanation(question.explanation, correctLabel),
+            );
+          }
+          onAnswered(correct, {
+            questionId: submittedQuestionId,
+            mcqCorrect:
+              typeof data.mcqCorrect === "number" ? data.mcqCorrect : undefined,
+            mcqTotal:
+              typeof data.mcqTotal === "number" ? data.mcqTotal : undefined,
+          });
           return;
         }
         const correct = Boolean(data.correct);
@@ -245,7 +272,6 @@ export function MCQCheckpoint({
             typeof data.mcqTotal === "number" ? data.mcqTotal : undefined,
         });
       } catch {
-        onAnswered(false, { questionId: submittedQuestionId });
         if (submittedQuestionId === question.id) {
           setSubmitted(false);
           setWasCorrect(false);

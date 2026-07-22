@@ -21,7 +21,11 @@ async function getWsPool(): Promise<Pool> {
       "Large course media needs the `ws` package. Run npm install ws",
     );
   }
-  wsPool = new Pool({ connectionString: getDatabaseUrl() });
+  wsPool = new Pool({
+    connectionString: getDatabaseUrl(),
+    max: 5,
+    idleTimeoutMillis: 30_000,
+  });
   return wsPool;
 }
 const ASSET_FILENAME =

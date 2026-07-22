@@ -1,3 +1,4 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { generateAndStoreModuleMcqs, hashPdfFile } from "@/lib/services/mcq-generation-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -48,6 +49,9 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { id } = await params;
     const sql = getSql();

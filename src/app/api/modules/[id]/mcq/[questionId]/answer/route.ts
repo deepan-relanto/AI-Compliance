@@ -22,7 +22,6 @@ export async function POST(
       moduleTitle,
       batchId,
       totalSlides,
-      assignedMcqCount,
     } = body;
 
     const normalizedOptionIds = Array.isArray(optionIds)
@@ -52,6 +51,7 @@ export async function POST(
       ? validateCourseMcqAnswerDb
       : validateComplianceMcqAnswerDb;
 
+    // Ignore client assignedMcqCount — server derives totals from DB.
     const result = await validateMcq(sql, {
       userEmail: access.email,
       moduleId,
@@ -61,16 +61,25 @@ export async function POST(
       questionId,
       optionId: typeof optionId === "string" ? optionId : undefined,
       optionIds: normalizedOptionIds.length > 0 ? normalizedOptionIds : undefined,
-      assignedMcqCount:
-        typeof assignedMcqCount === "number" && assignedMcqCount > 0
-          ? assignedMcqCount
-          : undefined,
     });
 
     if (!result.found) {
       return NextResponse.json(
         { ok: false, error: "Question not found." },
         { status: 404 },
+      );
+    }
+
+    if (result.attemptLocked || result.persisted === false) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "ATTEMPT_LOCKED",
+          error: "This attempt is locked. Your answer was not saved.",
+          mcqCorrect: result.mcqCorrect,
+          mcqTotal: result.mcqTotal,
+        },
+        { status: 409 },
       );
     }
 
