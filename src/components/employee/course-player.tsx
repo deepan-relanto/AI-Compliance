@@ -156,6 +156,7 @@ export function CoursePlayer({
   const [gateMcq, setGateMcq] = useState<McqQuestion>(FALLBACK_MCQ);
   const [quizIndex, setQuizIndex] = useState(0);
   const [forceQuizOnlyRetake, setForceQuizOnlyRetake] = useState(false);
+  const [quizFinalizing, setQuizFinalizing] = useState(false);
   const quizOnlyMode = quizOnlyModeFromModule || forceQuizOnlyRetake;
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -711,10 +712,13 @@ export function CoursePlayer({
     const answered = answeredQuestionIdsRef.current.size;
     const total = moduleMcqs.length;
     if (total > 0 && answered < total) {
+      setQuizFinalizing(false);
       return;
     }
 
     if (!user?.username) {
+      setMcqOpen(false);
+      setQuizFinalizing(false);
       setShowAcknowledgement(true);
       return;
     }
@@ -739,11 +743,13 @@ export function CoursePlayer({
       setShowAcknowledgement(false);
       setShowFinalQa(false);
       setCompletionNotice(null);
+      setQuizFinalizing(false);
       setShowScoreResult(true);
       scheduleBadgeFlush(450);
       return;
     }
     setMcqOpen(false);
+    setQuizFinalizing(false);
     resetAcknowledgementForm();
     setShowAcknowledgement(true);
   }, [
@@ -758,6 +764,7 @@ export function CoursePlayer({
   const startQuizPhase = useCallback(() => {
     setPhase("quiz");
     setQuizIndex(0);
+    setQuizFinalizing(false);
     answeredQuestionIdsRef.current = new Set();
     if (!moduleMcqs.length) {
       void handleFinishAttempt();
@@ -902,6 +909,7 @@ export function CoursePlayer({
     resetAcknowledgementForm();
     setShowAcknowledgement(false);
     setForceQuizOnlyRetake(true);
+    setQuizFinalizing(false);
     setPhase("quiz");
     resetGamificationState();
     answeredQuestionIdsRef.current = new Set();
@@ -958,22 +966,29 @@ export function CoursePlayer({
       setMcqOpen(true);
       return;
     }
-    // Final question only — require this checkpoint to be in the answered set
-    // (Continue is only shown after Submit, which records the answer).
+    // Close immediately so the last question never flashes unanswered while
+    // finalize runs, and block the quiz-only effect from reopening it.
+    setQuizFinalizing(true);
+    setMcqOpen(false);
     if (!answeredQuestionIdsRef.current.has(gateMcq.id)) {
-      // Answer may still be validating; wait one frame for onAnswered, then finish.
       window.setTimeout(() => {
         if (answeredQuestionIdsRef.current.has(gateMcq.id)) {
           void handleFinishAttempt();
+        } else {
+          setQuizFinalizing(false);
         }
       }, 400);
       return;
     }
-    // Keep the last MCQ open until finish sets the score/completion screen.
     void handleFinishAttempt();
   };
 
-  const checkpointOpen = mcqOpen && !showAcknowledgement && !showFinalQa && !showScoreResult;
+  const checkpointOpen =
+    mcqOpen &&
+    !quizFinalizing &&
+    !showAcknowledgement &&
+    !showFinalQa &&
+    !showScoreResult;
   const navLocked = checkpointOpen || !!activeWarningReason || showScoreResult;
   const passedPendingAcknowledgement = showAcknowledgement && Boolean(scoreResult?.passed);
 
@@ -986,7 +1001,14 @@ export function CoursePlayer({
   }, [sessionStarted, ackPendingMode, resetAcknowledgementForm]);
 
   useEffect(() => {
-    if (!sessionStarted || !quizOnlyMode || showAcknowledgement || showFinalQa || showScoreResult) {
+    if (
+      !sessionStarted ||
+      !quizOnlyMode ||
+      quizFinalizing ||
+      showAcknowledgement ||
+      showFinalQa ||
+      showScoreResult
+    ) {
       return;
     }
     if (!moduleMcqs.length) return;
@@ -998,6 +1020,7 @@ export function CoursePlayer({
     quizOnlyMode,
     quizIndex,
     moduleMcqs,
+    quizFinalizing,
     showAcknowledgement,
     showFinalQa,
     showScoreResult,
@@ -1387,12 +1410,17 @@ export function CoursePlayer({
                       signature and feedback.
                     </p>
                   </motion.div>
-                  {!mcqOpen && (
+                  {!mcqOpen && !quizFinalizing && (
                     <div className="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-8 text-center">
                       <p className="text-sm font-medium text-zinc-300">
                         Question {Math.min(quizIndex + 1, Math.max(moduleMcqs.length, 1))} of{" "}
                         {Math.max(moduleMcqs.length, 1)}
                       </p>
+                    </div>
+                  )}
+                  {quizFinalizing && (
+                    <div className="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-8 text-center">
+                      <p className="text-sm font-medium text-zinc-300">Scoring your attempt…</p>
                     </div>
                   )}
                 </div>
@@ -1419,6 +1447,7 @@ export function CoursePlayer({
                 </div>
               ) : phase === "quiz" &&
                 !mcqOpen &&
+                !quizFinalizing &&
                 !showScoreResult &&
                 !completionNotice ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
@@ -1430,6 +1459,12 @@ export function CoursePlayer({
                     <p className="mt-1 text-xs text-zinc-400">
                       Answer all questions to complete the course assessment.
                     </p>
+                  </div>
+                </div>
+              ) : quizFinalizing ? (
+                <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
+                  <div className="w-full rounded-lg border border-zinc-700 bg-zinc-950 p-8 text-center">
+                    <p className="text-sm font-medium text-zinc-300">Scoring your attempt…</p>
                   </div>
                 </div>
               ) : (
