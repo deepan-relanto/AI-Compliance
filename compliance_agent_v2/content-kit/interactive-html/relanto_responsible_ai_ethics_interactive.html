@@ -1,0 +1,1936 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto Responsible AI & Ethics - Interactive Executive Presentation</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #52525b;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+
+    body.embed {
+      /* Match course-player chrome gutters (black sides) */
+      background: #0a0a0a;
+    }
+
+    body.embed .deck-shell {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      container-type: size;
+    }
+
+    body.embed .deck {
+      flex-shrink: 0;
+      transform: none;
+      transform-origin: center center;
+      aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    body.embed .slide {
+      padding: 16px 22px 36px;
+      overflow: hidden;
+      box-sizing: border-box;
+      gap: 10px;
+    }
+
+    body.embed .flow { margin-top: 8px; gap: 22px; }
+    body.embed .flow-step { min-height: 0; padding: 10px 8px; font-size: 12px; }
+    body.embed .flow-step:not(:last-child)::after { right: -16px; width: 10px; height: 10px; }
+    body.embed .content { margin-top: 8px; }
+    body.embed .grid { gap: 8px; }
+    body.embed .card { padding: 10px 12px; }
+    body.embed .card h3, body.embed .card strong { font-size: 14px; }
+    body.embed .card p, body.embed .card li { font-size: 12px; line-height: 1.35; }
+    body.embed .journey { margin-top: 6px; gap: 0; }
+    body.embed .journey-step { min-height: 0; padding: 0 6px; }
+    body.embed .journey-card { min-height: 110px; padding: 12px 10px; }
+    body.embed .slide.closing { padding-top: 18px; gap: 12px; }
+    body.embed h1 { font-size: clamp(18px, 2.5vw, 28px); margin-bottom: 6px; }
+    body.embed .subtitle { margin-top: 6px; font-size: 13px; }
+    body.embed .kicker { margin-bottom: 4px; }
+    body.embed .footer { left: 22px; right: 22px; bottom: 10px; font-size: 10px; padding-top: 0; }
+    body.embed .cover-hero { gap: 12px; }
+    body.embed .cover-stats { gap: 10px; }
+    body.embed .cover-stat { padding: 10px 12px; }
+    body.embed .cover-stat .stat-value { font-size: 14px; }
+    body.embed .cover-stat .stat-value .num { font-size: 24px; }
+    body.embed .cover-brand { margin-bottom: 0; }
+    body.embed .cover-title { font-size: clamp(34px, 5.2vw, 64px); }
+    body.embed .slide.cover {
+      padding: 16px 22px 30px !important;
+      gap: 14px;
+      overflow: hidden !important;
+    }
+    body.embed .executive-map { margin-top: 8px; }
+    body.embed .exec-card { min-height: 0; }
+    body.embed .risk-triangle { margin-top: 8px; }
+    body.embed .objectives { margin-top: 8px; }
+    body.embed .function-grid { margin-top: 8px; gap: 8px; }
+    body.embed .function { padding: 10px; font-size: 11px; }
+    body.embed .function h3 { font-size: 13px; margin-bottom: 6px; }
+    body.embed .takeaway { margin-top: 8px; padding: 9px 12px; font-size: 12px; }
+    body.embed .maturity { margin-top: 10px; gap: 10px; }
+    body.embed .principles { margin-top: 10px; gap: 8px; }
+    body.embed .risk-matrix { margin-top: 10px; gap: 8px; }
+
+    body.embed .nav,
+    body.embed .help,
+    body.embed .progress,
+    body.embed .overview {
+      display: none !important;
+    }
+
+
+    .deck-shell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%;
+      max-height: 100%;
+      position: relative;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      background: var(--paper-2);
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px 36px 52px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0;
+      transform: translateX(18px) scale(0.995);
+      box-sizing: border-box;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+
+    .slide:has(.cover-header),
+    .slide.cover {
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 28px 44px;
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      overflow: hidden !important;
+    }
+
+    .slide.cover.active {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    .slide.dark {
+      color: var(--white);
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+    }
+
+    .slide.section {
+      display: none;
+      place-items: center;
+      text-align: center;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(241, 90, 36, 0.22), transparent 36%),
+        linear-gradient(135deg, #12143a, #2e3192 58%, #3d42a8);
+      color: var(--white);
+    }
+
+    .slide.section.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transform: none;
+      text-align: center;
+    }
+
+    .slide.section > div:not(.footer) {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      min-height: 0;
+      width: 100%;
+      max-width: 920px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .slide.section .kicker {
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .slide.section h1 {
+      text-align: center;
+      max-width: 900px;
+    }
+
+    .slide.section .lead,
+    .slide.section .subtitle {
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+      max-width: 760px;
+    }
+
+    @keyframes slideIn {
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      height: 22px;
+      margin-bottom: 0;
+      flex-shrink: 0;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .dark .kicker, .section .kicker { color: #fdba8c; }
+    .kicker::before {
+      content: "";
+      width: 18px;
+      height: 2px;
+      background: currentColor;
+      display: block;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 100%;
+      flex-shrink: 0;
+      font-size: clamp(22px, 2.6vw, 34px);
+      line-height: 1.12;
+      letter-spacing: -0.01em;
+      font-weight: 760;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.35;
+      font-size: 14px;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      max-width: 900px;
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .dark .subtitle, .section .subtitle { color: rgba(255, 255, 255, 0.88); }
+
+    .grid { display: grid; gap: 12px; }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(46,49,146,0.12);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 8px 22px rgba(24,24,39,0.06);
+      color: var(--ink);
+    }
+
+    .card h3 { color: var(--navy); }
+    .card h3.do { color: var(--green); }
+    .card h3.dont { color: var(--red); }
+    .card p { color: var(--ink); margin: 0; line-height: 1.45; }
+
+    .dark .card {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.22);
+      box-shadow: none;
+      color: var(--white);
+    }
+    .dark .card h3 { color: #fdba8c; }
+    .dark .card p { color: rgba(255,255,255,0.9); }
+
+    /* Section dividers with content cards: keep solid light cards + dark ink */
+    .slide.section .card {
+      background: #ffffff;
+      border-color: rgba(255,255,255,0.35);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+      color: var(--ink);
+      text-align: left;
+    }
+    .slide.section .card h3 { color: var(--navy); }
+    .slide.section .card p { color: #3f3f46; }
+
+    .slide.section .objective,
+    .slide.dark .objective {
+      background: #ffffff;
+      border-color: rgba(255,255,255,0.35);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+      color: var(--ink);
+      text-align: left;
+    }
+    .slide.section .objective p,
+    .slide.dark .objective p { color: #3f3f46; }
+    .slide.section .objective > b,
+    .slide.dark .objective > b { color: var(--blue); }
+    .slide.section .objective p b,
+    .slide.dark .objective p b { color: var(--ink); }
+
+    .takeaway {
+      margin-top: 4px;
+      flex-shrink: 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      border-left: 4px solid var(--orange);
+      background: rgba(241, 90, 36, 0.08);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--ink);
+    }
+
+    .dark .takeaway {
+      color: var(--white);
+      background: rgba(255,255,255,0.12);
+      border-left-color: #fdba8c;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(36,87,197,.12);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .metric {
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 820;
+      color: var(--blue);
+    }
+
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .dark .small { color: rgba(255,255,255,0.86); }
+
+    .section .lead { max-width: 760px; }
+
+    .footer {
+      position: absolute;
+      left: 36px;
+      right: 36px;
+      bottom: 16px;
+      margin-top: 0;
+      padding-top: 0;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: rgba(24,24,39,.62);
+      font-size: 11px;
+      letter-spacing: .02em;
+      font-weight: 600;
+    }
+
+    .footer span:last-child {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: rgba(24,24,39,.78);
+    }
+
+    .dark .footer,
+    .section .footer {
+      color: rgba(255,255,255,.78);
+    }
+
+    .dark .footer span:last-child,
+    .section .footer span:last-child {
+      color: rgba(255,255,255,.94);
+    }
+
+    .content {
+      margin-top: 0;
+      flex: 0 0 auto;
+      min-height: 0;
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      color: var(--blue);
+      flex: 0 0 auto;
+    }
+
+    .dark .icon { color: #9ee8e7; }
+
+    .fragment {
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 360ms ease, transform 360ms ease;
+    }
+
+    .fragment.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .nav {
+      position: fixed;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(17,24,39,.82);
+      color: white;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 34px rgba(0,0,0,.22);
+    }
+
+    .nav button {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      color: white;
+      background: rgba(255,255,255,.12);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 0;
+    }
+
+    .nav button svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .nav button:hover { background: rgba(255,255,255,.24); }
+    .counter { min-width: 64px; text-align: center; font-size: 12px; font-weight: 750; }
+    .progress {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 4px;
+      width: 100%;
+      background: rgba(19,35,63,.13);
+      z-index: 60;
+    }
+    .progress span {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--blue), var(--orange));
+      transition: width 250ms ease;
+    }
+
+    .overview {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 100;
+      padding: 28px;
+      background: rgba(10,16,29,.92);
+      overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .thumb {
+      min-height: 124px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      cursor: pointer;
+    }
+    .thumb b { display: block; font-size: 12px; color: #fdba8c; margin-bottom: 8px; }
+    .thumb:hover { background: rgba(255,255,255,.14); }
+
+    .cover-header,
+    .cover-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      flex: 0 0 auto;
+      position: relative;
+      z-index: 3;
+    }
+
+    .cover-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 0;
+      min-width: 0;
+    }
+    .cover-brand img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.96);
+      padding: 5px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      flex-shrink: 0;
+    }
+    .cover-brand .brand-word {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+    .cover-brand .brand-tag {
+      margin-left: 2px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--orange);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* Hero: big title block, fills the middle, left aligned */
+    .cover-hero {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #fdba8c;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .cover-eyebrow::before {
+      content: "";
+      width: 26px;
+      height: 2px;
+      background: var(--orange);
+      display: block;
+    }
+    .cover-title {
+      font-size: clamp(44px, 6.2vw, 84px);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      font-weight: 820;
+      color: #fff;
+      margin: 0;
+      max-width: 100%;
+    }
+    .cover-hero .subtitle {
+      margin-top: 2px;
+      font-size: clamp(15px, 1.7vw, 20px);
+      color: rgba(255,255,255,0.9) !important;
+      max-width: 620px;
+    }
+
+    /* Stats: horizontal row pinned at the bottom — cannot overflow vertically */
+    .cover-stats {
+      flex: 0 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .cover-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.16);
+      backdrop-filter: blur(6px);
+    }
+    .cover-stat .tag {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.14);
+      color: #fdba8c;
+      border: 1px solid rgba(253,186,140,0.35);
+    }
+    .cover-stat .stat-value {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .cover-stat .stat-value .num {
+      color: #fdba8c;
+      font-size: 28px;
+      margin-right: 6px;
+    }
+    .module-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 999px;
+      color: #fdba8c;
+      background: rgba(18, 20, 58, 0.45);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 4;
+    }
+
+    .executive-map {
+      grid-template-columns: 1fr 1fr;
+      margin-top: 0;
+      flex: 0 0 auto;
+      gap: 12px;
+    }
+    .exec-card {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .exec-card h3, .risk-card h3, .concept h3, .myth h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+    .num-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--blue), #3d42a8);
+      color: white;
+      font-weight: 850;
+      font-size: 13px;
+    }
+
+    .section-number {
+      font-size: clamp(72px, 12vw, 120px);
+      line-height: .85;
+      font-weight: 840;
+      color: rgba(255,255,255,.28);
+      margin-bottom: 8px;
+    }
+    .section h1 {
+      font-size: clamp(36px, 5vw, 52px);
+      margin: 0 auto;
+    }
+
+    .risk-triangle {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+    .risk-card {
+      min-height: 0;
+      height: auto;
+      border-top: 4px solid var(--blue);
+    }
+    .risk-card:nth-child(2) { border-top-color: var(--orange); }
+    .risk-card:nth-child(3) { border-top-color: var(--cyan); }
+
+    .objectives {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .objective {
+      min-height: 0;
+      height: auto;
+      padding: 14px 14px 12px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid rgba(46,49,146,.14);
+      font-size: 13px;
+      line-height: 1.35;
+      color: var(--ink);
+      box-shadow: 0 6px 18px rgba(24,24,39,.05);
+    }
+    .objective b {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--blue);
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .objective p {
+      margin: 0;
+      color: #3f3f46;
+    }
+    .objective p b {
+      display: inline;
+      margin: 0;
+      font-size: inherit;
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .analogy {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+    .analogy .card {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      text-align: center;
+      padding: 18px 16px;
+    }
+    .analogy-title { font-size: 22px; font-weight: 800; color: var(--navy); }
+    .tool-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+    .tool {
+      min-height: 0;
+      height: auto;
+      padding: 12px 10px;
+      border-radius: 12px;
+      background: rgba(32,167,181,.10);
+      border: 1px solid rgba(32,167,181,.18);
+      font-size: 12px;
+      font-weight: 650;
+      display: grid;
+      align-content: center;
+      text-align: center;
+    }
+
+    .myth-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .myth {
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.7));
+      border: 1px solid rgba(19,35,63,.12);
+    }
+    .myth h3 { color: var(--red); font-size: 15px; }
+
+    .nested {
+      position: relative;
+      width: min(100%, 420px);
+      aspect-ratio: 5 / 4;
+      height: auto;
+      margin: 0 auto;
+      max-height: 100%;
+    }
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 850;
+      color: white;
+      box-shadow: 0 12px 44px rgba(19,35,63,.16);
+      font-size: clamp(11px, 1.4vw, 15px);
+    }
+    .ring.ai { inset: 0; background: #172d52; }
+    .ring.ml { inset: 12%; background: #2457c5; }
+    .ring.gen { inset: 24%; background: #20a7b5; }
+    .ring.llm { inset: 38%; background: #38a169; font-size: clamp(18px, 2.4vw, 26px); }
+    .example-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 0;
+      align-content: start;
+      height: auto;
+    }
+    .example-list .card { padding: 12px 14px; }
+
+    .comparison {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+      overflow: hidden;
+      border-radius: 12px;
+      box-shadow: 0 10px 28px rgba(17,24,39,.07);
+    }
+    .comparison th {
+      background: var(--navy);
+      color: white;
+      text-align: left;
+      padding: 10px 12px;
+    }
+    .comparison td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(19,35,63,.09);
+      background: rgba(255,255,255,.75);
+      vertical-align: top;
+    }
+    .comparison tr:last-child td { border-bottom: 0; }
+
+    .risk-meter {
+      display: grid;
+      grid-template-columns: 110px minmax(80px, 1.2fr) minmax(140px, 1.6fr);
+      gap: 12px;
+      align-items: center;
+      margin-top: 0;
+    }
+    .meter-stack {
+      margin-top: 0;
+      display: grid;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .bar {
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(19,35,63,.08);
+      overflow: hidden;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--amber), var(--red));
+    }
+
+    .prompt-panel {
+      display: grid;
+      grid-template-columns: 240px 1fr 1fr;
+      gap: 12px;
+      margin-top: 0;
+      flex: 0 0 auto;
+      align-items: stretch;
+    }
+    .prompt-panel .card { min-height: 0; height: auto; }
+    .bad { border-left: 5px solid var(--red); }
+    .good { border-left: 5px solid var(--green); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 28px;
+      margin-top: 0;
+      position: relative;
+      flex: 0 0 auto;
+    }
+    .flow:has(.flow-step:nth-child(3):last-child) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .flow:has(.flow-step:nth-child(2):last-child) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .flow-step {
+      min-height: 0;
+      height: auto;
+      padding: 16px 12px;
+      text-align: center;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      border-radius: 14px;
+      background: #ffffff;
+      border: 1px solid rgba(46,49,146,.14);
+      box-shadow: 0 10px 28px rgba(24,24,39,.07);
+      position: relative;
+      color: var(--ink);
+    }
+    .flow-step b {
+      color: var(--blue);
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .flow-step p {
+      margin: 0;
+      color: #3f3f46;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .flow-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: -19px;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      border-top: 2.5px solid var(--blue);
+      border-right: 2.5px solid var(--blue);
+      transform: translateY(-50%) rotate(45deg);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+    .flow-step:not(:last-child)::before {
+      content: "";
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      width: 12px;
+      height: 2px;
+      background: var(--blue);
+      transform: translateY(-50%);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .function-grid {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .function {
+      grid-column: span 3;
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(46,49,146,.10);
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 8px 22px rgba(24,24,39,.05);
+      font-size: 12px;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .function:nth-child(n+5) { grid-column: span 4; }
+    .function h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: var(--blue);
+    }
+    .function p { margin: 0; }
+
+    .risk-matrix {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .risk-tile {
+      min-height: 0;
+      height: auto;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(19,35,63,.10);
+      box-shadow: 0 8px 22px rgba(24,24,39,.05);
+    }
+    .risk-tile .tag { margin-bottom: 8px; }
+    .tag.high, .tag.critical { background: rgba(199,71,71,.12); color: var(--red); }
+    .tag.medium { background: rgba(216,138,31,.14); color: var(--amber); }
+
+    .maturity {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 0;
+      align-items: end;
+      flex: 0 0 auto;
+    }
+    .level {
+      padding: 16px;
+      border-radius: 14px;
+      color: white;
+      background: var(--blue);
+      display: grid;
+      align-content: start;
+      min-height: 0;
+      height: auto;
+    }
+    .level:nth-child(1) { background: #3a3d9e; min-height: 140px; }
+    .level:nth-child(2) { background: #2e3192; min-height: 160px; }
+    .level:nth-child(3) { background: #1f8f9c; min-height: 180px; }
+    .level:nth-child(4) { background: #2f8f5b; min-height: 200px; }
+    .level b { font-size: 28px; }
+    .level h3 { margin: 6px 0 8px; font-size: 18px; }
+
+    .principles {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      flex: 0 0 auto;
+    }
+    .principles:has(.principle:nth-child(4):last-child) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .principles:has(.principle:nth-child(5):last-child) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .principle {
+      min-height: 0;
+      height: auto;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid rgba(19,35,63,.12);
+      box-shadow: 0 8px 22px rgba(24,24,39,.06);
+      color: var(--ink);
+    }
+    .principle b {
+      color: var(--blue);
+      font-size: 20px;
+      line-height: 1.1;
+      font-weight: 800;
+    }
+    .principle h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: var(--ink);
+      font-weight: 750;
+    }
+    .principle p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #3f3f46;
+    }
+    /* Light cards on dark slides must keep dark text (do not inherit white) */
+    .slide.dark .principle,
+    .slide.section .principle {
+      background: #ffffff;
+      color: var(--ink);
+      border-color: rgba(255,255,255,.35);
+      box-shadow: 0 10px 28px rgba(0,0,0,.22);
+    }
+    .slide.dark .principle h3,
+    .slide.section .principle h3 { color: var(--ink); }
+    .slide.dark .principle p,
+    .slide.section .principle p { color: #3f3f46; }
+    .slide.dark .principle b,
+    .slide.section .principle b { color: var(--blue); }
+
+    .journey {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0;
+      flex: 0 0 auto;
+      align-items: stretch;
+      position: relative;
+    }
+    .journey::before {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 22px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--orange), rgba(253, 186, 140, 0.35));
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .journey-step {
+      min-height: 0;
+      height: auto;
+      padding: 0 10px;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
+      position: relative;
+      color: var(--white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+      z-index: 1;
+    }
+    .journey-step .tag {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(18, 20, 58, 0.95);
+      border: 2px solid #fdba8c;
+      color: #fdba8c;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      box-shadow: 0 0 0 6px rgba(18, 20, 58, 0.55);
+    }
+    .journey-step:first-child .tag {
+      background: var(--orange);
+      border-color: #fff;
+      color: #fff;
+      box-shadow: 0 0 0 6px rgba(241, 90, 36, 0.22);
+    }
+    .journey-card {
+      width: 100%;
+      padding: 14px 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.28);
+      backdrop-filter: blur(6px);
+      text-align: left;
+      min-height: 128px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .journey-step:first-child .journey-card {
+      background: rgba(241, 90, 36, 0.20);
+      border-color: rgba(253, 186, 140, 0.55);
+    }
+    .journey-step h3 {
+      margin: 0;
+      color: #ffd0b0;
+      font-size: 14px;
+      line-height: 1.25;
+      font-weight: 750;
+    }
+    .journey-step p {
+      font-size: 12px;
+      line-height: 1.45;
+      color: rgba(255,255,255,0.92);
+    }
+    .slide:not(.dark) .journey-step {
+      color: var(--ink);
+    }
+    .slide:not(.dark) .journey-step h3 { color: var(--blue); }
+    .slide:not(.dark) .journey-card {
+      background: #ffffff;
+      border-color: rgba(46,49,146,.12);
+    }
+    .slide:not(.dark) .journey-step p { color: #3f3f46; }
+
+    .slide.closing {
+      justify-content: flex-start;
+      gap: 18px;
+      padding-top: 32px;
+      padding-bottom: 56px;
+    }
+    .slide.closing .journey {
+      margin-top: 8px;
+      flex: 1 1 auto;
+      align-content: center;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      max-width: 980px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+    }
+    .slide.closing .journey::before {
+      left: 12%;
+      right: 12%;
+    }
+    .slide.closing .journey-step .tag {
+      background: rgba(18, 20, 58, 0.95);
+      border-color: #fdba8c;
+      color: #fdba8c;
+    }
+    .slide.closing .journey-step:first-child .tag {
+      background: var(--orange);
+      border-color: #fff;
+      color: #fff;
+    }
+    .slide.closing .journey-card {
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.28);
+      min-height: 140px;
+    }
+    .slide.closing .journey-step:first-child .journey-card {
+      background: rgba(241, 90, 36, 0.22);
+      border-color: rgba(253, 186, 140, 0.6);
+    }
+    .slide.closing .takeaway {
+      margin-top: auto;
+    }
+    .slide.closing h1 {
+      max-width: 920px;
+    }
+
+    .help {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 50;
+      color: rgba(255,255,255,.94);
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(17,24,39,.82);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      padding: 8px 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.28);
+    }
+
+    @media (max-width: 900px) {
+      .deck-shell { padding: 0; }
+      .deck { width: 100vw; height: 56.25vw; border-radius: 0; }
+      .slide { padding: 20px 20px 48px; }
+      h1 { font-size: 24px; }
+      .cover-title { font-size: clamp(32px, 8vw, 46px); }
+      .cover-stats { grid-template-columns: 1fr; gap: 8px; }
+      .objectives { grid-template-columns: repeat(2, 1fr); }
+      .function-grid { grid-template-columns: repeat(6, 1fr); }
+      .function { grid-column: span 2; }
+      .function:nth-child(n+5) { grid-column: span 2; }
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .lead { font-size: 16px; color: #52525b; max-width: 920px; line-height: 1.45; }
+    .slide.dark .lead,
+    .slide.section .lead {
+      color: rgba(255,255,255,.9);
+    }
+    ul.bullets { margin: 0; padding-left: 1.15rem; display: grid; gap: 8px; }
+    ul.bullets li { font-size: 14px; line-height: 1.4; color: var(--ink); }
+    .slide.dark ul.bullets li { color: rgba(255,255,255,.92); }
+    .callout {
+      margin-top: 12px; padding: 14px 16px; border-radius: 14px;
+      background: rgba(46, 49, 146, 0.08); border: 1px solid rgba(46, 49, 146, 0.18);
+      color: var(--ink);
+    }
+    .slide.dark .callout {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.22);
+      color: var(--white);
+    }
+    .callout p { margin: 0; font-size: 15px; line-height: 1.45; color: inherit; }
+
+  </style>
+</head>
+
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <main class="deck" id="deck">
+
+      <section class="slide active dark cover" data-title="Responsible AI & Ethics">
+        <div class="cover-bar">
+          <div class="cover-brand">
+            <img src="./relanto-logo.png" alt="Relanto" width="40" height="40" />
+            <span class="brand-word">Relanto</span>
+            <span class="brand-tag">Course</span>
+          </div>
+          <span class="module-badge">MODULE 2 OF 5</span>
+        </div>
+        <div class="cover-hero">
+          <span class="cover-eyebrow">Enterprise AI Awareness Training</span>
+          <h1 class="cover-title">Responsible AI &amp; Ethics</h1>
+          <p class="subtitle">Use AI in ways that are fair, transparent, and defensible — every employee, every day.</p>
+        </div>
+        <div class="cover-stats" aria-label="Course details">
+          <div class="cover-stat">
+            <div class="tag">Duration</div>
+            <div class="stat-value"><span class="num">45</span>Minutes</div>
+          </div>
+          <div class="cover-stat">
+            <div class="tag">Audience</div>
+            <div class="stat-value">All Roles</div>
+          </div>
+          <div class="cover-stat">
+            <div class="tag">Framework</div>
+            <div class="stat-value">PACT Decision Check</div>
+          </div>
+        </div>
+        <div class="footer"><span>Confidential | Relanto Academy</span><span>01 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="You own every AI-assisted outcome">
+        <div class="kicker">The one-sentence version</div>
+        <h1>If AI helps produce a decision, document, or message — you own the outcome.</h1>
+        <div class="callout fragment">
+          <p>Use approved tools, check for fairness and accuracy, be honest about AI's role, and keep a human meaningfully in charge.</p>
+        </div>
+        <div class="grid-2" style="margin-top:18px">
+          <div class="card fragment">
+            <h3>Not a legal-only policy</h3>
+            <p>Responsible AI is everyday judgement: what you ask, what you check, what you disclose, when you escalate.</p>
+          </div>
+          <div class="card fragment">
+            <h3>Scale, trust, accountability</h3>
+            <p>A biased process can affect thousands of cases. “The AI did it” is never a defense.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Course overview</span><span>02 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Course Overview">
+        <div class="kicker">Learning path</div>
+        <h1>What you will be able to do in 45 minutes</h1>
+        <div class="objectives">
+          <div class="objective fragment"><b>01</b><p>Explain core principles: fairness, transparency, explainability, accountability, human oversight.</p></div>
+          <div class="objective fragment"><b>02</b><p>Spot how bias enters AI and warn signs in everyday outputs.</p></div>
+          <div class="objective fragment"><b>03</b><p>Apply the PACT ethical check before sensitive AI use.</p></div>
+          <div class="objective fragment"><b>04</b><p>Identify misuse risks — deepfakes, deception, impersonation — and respond.</p></div>
+          <div class="objective fragment"><b>05</b><p>Handle copyright / IP basics for AI-generated content.</p></div>
+          <div class="objective fragment"><b>06</b><p>Know when to disclose AI use and when to escalate concerns.</p></div>
+        </div>
+        <div class="footer"><span>Learning objectives</span><span>03 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Why responsible AI matters now">
+        <div class="kicker">Workplace stakes</div>
+        <h1>AI reaches hiring, customers, marketing, and daily writing — so does the risk.</h1>
+        <div class="flow">
+          <div class="flow-step fragment"><b>Scale</b><p>One biased human decision is local. A biased AI-assisted process can hit thousands before anyone notices.</p></div>
+          <div class="flow-step fragment"><b>Trust</b><p>Customers and colleagues lose trust fast when AI is used deceptively — and trust is hard to rebuild.</p></div>
+          <div class="flow-step fragment"><b>Accountability</b><p>Responsibility stays with people and the organization that use the tool.</p></div>
+          <div class="flow-step fragment"><b>Regulation</b><p>High-impact uses (hiring, credit, biometrics) face growing legal expectations worldwide.</p></div>
+        </div>
+        <div class="footer"><span>Why this topic matters</span><span>04 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Introduction">
+        <div class="kicker">Introduction</div>
+        <h1>What “Responsible AI” means in plain terms</h1>
+        <p class="lead">Fair to people, honest about what the AI is and does, and accountable — a human or organization answers for results.</p>
+        <div class="grid-2">
+          <div class="card fragment">
+            <h3>Organizational level</h3>
+            <p>Vendor checks, bias testing, policies, monitoring — how systems are chosen and governed.</p>
+          </div>
+          <div class="card fragment">
+            <h3>Individual level (this module)</h3>
+            <p>Daily choices: what to ask AI, what to check, what to disclose. Ethics happens at the keyboard.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Definition</span><span>05 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Six myths create workplace ethics risk">
+        <div class="kicker">Common misconceptions</div>
+        <h1>These myths quietly create ethics and compliance risk.</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>01</b><div><h3>“AI is neutral — it's just math”</h3><p>AI learns from human data, including unfair patterns. Math reproduces what it is given.</p></div></div>
+          <div class="principle fragment"><b>02</b><div><h3>“Ethics is Legal's job”</h3><p>Policies set boundaries; most decisions are what you ask, check, and send.</p></div></div>
+          <div class="principle fragment"><b>03</b><div><h3>“If the tool allows it, it's fine”</h3><p>Tools rarely enforce ethics. Capability is not permission.</p></div></div>
+          <div class="principle fragment"><b>04</b><div><h3>“Responsible means avoid AI”</h3><p>It means deliberate use: right task, oversight, honest disclosure.</p></div></div>
+          <div class="principle fragment"><b>05</b><div><h3>“Bias only matters in hiring”</h3><p>Bias shows up in imagery, prioritization, summaries, tone, and more.</p></div></div>
+          <div class="principle fragment"><b>06</b><div><h3>“If I didn't write it, I'm not responsible”</h3><p>You own everything you submit, send, or publish — whatever drafted it.</p></div></div>
+        </div>
+        <div class="footer"><span>Misconceptions</span><span>06 / 20</span></div>
+      </section>
+
+      <section class="slide section" data-title="Core Principles">
+        <div>
+          <div class="kicker">Key concepts</div>
+          <h1>Core principles of responsible AI</h1>
+          <p class="lead">Aligned with the mind map: Fairness, Transparency, Explainability, Accountability, Human Oversight, Privacy &amp; Safety.</p>
+        </div>
+        <div class="footer"><span>Section</span><span>07 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Six principles for daily work">
+        <div class="kicker">Principles</div>
+        <h1>What each principle looks like at work</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>01</b><div><h3>Fairness</h3><p>Do not systematically disadvantage people or groups. Review rankings and screening for skew.</p></div></div>
+          <div class="principle fragment"><b>02</b><div><h3>Transparency</h3><p>Be honest that AI is involved — label bots; disclose assistance where policy requires.</p></div></div>
+          <div class="principle fragment"><b>03</b><div><h3>Explainability</h3><p>Decisions about people must be understandable — not “the system scored them lower.”</p></div></div>
+          <div class="principle fragment"><b>04</b><div><h3>Accountability</h3><p>A named human or organization answers for outcomes. You sign off on AI-assisted work.</p></div></div>
+          <div class="principle fragment"><b>05</b><div><h3>Human oversight</h3><p>AI may recommend; a person decides — with real power to overrule.</p></div></div>
+          <div class="principle fragment"><b>06</b><div><h3>Privacy &amp; safety</h3><p>Protect people's data and wellbeing (deep dive in Module 3).</p></div></div>
+        </div>
+        <div class="footer"><span>Core principles</span><span>08 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Fairness and bias hide in training data">
+        <div class="kicker">Fairness and Bias</div>
+        <h1>Bias is systematic unfairness — usually learned from history, not coded on purpose.</h1>
+        <div class="callout fragment">
+          <p>A major tech company scrapped a CV-screening tool that penalized résumés associated with women — it had learned from a decade of male-dominated hiring data.</p>
+        </div>
+        <ul class="bullets" style="margin-top:14px">
+          <li class="fragment">Image tools that always depict “CEO” or “nurse” with one gender or ethnicity</li>
+          <li class="fragment">Job adverts whose tone skews masculine or feminine</li>
+          <li class="fragment">Summaries that credit some speakers and bury others</li>
+          <li class="fragment">Customer prioritization that tracks postcode or name patterns</li>
+        </ul>
+        <div class="takeaway fragment">Practical habit: if output involves people, ask — would this look different for another gender, ethnicity, age, or background? Unsure? Get a second pair of eyes.</div>
+        <div class="footer"><span>Fairness and bias</span><span>09 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Transparency, explainability, accountability">
+        <div class="kicker">Three pillars</div>
+        <h1>Be open, be able to explain, and never blame the software.</h1>
+        <div class="grid-3">
+          <div class="card fragment">
+            <h3>Transparency</h3>
+            <p>Disclose to recipients (bots), within teams, and in published content when trust depends on origin.</p>
+          </div>
+          <div class="card fragment">
+            <h3>Explainability</h3>
+            <p>Hiring, promotion, claims, discipline: give job-relevant reasons without citing “the algorithm.”</p>
+          </div>
+          <div class="card fragment">
+            <h3>Accountability</h3>
+            <p>Software cannot apologize to a regulator. Responsibility stays with people and the organization.</p>
+          </div>
+        </div>
+        <div class="takeaway fragment">Memorize: you can delegate the typing to AI. You cannot delegate the responsibility.</div>
+        <div class="footer"><span>Human accountability</span><span>10 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Human oversight matches the stakes">
+        <div class="kicker">Human Accountability</div>
+        <h1>Oversight must be real — not a rubber stamp.</h1>
+        <div class="grid-2">
+          <div class="card fragment">
+            <h3>Automation bias</h3>
+            <p>People over-trust machine suggestions and approve faster than a colleague's work.</p>
+          </div>
+          <div class="card fragment">
+            <h3>Meaningful control</h3>
+            <p>Humans need time, information, and authority to disagree with the AI.</p>
+          </div>
+        </div>
+        <div class="flow" style="margin-top:14px">
+          <div class="flow-step fragment"><b>Low</b><p>Internal brainstorm / rough draft → quick read-through</p></div>
+          <div class="flow-step fragment"><b>Medium</b><p>Client email / published copy → full fact-check + approval chain</p></div>
+          <div class="flow-step fragment"><b>High</b><p>People decisions / legal or financial / public → documented human decision</p></div>
+        </div>
+        <div class="footer"><span>Oversight by stakes</span><span>11 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="PACT ethical decision framework">
+        <div class="kicker">Ethical Decision Framework (PACT)</div>
+        <h1>Before sensitive AI use, run the PACT check.</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>P</b><div><h3>Permission</h3><p>Allowed by policy? Approved tool? Is the data appropriate to share with it?</p></div></div>
+          <div class="principle fragment"><b>A</b><div><h3>Accuracy &amp; fairness</h3><p>Verified the output? Could it be biased against anyone affected?</p></div></div>
+          <div class="principle fragment"><b>C</b><div><h3>Candor</h3><p>Would you be comfortable if everyone affected knew exactly how AI was used?</p></div></div>
+          <div class="principle fragment"><b>T</b><div><h3>Takeover</h3><p>Is a human still making the consequential decision, with authority to overrule?</p></div></div>
+        </div>
+        <div class="takeaway fragment">Any “no” or “not sure”? Pause — adjust, or ask your manager, HR, Legal, or AI policy owner.</div>
+        <div class="footer"><span>PACT</span><span>12 / 20</span></div>
+      </section>
+
+      <section class="slide section" data-title="Misuse and Risks">
+        <div>
+          <div class="kicker">Misuse and Risks</div>
+          <h1>The same power that helps can be abused</h1>
+          <p class="lead">Never engage in these — and report them if you encounter them.</p>
+        </div>
+        <div class="footer"><span>Section</span><span>13 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Five forms of AI misuse">
+        <div class="kicker">Misuse</div>
+        <h1>Deception is the bright line</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>01</b><div><h3>Deception</h3><p>Fake testimonials, fabricated case studies, impersonating a real person without authorization.</p></div></div>
+          <div class="principle fragment"><b>02</b><div><h3>Manipulation</h3><p>Misleading content, astroturfing, exploiting pressure at scale.</p></div></div>
+          <div class="principle fragment"><b>03</b><div><h3>Harassment</h3><p>Mocking, demeaning, or fabricating claims about colleagues or others.</p></div></div>
+          <div class="principle fragment"><b>04</b><div><h3>Dishonesty</h3><p>Passing off AI analysis as independent expert work where authenticity is expected.</p></div></div>
+          <div class="principle fragment"><b>05</b><div><h3>Circumvention</h3><p>Tricking tools past safety rules, or using unapproved tools to dodge controls.</p></div></div>
+        </div>
+        <div class="footer"><span>Misuse types</span><span>14 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Deepfakes cut both ways">
+        <div class="kicker">Deepfakes</div>
+        <h1>Never create unauthorized likenesses — and never trust urgency on voice alone.</h1>
+        <div class="grid-2">
+          <div class="card fragment">
+            <h3>Never create</h3>
+            <p>Synthesizing a colleague's, executive's, or customer's voice or face without explicit authorization is off-limits — even “as a joke.”</p>
+          </div>
+          <div class="card fragment">
+            <h3>Stay alert receiving</h3>
+            <p>Cloned voices and deepfaked video calls have driven fraudulent transfers. Confirm urgent requests out-of-band.</p>
+          </div>
+        </div>
+        <ul class="bullets" style="margin-top:12px">
+          <li class="fragment"><b>Voice cloning</b> — “I recognized the voice” is obsolete as verification</li>
+          <li class="fragment"><b>Likeness impersonation</b> — faces and video can be faked convincingly</li>
+          <li class="fragment"><b>Urgency + secrecy</b> — “do this now, tell no one” is a classic red flag</li>
+          <li class="fragment"><b>Out-of-band verification</b> — call a saved number; confirm in person; report</li>
+        </ul>
+        <div class="footer"><span>Deepfakes</span><span>15 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Copyright and AI-generated content">
+        <div class="kicker">Copyright</div>
+        <h1>Three questions cover most everyday situations</h1>
+        <div class="flow">
+          <div class="flow-step fragment"><b>Input</b><p>Don't feed tools content you lack rights to use (full paid reports, competitors' copyrighted material).</p></div>
+          <div class="flow-step fragment"><b>Output</b><p>AI can echo existing works or styles. Commercial use needs originality and brand checks.</p></div>
+          <div class="flow-step fragment"><b>Ownership</b><p>Purely AI-generated works may have weak copyright. Brand-critical assets: involve Legal.</p></div>
+        </div>
+        <div class="takeaway fragment">“The AI wrote it” does not make copying song lyrics, books, or paid content lawful.</div>
+        <div class="footer"><span>Copyright</span><span>16 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Workplace best practices">
+        <div class="kicker">Workplace Best Practices</div>
+        <h1>Habits that keep AI use ethical at Relanto</h1>
+        <div class="objectives">
+          <div class="objective fragment"><b>01</b><p><b>Label chatbots</b> — identify virtual assistants; never claim to be human.</p></div>
+          <div class="objective fragment"><b>02</b><p><b>Disclose AI assistance</b> where policy or trust requires it.</p></div>
+          <div class="objective fragment"><b>03</b><p><b>Source benchmarks and stats</b> — no AI-invented “industry facts.”</p></div>
+          <div class="objective fragment"><b>04</b><p><b>Informed consent for likeness</b> — voice/face only with approval.</p></div>
+          <div class="objective fragment"><b>05</b><p><b>Report systemic bias</b> — document patterns; tell the tool owner.</p></div>
+          <div class="objective fragment"><b>06</b><p><b>Match review to impact</b> — more scrutiny when people, money, or reputation are at stake.</p></div>
+        </div>
+        <div class="footer"><span>Best practices</span><span>17 / 20</span></div>
+      </section>
+
+      <section class="slide" data-title="Do this, not that">
+        <div class="kicker">Dos and Don'ts</div>
+        <h1>Quick reference for daily decisions</h1>
+        <div class="grid-2">
+          <div class="card fragment">
+            <h3 class="do">Do</h3>
+            <ul class="bullets">
+              <li>Keep humans in charge of people, money, and public commitments</li>
+              <li>Check outputs about people for skew</li>
+              <li>Identify bots; disclose when trust depends on it</li>
+              <li>Verify claims and citations before sending</li>
+              <li>Verify urgent requests out-of-band; report suspected fraud</li>
+              <li>Run PACT for sensitive tasks</li>
+            </ul>
+          </div>
+          <div class="card fragment">
+            <h3 class="dont">Don't</h3>
+            <ul class="bullets">
+              <li>Let a score replace explainable judgement</li>
+              <li>Assume “the machine is objective”</li>
+              <li>Let a bot claim to be human</li>
+              <li>Ship hallucinated benchmarks into decision docs</li>
+              <li>Create synthetic media of real people without consent</li>
+              <li>Act on urgency-plus-secrecy alone</li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer"><span>Best practices</span><span>18 / 20</span></div>
+      </section>
+
+      <section class="slide dark" data-title="Key takeaways for responsible AI">
+        <div class="kicker">Summary</div>
+        <h1>Carry these reminders into every AI-assisted task</h1>
+        <div class="principles">
+          <div class="principle fragment"><b>01</b><div><h3>Principles are daily practice</h3><p>Fairness, transparency, explainability, accountability, oversight — used at the keyboard.</p></div></div>
+          <div class="principle fragment"><b>02</b><div><h3>Bias needs a fairness check</h3><p>It enters through training data and shows up subtly in people-related outputs.</p></div></div>
+          <div class="principle fragment"><b>03</b><div><h3>You own what you send</h3><p>Accountability cannot be delegated to software.</p></div></div>
+          <div class="principle fragment"><b>04</b><div><h3>Deception is the bright line</h3><p>Fake testimonials, undercover bots, fabricated authority, unauthorized deepfakes.</p></div></div>
+          <div class="principle fragment"><b>05</b><div><h3>Deepfakes: create never / verify always</h3><p>Urgency + secrecy + payment = out-of-band verify, then report.</p></div></div>
+          <div class="principle fragment"><b>06</b><div><h3>“The algorithm decided” is never enough</h3><p>If you can't explain a people decision without a score, it isn't ready.</p></div></div>
+        </div>
+        <div class="footer"><span>Key learnings</span><span>19 / 20</span></div>
+      </section>
+
+      <section class="slide dark closing" data-title="Module 2 complete">
+        <div class="kicker">What Comes Next</div>
+        <h1>Module 2 complete — apply PACT this week.</h1>
+        <div class="journey">
+          <div class="journey-step fragment">
+            <span class="tag">Now</span>
+            <div class="journey-card">
+              <h3>Apply this module</h3>
+              <p>Pick one AI task that affects people and define your fairness/accuracy check.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">Do</span>
+            <div class="journey-card">
+              <h3>Know your channel</h3>
+              <p>Find how to report deepfakes, fraud, or AI misuse before you need it.</p>
+            </div>
+          </div>
+          <div class="journey-step fragment">
+            <span class="tag">Next</span>
+            <div class="journey-card">
+              <h3>Continue the series</h3>
+              <p>Privacy, approved tools, and governance modules come next.</p>
+            </div>
+          </div>
+        </div>
+        <div class="takeaway fragment">When in doubt, run PACT — and if still unsure, ask before you act.</div>
+        <div class="footer"><span>AI Awareness Training Series</span><span>20 / 20</span></div>
+      </section>
+
+    </main>
+  </div>
+
+<div class="nav" aria-label="Presentation controls">
+    <button id="prevBtn" title="Previous slide" aria-label="Previous slide">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10.5 3.5L6 8l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <span class="counter" id="counter">1 / 20</span>
+    <button id="nextBtn" title="Next / reveal" aria-label="Next slide">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5.5 3.5L10 8l-4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button id="overviewBtn" title="Overview" aria-label="Overview">O</button>
+  </div>
+  <div class="help">Keys: arrows/space to present | O overview | Home/End</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const urlParams = new URLSearchParams(window.location.search);
+    const revealAllMode = urlParams.get("reveal") === "all";
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = urlParams.get("clean") === "1" || embedMode;
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    let index = 0;
+
+    function resetFragments(slide) {
+      slide.querySelectorAll(".fragment").forEach(el => el.classList.remove("visible"));
+    }
+
+    function hasHiddenFragments() {
+      const active = slides[index];
+      return Boolean(active?.querySelector(".fragment:not(.visible)"));
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deck = shell?.querySelector(".deck");
+      if (!shell || !deck) return;
+      deck.style.transform = "none";
+      slides.forEach((s) => {
+        s.style.zoom = "";
+        s.style.transform = "";
+      });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW;
+      let deckH;
+      if (sw / sh > ASPECT) {
+        deckH = sh;
+        deckW = Math.round(sh * ASPECT);
+      } else {
+        deckW = sw;
+        deckH = Math.round(sw / ASPECT);
+      }
+      deck.style.width = `${deckW}px`;
+      deck.style.height = `${deckH}px`;
+      deck.style.maxWidth = "100%";
+      deck.style.maxHeight = "100%";
+      const active = deck.querySelector(".slide.active");
+      if (active) {
+        /* Cover must never be zoom-squeezed — that shoved content to one side in the player */
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) {
+            active.style.overflow = "auto";
+          }
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = index >= slides.length - 1 && !hasHiddenFragments();
+      const atStart = index <= 0 && !slides[index]?.querySelector(".fragment.visible");
+      window.parent.postMessage(
+        {
+          type: EMBED_EVENT,
+          kind: "lesson",
+          slideIndex: index,
+          slideCount: slides.length,
+          atEnd,
+          atStart,
+        },
+        "*",
+      );
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => {
+        slide.classList.toggle("active", i === index);
+        if (i !== index) resetFragments(slide);
+      });
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      if (revealAllMode) {
+        slides[index].querySelectorAll(".fragment").forEach(el => el.classList.add("visible"));
+      } else {
+        revealNext(true);
+      }
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function revealNext(firstOnly = false) {
+      const active = slides[index];
+      const hidden = Array.from(active.querySelectorAll(".fragment:not(.visible)"));
+      if (!hidden.length) return false;
+      hidden[0].classList.add("visible");
+      if (!firstOnly && hidden.length > 1 && hidden[0].dataset.group) {
+        hidden.filter(el => el.dataset.group === hidden[0].dataset.group).forEach(el => el.classList.add("visible"));
+      }
+      publishEmbedState();
+      return true;
+    }
+
+    function next() {
+      if (!revealNext()) showSlide(index + 1);
+      else publishEmbedState();
+    }
+
+    function prev() {
+      const visible = Array.from(slides[index].querySelectorAll(".fragment.visible"));
+      if (visible.length > 1) {
+        visible[visible.length - 1].classList.remove("visible");
+        publishEmbedState();
+      } else {
+        showSlide(index - 1);
+      }
+    }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") {
+        overview.classList.toggle("open");
+        return;
+      }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open");
+        return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault();
+        next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault();
+        prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+    }
+
+    if (embedMode) {
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) {
+          showSlide(Number(data.index));
+        }
+      });
+    }
+
+    if (embedMode) {
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") {
+          new ResizeObserver(fitEmbedDeck).observe(shell);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>

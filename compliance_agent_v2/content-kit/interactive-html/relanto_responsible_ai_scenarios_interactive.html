@@ -1,0 +1,1117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto Responsible AI & Ethics — Scenario-Based Learning</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+    body.embed { background: #0a0a0a; }
+    body.embed .deck-shell {
+      padding: 0; display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; box-sizing: border-box; container-type: size;
+    }
+    body.embed .deck {
+      flex-shrink: 0; transform: none; aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none;
+    }
+    body.embed .slide { padding: 14px 20px 34px; overflow: hidden; gap: 8px; }
+    body.embed .nav, body.embed .help, body.embed .progress, body.embed .overview { display: none !important; }
+    body.embed h1 { font-size: clamp(16px, 2.3vw, 26px); }
+    body.embed .footer { left: 20px; right: 20px; bottom: 8px; font-size: 10px; }
+    body.embed .dept-grid { gap: 7px; margin-top: 6px; }
+    body.embed .dept-card { padding: 8px 10px; }
+    body.embed .dept-card .dept-name { font-size: 12px; }
+    body.embed .dept-card .dept-hint { font-size: 10px; }
+    body.embed .path-layout { gap: 12px; }
+    body.embed .scene-panel { padding: 10px; }
+    body.embed .content-panel { padding: 12px 14px; gap: 8px; }
+    body.embed .phase-body { font-size: 13px; line-height: 1.35; }
+    body.embed .choice-btn { padding: 8px 10px; font-size: 12px; }
+    body.embed .step-card { padding: 8px 10px; }
+    body.embed .takeaway-hero { padding: 12px 14px; font-size: 14px; }
+    body.embed .cover-title { font-size: clamp(26px, 4.2vw, 44px); }
+    body.embed .cover-hero { gap: 10px; }
+
+    .deck-shell {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 100vh; min-height: 100dvh; padding: 20px; box-sizing: border-box;
+    }
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%; max-height: 100%; position: relative;
+      border-radius: 18px; box-shadow: var(--shadow); background: var(--paper-2); overflow: hidden;
+    }
+    .slide {
+      position: absolute; inset: 0; display: none; flex-direction: column;
+      justify-content: flex-start; gap: 10px; padding: 24px 32px 48px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0; transform: translateX(12px) scale(0.995);
+      box-sizing: border-box; min-height: 0; overflow: hidden;
+    }
+    .slide.active {
+      display: flex; opacity: 1; transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0) scale(1); } }
+
+    .slide.cover {
+      justify-content: space-between; padding: 22px 28px 44px;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+      color: var(--white); animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 10px; height: 22px; flex-shrink: 0;
+      color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .cover .kicker { color: #fdba8c; }
+    .kicker::before { content: ""; width: 18px; height: 2px; background: currentColor; display: block; }
+    h1 { margin: 0; font-size: clamp(20px, 2.5vw, 32px); line-height: 1.12; letter-spacing: -0.01em; font-weight: 760; }
+    p { margin: 0; line-height: 1.4; font-size: 14px; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; max-width: 52ch; }
+    .cover .subtitle { color: rgba(255,255,255,0.78); }
+    .footer {
+      position: absolute; left: 32px; right: 32px; bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      border-top: 1px solid var(--line); padding-top: 8px;
+    }
+    .cover .footer { border-top-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.65); }
+
+    .cover-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .cover-brand img { height: 28px; width: auto; }
+    .cover-brand span {
+      font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,0.7);
+    }
+    .cover-hero { display: flex; flex-direction: column; gap: 16px; flex: 1; justify-content: center; min-height: 0; }
+    .cover-title {
+      font-size: clamp(32px, 5vw, 54px); line-height: 1.05; font-weight: 780; letter-spacing: -0.02em; max-width: 14ch;
+    }
+    .cover-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 560px; }
+    .cover-stat {
+      padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    }
+    .cover-stat .stat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); margin-bottom: 4px;
+    }
+    .cover-stat .stat-value { font-size: 15px; font-weight: 700; color: #fff; }
+    .cover-stat .stat-value .num { font-size: 22px; color: #fdba8c; margin-right: 4px; }
+
+    .dept-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+      margin-top: 8px; flex: 1; min-height: 0; align-content: stretch;
+    }
+    .dept-card {
+      display: flex; flex-direction: column; justify-content: center; gap: 4px;
+      padding: 12px 12px 12px 14px; border-radius: 14px; border: 1px solid var(--line);
+      background: #fff; text-align: left; cursor: pointer; font: inherit; color: inherit;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+      position: relative; overflow: hidden; min-height: 0;
+    }
+    .dept-card::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: transparent; transition: background 180ms ease;
+    }
+    .dept-card:hover, .dept-card:focus-visible {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 10px 28px rgba(46, 49, 146, 0.12); transform: translateY(-1px);
+    }
+    .dept-card:hover::before, .dept-card.selected::before { background: var(--orange); }
+    .dept-card.selected {
+      border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 90, 36, 0.22);
+      background: linear-gradient(135deg, #fff, #fff7f3);
+    }
+    .dept-card-top { display: flex; align-items: center; gap: 10px; }
+    .dept-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(46,49,146,0.1), rgba(241,90,36,0.1));
+      color: var(--blue);
+    }
+    .dept-icon svg { width: 20px; height: 20px; }
+    .dept-card .dept-num {
+      font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--orange);
+    }
+    .dept-card .dept-name { font-size: 14px; font-weight: 740; color: var(--navy); line-height: 1.2; }
+    .dept-card .dept-hint { font-size: 11px; color: var(--muted); line-height: 1.3; padding-left: 46px; }
+    .picker-note { margin-top: 2px; font-size: 13px; color: var(--muted); }
+    .picker-note.pulse { color: var(--orange); font-weight: 700; animation: pulseHint 900ms ease; }
+    @keyframes pulseHint { 0%, 100% { opacity: 1; } 40% { opacity: 0.45; } }
+
+    .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+    .dept-badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+      background: rgba(241, 90, 36, 0.1); color: var(--orange);
+      font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .change-dept {
+      border: 0; background: transparent; color: var(--blue); font: inherit; font-size: 12px;
+      font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
+    }
+    .phase-bar { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .phase-chip {
+      padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; background: #ececf8; color: var(--blue);
+    }
+    .phase-chip.on { background: var(--blue); color: #fff; }
+    .phase-chip.done { background: rgba(46, 49, 146, 0.12); color: var(--navy); }
+
+    .path-layout {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 0.9fr 1.35fr; gap: 14px; margin-top: 4px;
+    }
+    .scene-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      gap: 10px; min-height: 0; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .scene-panel[data-phase="situation"] {
+      background:
+        radial-gradient(circle at 80% 20%, rgba(241,90,36,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f8ff, #fff);
+    }
+    .scene-panel[data-phase="challenge"] {
+      background:
+        radial-gradient(circle at 20% 80%, rgba(216,138,31,0.16), transparent 42%),
+        linear-gradient(160deg, #fffaf3, #fff);
+    }
+    .scene-panel[data-phase="recommended"] {
+      background:
+        radial-gradient(circle at 70% 30%, rgba(32,167,181,0.14), transparent 40%),
+        linear-gradient(160deg, #f3fbfc, #fff);
+    }
+    .scene-panel[data-phase="explanation"] {
+      background:
+        radial-gradient(circle at 30% 20%, rgba(107,79,163,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f5ff, #fff);
+    }
+    .scene-panel[data-phase="takeaway"] {
+      background:
+        radial-gradient(circle at 50% 0%, rgba(241,90,36,0.18), transparent 45%),
+        linear-gradient(160deg, #fff7f3, #f4f4ff);
+    }
+    .scene-art {
+      width: 100%; max-width: 100%; height: auto; max-height: min(42vh, 320px);
+      object-fit: cover; border-radius: 14px; display: block;
+      box-shadow: 0 10px 28px rgba(24, 24, 39, 0.1);
+    }
+    .scene-caption {
+      font-size: 12px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.3; max-width: 28ch;
+    }
+    .quote-chip {
+      margin-top: 4px; padding: 8px 10px; border-radius: 10px; width: 100%;
+      background: rgba(46,49,146,0.06); border-left: 3px solid var(--orange);
+      font-size: 11px; font-style: italic; color: #3f3f46; line-height: 1.35;
+    }
+
+    .content-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+      min-height: 0; overflow: auto; align-content: start;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .content-panel[data-phase="situation"] { border-top: 3px solid var(--blue); }
+    .content-panel[data-phase="challenge"] { border-top: 3px solid var(--amber); }
+    .content-panel[data-phase="recommended"] { border-top: 3px solid var(--cyan); }
+    .content-panel[data-phase="explanation"] { border-top: 3px solid var(--plum); }
+    .content-panel[data-phase="takeaway"] { border-top: 3px solid var(--orange); }
+
+    .phase-label {
+      font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--blue);
+    }
+    .content-panel[data-phase="challenge"] .phase-label { color: var(--amber); }
+    .content-panel[data-phase="recommended"] .phase-label { color: var(--cyan); }
+    .content-panel[data-phase="explanation"] .phase-label { color: var(--plum); }
+    .content-panel[data-phase="takeaway"] .phase-label { color: var(--orange); }
+    .phase-title {
+      margin: 0; font-size: clamp(16px, 2vw, 22px); font-weight: 760; line-height: 1.2; color: var(--navy);
+    }
+    .phase-body { font-size: 13.5px; line-height: 1.4; color: #3f3f46; }
+
+    .choice-prompt {
+      font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--navy);
+    }
+    .choice-list { display: flex; flex-direction: column; gap: 8px; }
+    .choice-btn {
+      text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      background: #fafafa; font: inherit; font-size: 13px; line-height: 1.35; color: var(--ink);
+      cursor: pointer; transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .choice-btn:hover { border-color: var(--blue); background: #fff; }
+    .choice-btn.picked-good {
+      border-color: var(--green); background: rgba(56,161,105,0.08);
+      box-shadow: 0 0 0 2px rgba(56,161,105,0.15);
+    }
+    .choice-btn.picked-bad {
+      border-color: var(--red); background: rgba(199,71,71,0.06);
+      box-shadow: 0 0 0 2px rgba(199,71,71,0.12);
+    }
+    .choice-btn .choice-tag {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: 3px; color: var(--muted);
+    }
+    .choice-feedback {
+      display: none; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.35;
+      background: rgba(46,49,146,0.06); border: 1px solid rgba(46,49,146,0.12); color: var(--navy);
+    }
+    .choice-feedback.show { display: block; animation: fadeUp 280ms ease; }
+    .choice-feedback.good { background: rgba(56,161,105,0.1); border-color: rgba(56,161,105,0.25); }
+    .choice-feedback.bad { background: rgba(199,71,71,0.08); border-color: rgba(199,71,71,0.2); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .step-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-card {
+      display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fafafa;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 800;
+    }
+    .step-card strong { display: block; font-size: 13px; color: var(--navy); margin-bottom: 2px; }
+    .step-card span { font-size: 12px; color: #52525b; line-height: 1.35; }
+
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .compare-card {
+      padding: 10px; border-radius: 12px; border: 1px solid var(--line); font-size: 12px; line-height: 1.35;
+    }
+    .compare-card.bad { background: rgba(199,71,71,0.06); border-color: rgba(199,71,71,0.25); }
+    .compare-card.good { background: rgba(56,161,105,0.07); border-color: rgba(56,161,105,0.28); }
+    .compare-card .cmp-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .compare-card.bad .cmp-label { color: var(--red); }
+    .compare-card.good .cmp-label { color: var(--green); }
+
+    .insight-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .insight-chip {
+      padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: rgba(107,79,163,0.1); color: var(--plum); border: 1px solid rgba(107,79,163,0.18);
+    }
+
+    .takeaway-hero {
+      margin-top: 4px; padding: 14px 16px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(241,90,36,0.14), rgba(46,49,146,0.1));
+      border: 1px solid rgba(241,90,36,0.25); color: var(--navy);
+      font-size: 15px; font-weight: 720; line-height: 1.35;
+    }
+    .takeaway-hero span {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--orange); margin-bottom: 6px;
+    }
+    .practice-box {
+      margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+      border: 1px dashed rgba(46, 49, 146, 0.35);
+      background: linear-gradient(180deg, #fbfbff, #fff);
+    }
+    .practice-box .practice-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 6px;
+    }
+    .practice-box .practice-title {
+      margin: 0 0 6px; font-size: 14px; font-weight: 760; color: var(--navy); line-height: 1.25;
+    }
+    .practice-box .practice-prompt {
+      margin: 0; font-size: 13px; line-height: 1.4; color: #3f3f46;
+    }
+    .practice-box .practice-hint {
+      margin: 8px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted);
+    }
+
+    .nav {
+      position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px; z-index: 20;
+    }
+    .nav button, .help {
+      border: 0; border-radius: 999px; padding: 10px 14px; background: #fff; color: var(--navy);
+      font: inherit; font-size: 12px; font-weight: 700; box-shadow: var(--shadow); cursor: pointer;
+    }
+    .help { position: fixed; left: 24px; bottom: 24px; z-index: 20; opacity: 0.85; }
+    .progress { position: fixed; left: 0; top: 0; height: 3px; width: 100%; background: rgba(46,49,146,0.12); z-index: 30; }
+    .progress > span {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--blue), var(--orange)); transition: width 240ms ease;
+    }
+    .overview {
+      display: none; position: fixed; inset: 0; background: rgba(10,10,20,0.72); z-index: 40; padding: 40px; overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; max-width: 960px; margin: 40px auto;
+    }
+    .thumb {
+      border: 0; border-radius: 12px; padding: 14px; text-align: left; background: #fff;
+      cursor: pointer; font: inherit; font-size: 13px; color: var(--ink);
+    }
+    .thumb b { display: block; color: var(--orange); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-title="Cover" data-fixed="1">
+        <div class="cover-brand">
+          <img src="relanto-logo.png" alt="Relanto" />
+          <span>Responsible AI &amp; Ethics</span>
+        </div>
+        <div class="cover-hero">
+          <div class="kicker">Practice module</div>
+          <h1 class="cover-title">Scenario-Based Learning</h1>
+          <p class="subtitle">Pick a department path — same interactive format as Module 1, with Responsible AI &amp; Ethics situations drawn from the module scenarios.</p>
+          <div class="cover-stats">
+            <div class="cover-stat">
+              <div class="stat-label">Departments</div>
+              <div class="stat-value"><span class="num">10</span> paths</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Per path</div>
+              <div class="stat-value"><span class="num">5</span> slides</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Focus</div>
+              <div class="stat-value">Decide &amp; apply</div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Relanto · Responsible AI &amp; Ethics</span>
+          <span id="counter">1 / 2</span>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Choose department" data-fixed="1" id="pickerSlide">
+        <div class="kicker">Your context</div>
+        <h1>Which department describes your work best?</h1>
+        <p class="picker-note" id="pickerNote">Select one path. You’ll get an interactive scenario — about five short slides.</p>
+        <div class="dept-grid" id="deptGrid" role="list"></div>
+        <div class="footer">
+          <span>Relanto · Scenario-Based Learning</span>
+          <span>Choose to continue</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button type="button" id="prevBtn">Prev</button>
+    <button type="button" id="overviewBtn">Overview</button>
+    <button type="button" id="nextBtn">Next</button>
+  </div>
+  <div class="help">← → · Space · O</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const urlParams = new URLSearchParams(window.location.search);
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = embedMode || urlParams.get("clean") === "1";
+
+    const PHASES = [
+      { key: "situation", label: "Situation" },
+      { key: "challenge", label: "Challenge" },
+      { key: "recommended", label: "Recommended" },
+      { key: "explanation", label: "Explanation" },
+      { key: "takeaway", label: "Takeaway" },
+    ];
+
+    const ICONS = {
+      hr: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+      sales: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+      marketing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4.5 4.5 0 0 1 0 7M17.5 6a8 8 0 0 1 0 12"/></svg>`,
+      operations: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
+      pm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>`,
+      support: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="4" height="6" rx="1"/><rect x="18" y="14" width="4" height="6" rx="1"/><path d="M6 18h2a2 2 0 0 0 2-2v-1"/></svg>`,
+      leadership: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.5 5.5L21 9.5l-4.5 4 1.2 6L12 16.8 6.3 19.5l1.2-6L3 9.5l6.5-1L12 3z"/></svg>`,
+      finance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h4"/></svg>`,
+      general: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H8l-4 3V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>`,
+    };
+
+    function sceneArtHtml(id, name, sceneId) {
+      const file = `scene-${sceneId || id}.webp`;
+      const primary = `/course-assets/scenario-scenes/${file}`;
+      const local = `scenario-scenes/${file}`;
+      return `<img class="scene-art" src="${primary}" data-fallback="${local}" alt="${escapeHtml(name)} workplace scene" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';}" />`;
+    }
+
+    const SCENARIOS = [
+      {
+        id: "hr", name: "Human Resources", short: "HR", hint: "Fairness in hiring & screening",
+        title: "The “Objective” Screening Score",
+        quote: "“It’s data-driven — so it can’t be biased.”",
+        sceneCaption: "Confident ranking · Hidden history",
+        situation: "Priya in HR uses an AI résumé-screening tool. It consistently ranks graduates of two universities at the top — mirroring the company’s historical hiring. A recruiter says the tool is objective because it is data-driven and numerical.",
+        challenge: "Historical data can encode past bias. A fluent “objective” score can systematically disadvantage qualified candidates from other backgrounds.",
+        recommended: "Priya treats the pattern as a fairness red flag. She investigates whether university is a genuine job-relevant criterion, involves the tool owner/HR leadership, and does not treat the score as a final decision without human, job-relevant reasons.",
+        explanation: "Models learn patterns in training data — including unfair ones. Numbers do not make a process fair. Fairness checks and human accountability are required for people decisions.",
+        takeaway: "Data-driven is not the same as fair. Investigate skew in people-related AI outputs.",
+        practiceTitle: "Spot the fairness check",
+        practicePrompt: "Think of one AI output that ranks or describes people. Write two questions you would ask to check for skew (who benefits, who is missing).",
+        practiceHint: "If you cannot explain the ranking without the score, pause.",
+        choices: [
+          { label: "Trust the ranking — numerical scores cannot be biased.", good: false, feedback: "Scores can reproduce historical bias. Investigate the pattern." },
+          { label: "Investigate the skew; keep humans accountable for hiring decisions.", good: true, feedback: "Right call. Fairness + explainable human judgement beats “the model said so.”" },
+          { label: "Ban all AI from recruiting forever.", good: false, feedback: "The lesson is responsible use and oversight — not a blanket ban." },
+        ],
+        steps: [
+          { title: "Notice the pattern", body: "Same universities always on top = investigate." },
+          { title: "Ask job-relevant questions", body: "Is this criterion justified for the role?" },
+          { title: "Escalate + own the decision", body: "Tool owner / HR leadership; humans decide." },
+        ],
+        compare: {
+          badLabel: "Rubber-stamp", bad: "“It’s objective because it’s data-driven.”",
+          goodLabel: "Fairness check", good: "Investigate skew; decide with job-relevant reasons.",
+        },
+        insights: ["Training-data bias", "Numbers ≠ fairness", "Human accountability"],
+      },
+      {
+        id: "finance", name: "Finance", short: "Finance", hint: "Deepfakes & urgent payments",
+        title: "The Voice That Sounds Like the CFO",
+        quote: "“Wire this now — keep it confidential.”",
+        sceneCaption: "Familiar voice · High-risk ask",
+        situation: "Tomás in Finance gets a voice message that sounds exactly like the CFO demanding an urgent, confidential payment to a new account. The tone is stressed and insistent: act now, tell no one.",
+        challenge: "Voice cloning can defeat “I recognized the voice.” Urgency + secrecy + payment is a classic fraud pattern.",
+        recommended: "Tomás does not process the payment. He verifies through a separate known channel (saved number, established chat, in person), waits for confirmation, and reports the attempt to security.",
+        explanation: "Deepfakes cut both ways: never create unauthorized likenesses, and never trust urgency on voice alone. Out-of-band verification is the control.",
+        takeaway: "Urgency + secrecy + payment → verify out-of-band, then report.",
+        practiceTitle: "Name your out-of-band channel",
+        practicePrompt: "Write the two channels you would use tomorrow if a “leader” asked for an urgent payment by voice or video (e.g., saved mobile, finance shared mailbox).",
+        practiceHint: "Replying to the same unknown number is not out-of-band.",
+        choices: [
+          { label: "Process it — you recognized the voice.", good: false, feedback: "Recognition is obsolete as sole verification. Voice can be cloned." },
+          { label: "Verify on a known channel; do not act; report to security.", good: true, feedback: "That’s the deepfake-ready response." },
+          { label: "Reply on the same thread asking for a written OK.", good: false, feedback: "Attackers control that channel. Use a separately known contact path." },
+        ],
+        steps: [
+          { title: "Pause", body: "Do not send money on voice alone." },
+          { title: "Out-of-band verify", body: "Call a saved number / confirm in person." },
+          { title: "Report", body: "Flag suspected deepfake or fraud to security." },
+        ],
+        compare: {
+          badLabel: "Trust the voice", bad: "Recognized CFO + urgent wire = pay.",
+          goodLabel: "Verify separately", good: "Known channel → confirm → then act or report.",
+        },
+        insights: ["Voice cloning", "Urgency + secrecy", "Out-of-band verify"],
+      },
+      {
+        id: "leadership", name: "Leadership", short: "Leadership", hint: "Accountability for AI outcomes",
+        title: "“The Algorithm Decided”",
+        quote: "“We declined them — the AI fit score was 41.”",
+        sceneCaption: "Score only · No reasons",
+        situation: "Sofia’s team declines an internal transfer because an AI “fit score” was 41 against a cutoff of 60. Nobody can explain what the score means in job-relevant terms. A manager says software made the call so no one is personally accountable.",
+        challenge: "People decisions without explainable reasons fail accountability — and “the algorithm decided” is never enough.",
+        recommended: "Sofia insists on human, job-relevant reasons documented by a named decision-maker. If the score cannot be explained, the process is not ready for consequential use. Software cannot apologize to a regulator.",
+        explanation: "Accountability stays with people and the organization. Explainability is what makes oversight real.",
+        takeaway: "If you can’t explain a people decision without a score, it isn’t ready.",
+        practiceTitle: "Write the human reason",
+        practicePrompt: "Take any AI score you’ve seen (or invent 41/60). Write two job-relevant sentences a manager could own without mentioning the score.",
+        practiceHint: "If you can’t, the decision isn’t explainable yet.",
+        choices: [
+          { label: "Accept the decline — the score is below 60.", good: false, feedback: "Unexplained scores aren’t accountable people decisions." },
+          { label: "Require explainable human reasons; pause score-only decisions.", good: true, feedback: "Explainability + named ownership = responsible use." },
+          { label: "Hide the score from employees to reduce complaints.", good: false, feedback: "Opacity makes accountability worse, not better." },
+        ],
+        steps: [
+          { title: "Demand reasons", body: "Job-relevant human explanation required." },
+          { title: "Name the owner", body: "A person signs off — not “the system.”" },
+          { title: "Pause if unexplained", body: "Score-only processes aren’t ready." },
+        ],
+        compare: {
+          badLabel: "Score-only", bad: "Fit 41 < 60 → declined. No further reason.",
+          goodLabel: "Accountable", good: "Named human + job-relevant rationale.",
+        },
+        insights: ["Explainability", "Named ownership", "Software ≠ accountable"],
+      },
+      {
+        id: "support", name: "Customer Support", short: "Support", hint: "Transparency with customers",
+        title: "When the Bot Pretends to Be Sarah",
+        quote: "“Just say you’re Sarah on the support team.”",
+        sceneCaption: "Helpful bot · Hidden identity",
+        situation: "Lena is configuring a customer chatbot. A teammate suggests instructing it to claim it is a human agent named Sarah so customers “trust it more” and stay on chat longer.",
+        challenge: "Hiding that the counterpart is AI is a transparency failure — and a deception bright line.",
+        recommended: "Lena labels the assistant clearly as a virtual / AI assistant, never claims to be human, and escalates to a real person when needed. Trust comes from honesty and good service, not impersonation.",
+        explanation: "Transparency means recipients know AI is involved. Capability is not permission to deceive.",
+        takeaway: "Label bots. Never claim to be human.",
+        practiceTitle: "Write the disclosure line",
+        practicePrompt: "Draft one clear sentence a chatbot should say in the first message so customers know they’re talking to AI — without being cold or evasive.",
+        practiceHint: "If you’d be uncomfortable if the customer found out later, rewrite it.",
+        choices: [
+          { label: "Use the Sarah persona — conversion will be higher.", good: false, feedback: "That is deception. Transparency is non-negotiable." },
+          { label: "Identify it as an AI assistant; escalate to humans when needed.", good: true, feedback: "Honest labeling + human backup is the responsible pattern." },
+          { label: "Stay silent about identity unless the customer asks.", good: false, feedback: "Omission can still mislead. Lead with clear labeling." },
+        ],
+        steps: [
+          { title: "Label the bot", body: "First message: AI / virtual assistant." },
+          { title: "Never impersonate", body: "No fake human names or roles." },
+          { title: "Offer a human path", body: "Escalate when the case needs a person." },
+        ],
+        compare: {
+          badLabel: "Impersonation", bad: "“Hi, I’m Sarah on support…”",
+          goodLabel: "Transparency", good: "“I’m an AI assistant — I can connect you to a person.”",
+        },
+        insights: ["Transparency", "No fake humans", "Trust via honesty"],
+      },
+      {
+        id: "marketing", name: "Marketing", short: "Marketing", hint: "Deception & fabricated proof",
+        title: "The Fake Testimonial Shortcut",
+        quote: "“Generate three glowing customer quotes.”",
+        sceneCaption: "Polished praise · Not real",
+        situation: "Aisha needs social proof for a proposal tomorrow. She asks an AI to invent three glowing customer testimonials “in our brand voice,” planning to paste them into the deck as if they were real.",
+        challenge: "Fabricated testimonials are deception — a bright-line misuse, even under deadline pressure.",
+        recommended: "Aisha uses only real, approved customer quotes (or clearly labeled examples/hypotheticals if policy allows). She may use AI to help phrase genuine feedback she already has — never to invent customers.",
+        explanation: "Misuse includes deception, manipulation, and dishonesty. Fake proof destroys trust and creates compliance risk.",
+        takeaway: "AI can polish real proof. It must not invent it.",
+        practiceTitle: "Real proof only",
+        practicePrompt: "List two approved places you would get real customer voice (CRM note, case study library, interview). Note what you would never invent with AI.",
+        practiceHint: "If it didn’t happen, don’t publish it as if it did.",
+        choices: [
+          { label: "Paste the invented quotes — the deadline is tomorrow.", good: false, feedback: "Fake testimonials are deception, deadline or not." },
+          { label: "Use only real/approved proof; AI may help phrase genuine feedback.", good: true, feedback: "That’s responsible marketing assistance." },
+          { label: "Invent quotes but attribute them to “Industry peer.”", good: false, feedback: "Still fabricated authority — still misuse." },
+        ],
+        steps: [
+          { title: "Source real proof", body: "Approved quotes, case studies, interviews." },
+          { title: "Optional AI polish", body: "On real text you own — not invented customers." },
+          { title: "Brand / Legal check", body: "Follow disclosure and approval norms." },
+        ],
+        compare: {
+          badLabel: "Invented proof", bad: "AI-written “customer” quotes in the deck.",
+          goodLabel: "Real proof", good: "Approved quotes only; AI helps wording of what’s true.",
+        },
+        insights: ["Deception bright line", "No fake customers", "Deadline ≠ exception"],
+      },
+      {
+        id: "pm", name: "Project Management", short: "PM", hint: "Automation bias in reviews",
+        title: "The Rubber-Stamp Status Gate",
+        quote: "“AI says green — approve and move on.”",
+        sceneCaption: "Fast approve · Weak review",
+        situation: "Daniel’s steering pack includes an AI risk summary that marks the rollout “green.” Under time pressure, reviewers approve in seconds — faster than they would a colleague’s handwritten status — without checking the tracker.",
+        challenge: "Automation bias: people over-trust machine suggestions and scrutinize them less than human work.",
+        recommended: "Daniel builds a meaningful review: check status words and risks against the tracker, require a human owner for each red/amber item, and refuse score-only or summary-only approvals for high-stakes gates.",
+        explanation: "Oversight must be real — time, information, and authority to disagree — not a rubber stamp.",
+        takeaway: "Don’t approve AI faster than you’d approve a colleague. Match review to stakes.",
+        practiceTitle: "Slow the green light",
+        practicePrompt: "Write a 3-item checklist you would always run before accepting an AI “green” status on a project you own.",
+        practiceHint: "Status words and numbers are where quiet errors hide.",
+        choices: [
+          { label: "Approve — the AI summary is green and time is short.", good: false, feedback: "That’s automation bias. High-stakes gates need real checks." },
+          { label: "Verify against the tracker; keep human owners for risks.", good: true, feedback: "Meaningful control beats rubber stamps." },
+          { label: "Stop using AI summaries entirely.", good: false, feedback: "Summaries help — with verification matched to impact." },
+        ],
+        steps: [
+          { title: "Check the source", body: "Tracker / notes vs AI status words." },
+          { title: "Name human owners", body: "Especially for amber/red items." },
+          { title: "Refuse rubber stamps", body: "No score-only gate for high stakes." },
+        ],
+        compare: {
+          badLabel: "Automation bias", bad: "AI green → instant approve.",
+          goodLabel: "Meaningful review", good: "Verify + human owners + authority to disagree.",
+        },
+        insights: ["Automation bias", "Oversight by stakes", "Human owners"],
+      },
+      {
+        id: "operations", name: "Operations", short: "Ops", hint: "Copyright & AI content",
+        title: "The “AI Wrote It” Copyright Myth",
+        quote: "“We’re fine — the model generated it.”",
+        sceneCaption: "New copy · Old rights risk",
+        situation: "An operations lead wants AI to rewrite a paid industry report into an internal playbook and reuse distinctive phrasing from a competitor’s website. A teammate says there’s no copyright issue because “the AI wrote it.”",
+        challenge: "AI output is not automatically free of copyright concerns. Inputs may be protected; outputs can echo existing works; ownership can be ambiguous.",
+        recommended: "They avoid feeding content they lack rights to use, check originality for commercial/brand-critical use, and involve Legal when unsure — especially for brand assets and paid sources.",
+        explanation: "Three everyday questions: input rights, output originality, ownership. “The AI wrote it” is not a free pass.",
+        takeaway: "Rights still matter. Ask about input, output, and ownership.",
+        practiceTitle: "Run the three questions",
+        practicePrompt: "For one AI content task this week, answer: (1) Do I have rights to the input? (2) Could the output copy someone else’s work? (3) Who needs to approve commercial use?",
+        practiceHint: "When unsure on brand-critical assets — ask Legal.",
+        choices: [
+          { label: "Proceed — AI generation clears copyright automatically.", good: false, feedback: "False. Inputs, lookalikes, and ownership still matter." },
+          { label: "Respect input rights; check originality; escalate brand-critical use.", good: true, feedback: "That’s the practical copyright habit." },
+          { label: "Only worry if you paste the whole book verbatim.", good: false, feedback: "Partial reuse, style cloning, and paid sources can still be problems." },
+        ],
+        steps: [
+          { title: "Input rights", body: "Don’t feed what you lack rights to use." },
+          { title: "Output checks", body: "Originality / brand conflict for commercial use." },
+          { title: "Escalate when unsure", body: "Legal for brand-critical assets." },
+        ],
+        compare: {
+          badLabel: "Myth", bad: "“AI wrote it → no copyright issues.”",
+          goodLabel: "Practice", good: "Input rights + originality + ownership/Legal.",
+        },
+        insights: ["Input rights", "Output originality", "Ask Legal when unsure"],
+      },
+      {
+        id: "general", name: "General Office", short: "General", hint: "Fairness in everyday summaries",
+        title: "The Summary That Buried the Credit",
+        quote: "“Just send the AI minutes — they’re fine.”",
+        sceneCaption: "Smooth summary · Uneven credit",
+        situation: "Ravi pastes meeting notes into an AI assistant and gets a polished summary. It highlights senior speakers and buries a junior engineer’s pivotal technical point. He’s about to circulate it to the wider team.",
+        challenge: "Uneven credit and buried contributions are fairness issues. The person who sends the summary owns the outcome.",
+        recommended: "Ravi corrects the summary against his notes, restores fair credit, then sends. He prompts next time to list decisions and contributions by name when present in the notes.",
+        explanation: "Bias isn’t only hiring tools — it shows up in summaries, tone, and whose voice gets amplified.",
+        takeaway: "Before you circulate AI summaries about people, check who got credit — and who didn’t.",
+        practiceTitle: "Fair credit pass",
+        practicePrompt: "Take any short AI summary of a discussion. Highlight every name. Ask: whose key point is missing? Fix one omission.",
+        practiceHint: "You own what you forward.",
+        choices: [
+          { label: "Send as-is — summaries are always lossy.", good: false, feedback: "Lossy isn’t an excuse for unfair credit. You’re accountable." },
+          { label: "Correct against notes; credit contributions fairly; then send.", good: true, feedback: "Fairness in everyday artifacts." },
+          { label: "Ask AI to make it shorter so gaps matter less.", good: false, feedback: "Shorter can hide the problem. Fix representation first." },
+        ],
+        steps: [
+          { title: "Compare to notes", body: "Who spoke? What decisions?" },
+          { title: "Restore fair credit", body: "Especially junior / quieter contributors." },
+          { title: "Then circulate", body: "You own the forwarded artifact." },
+        ],
+        compare: {
+          badLabel: "Blind forward", bad: "AI minutes → whole team, unchecked.",
+          goodLabel: "Fairness pass", good: "Notes check → fair credit → send.",
+        },
+        insights: ["Everyday fairness", "Credit skew", "Sender accountability"],
+      },
+      {
+        id: "sales", name: "Sales", short: "Sales", hint: "Candor & disclosure",
+        title: "The Undisclosed AI Pitch Deck",
+        quote: "“Don’t mention we used AI — it sounds weaker.”",
+        sceneCaption: "Polished deck · Hidden process",
+        situation: "Marco used AI heavily to draft a client pitch, including competitor comparisons and “market benchmarks.” A teammate says not to disclose AI assistance because it might reduce credibility — even though some figures were not verified.",
+        challenge: "Candor asks: would you be comfortable if everyone affected knew exactly how AI was used? Unverified benchmarks plus hidden process is a trust and integrity risk.",
+        recommended: "Marco verifies every benchmark against real sources, removes anything he can’t substantiate, and follows disclosure expectations where policy or trust depends on origin. He runs a quick PACT check before sending.",
+        explanation: "Candor is the disclosure comfort test. Hiding risky AI use to look stronger fails responsible AI.",
+        takeaway: "Verify claims. Disclose when trust depends on it. Run PACT.",
+        practiceTitle: "PACT before send",
+        practicePrompt: "For your next client-facing AI-assisted draft, answer P-A-C-T in one line each. If any answer is “no/not sure,” fix before sending.",
+        practiceHint: "Unverified “industry facts” are a common failure mode.",
+        choices: [
+          { label: "Hide AI use and keep the unverified benchmarks.", good: false, feedback: "Fails candor and accuracy — high trust risk." },
+          { label: "Verify facts, remove weak claims, disclose per policy/trust needs.", good: true, feedback: "Candor + accuracy is the sales-safe path." },
+          { label: "Disclose AI use but leave invented stats in the deck.", good: false, feedback: "Disclosure doesn’t fix fabricated numbers." },
+        ],
+        steps: [
+          { title: "Verify benchmarks", body: "Primary sources only." },
+          { title: "Apply candor", body: "Would you be comfortable if they knew?" },
+          { title: "Disclose as required", body: "Policy + trust — then send." },
+        ],
+        compare: {
+          badLabel: "Hide & hype", bad: "Unverified AI stats + “don’t mention AI.”",
+          goodLabel: "PACT send", good: "Verified claims + honest process.",
+        },
+        insights: ["Candor", "Verify benchmarks", "PACT before send"],
+      },
+      {
+        id: "ethics", sceneId: "leadership", name: "Cross-team", short: "PACT", hint: "Ethical decision check before sensitive use",
+        title: "Run PACT Before You Proceed",
+        quote: "“We’re not sure — but the tool lets us do it.”",
+        sceneCaption: "Sensitive use · Pause & check",
+        situation: "A cross-functional group wants to use an AI tool on a sensitive people-related task with customer data. The tool technically allows the action. Nobody has run a structured ethics check; someone says “if the tool allows it, it’s fine.”",
+        challenge: "Capability is not permission. Sensitive AI use needs a deliberate PACT check — Permission, Accuracy & fairness, Candor, Takeover.",
+        recommended: "They pause and run PACT. Any “no” or “not sure” means adjust the plan or escalate to manager / HR / Legal / AI policy owner before proceeding.",
+        explanation: "PACT turns principles into a practical gate. Tools rarely enforce workplace ethics for you.",
+        takeaway: "If the tool allows it, still run PACT — and ask before you act when unsure.",
+        practiceTitle: "PACT on a real task",
+        practicePrompt: "Pick one AI task that affects people or uses non-public data. Score P, A, C, T as yes / no / not sure. Escalate any not-sure.",
+        practiceHint: "“The tool allows it” is not a PACT pass.",
+        choices: [
+          { label: "Proceed — the tool permits the action.", good: false, feedback: "Capability ≠ permission. Run PACT first." },
+          { label: "Pause; run PACT; escalate any no/not sure.", good: true, feedback: "That’s the Module 2 habit." },
+          { label: "Only ask Legal after something goes wrong.", good: false, feedback: "Ask before you act on sensitive use." },
+        ],
+        steps: [
+          { title: "Permission", body: "Policy, approved tool, appropriate data?" },
+          { title: "Accuracy & fairness", body: "Verified? Skew risk checked?" },
+          { title: "Candor + Takeover", body: "Disclosure comfort? Human can overrule?" },
+        ],
+        compare: {
+          badLabel: "Tool says OK", bad: "If the product allows it → do it.",
+          goodLabel: "PACT gate", good: "P-A-C-T; pause or escalate when unsure.",
+        },
+        insights: ["Capability ≠ permission", "PACT gate", "Ask before you act"],
+      },
+    ];
+
+
+    const deck = document.getElementById("deck");
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    const deptGrid = document.getElementById("deptGrid");
+    const pickerNote = document.getElementById("pickerNote");
+
+    let slides = [];
+    let index = 0;
+    let selectedId = null;
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function refreshSlides() {
+      slides = Array.from(deck.querySelectorAll(".slide"));
+    }
+
+    function clearPathSlides() {
+      deck.querySelectorAll(".slide[data-path='1']").forEach((el) => el.remove());
+      selectedId = null;
+      deptGrid.querySelectorAll(".dept-card").forEach((btn) => btn.classList.remove("selected"));
+    }
+
+    function phaseChipsHtml(activeIdx) {
+      return PHASES.map((p, i) => {
+        const cls = i === activeIdx ? "on" : i < activeIdx ? "done" : "";
+        return `<span class="phase-chip ${cls}">${p.label}</span>`;
+      }).join("");
+    }
+
+    function contentForPhase(scenario, phase) {
+      if (phase.key === "situation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.situation)}</p>
+          ${scenario.compare ? `
+            <div class="compare-grid">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      if (phase.key === "challenge") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.challenge)}</p>
+          <div class="choice-prompt">What would you do?</div>
+          <div class="choice-list" data-choice-list>
+            ${(scenario.choices || []).map((c, i) => `
+              <button type="button" class="choice-btn" data-choice="${i}" data-good="${c.good ? "1" : "0"}" data-feedback="${escapeHtml(c.feedback)}">
+                <span class="choice-tag">Option ${String.fromCharCode(65 + i)}</span>
+                ${escapeHtml(c.label)}
+              </button>`).join("")}
+          </div>
+          <div class="choice-feedback" data-choice-feedback></div>`;
+      }
+      if (phase.key === "recommended") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.recommended)}</p>
+          <div class="step-list">
+            ${(scenario.steps || []).map((s, i) => `
+              <div class="step-card">
+                <div class="step-num">${i + 1}</div>
+                <div><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.body)}</span></div>
+              </div>`).join("")}
+          </div>`;
+      }
+      if (phase.key === "explanation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.explanation)}</p>
+          <div class="insight-chips">
+            ${(scenario.insights || []).map((t) => `<span class="insight-chip">${escapeHtml(t)}</span>`).join("")}
+          </div>
+          ${scenario.compare ? `
+            <div class="compare-grid" style="margin-top:4px">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      return `
+          <div class="takeaway-hero"><span>Key takeaway</span>${escapeHtml(scenario.takeaway)}</div>
+          ${scenario.practicePrompt ? `
+            <div class="practice-box">
+              <div class="practice-label">Try it yourself</div>
+              <h3 class="practice-title">${escapeHtml(scenario.practiceTitle || "Practice")}</h3>
+              <p class="practice-prompt">${escapeHtml(scenario.practicePrompt)}</p>
+              ${scenario.practiceHint ? `<p class="practice-hint">${escapeHtml(scenario.practiceHint)}</p>` : ""}
+            </div>` : ""}`;
+    }
+
+    function buildPathSlides(scenario) {
+      clearPathSlides();
+      selectedId = scenario.id;
+      PHASES.forEach((phase, i) => {
+        const section = document.createElement("section");
+        section.className = "slide";
+        section.dataset.title = `${scenario.short}: ${phase.label}`;
+        section.dataset.path = "1";
+        section.innerHTML = `
+          <div class="meta-row">
+            <span class="dept-badge">${escapeHtml(scenario.name)}</span>
+            <button type="button" class="change-dept" data-action="change">Change department</button>
+          </div>
+          <div class="phase-bar">${phaseChipsHtml(i)}</div>
+          <div class="path-layout">
+            <aside class="scene-panel" data-phase="${phase.key}">
+              ${sceneArtHtml(scenario.id, scenario.name, scenario.sceneId)}
+              <div class="scene-caption">${escapeHtml(scenario.sceneCaption || scenario.title)}</div>
+              ${phase.key === "situation" || phase.key === "challenge"
+                ? `<div class="quote-chip">${escapeHtml(scenario.quote || "")}</div>`
+                : ""}
+            </aside>
+            <div class="content-panel" data-phase="${phase.key}">
+              <div class="phase-label">${phase.label}</div>
+              <h2 class="phase-title">${escapeHtml(scenario.title)}</h2>
+              ${contentForPhase(scenario, phase)}
+            </div>
+          </div>
+          <div class="footer">
+            <span>Relanto · ${escapeHtml(scenario.short)} scenario</span>
+            <span>Step ${i + 1} of ${PHASES.length}</span>
+          </div>
+        `;
+        deck.appendChild(section);
+      });
+      refreshSlides();
+      buildOverview();
+      wireChoiceHandlers();
+      const firstPath = slides.findIndex((s) => s.dataset.path === "1");
+      showSlide(firstPath >= 0 ? firstPath : 0);
+    }
+
+    function wireChoiceHandlers() {
+      deck.querySelectorAll("[data-choice-list]").forEach((list) => {
+        const feedback = list.parentElement.querySelector("[data-choice-feedback]");
+        list.querySelectorAll(".choice-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const good = btn.dataset.good === "1";
+            list.querySelectorAll(".choice-btn").forEach((b) => {
+              b.classList.remove("picked-good", "picked-bad");
+              b.disabled = true;
+            });
+            btn.classList.add(good ? "picked-good" : "picked-bad");
+            if (feedback) {
+              feedback.textContent = btn.dataset.feedback || "";
+              feedback.className = `choice-feedback show ${good ? "good" : "bad"}`;
+            }
+            list.querySelectorAll(".choice-btn").forEach((b) => { b.disabled = false; });
+          });
+        });
+      });
+    }
+
+    function renderDeptGrid() {
+      deptGrid.innerHTML = "";
+      SCENARIOS.forEach((s, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dept-card";
+        btn.setAttribute("role", "listitem");
+        btn.dataset.id = s.id;
+        btn.innerHTML = `
+          <div class="dept-card-top">
+            <span class="dept-icon">${ICONS[s.id] || ICONS.general}</span>
+            <div>
+              <span class="dept-num">0${i + 1}</span>
+              <div class="dept-name">${escapeHtml(s.name)}</div>
+            </div>
+          </div>
+          <span class="dept-hint">${escapeHtml(s.hint)}</span>
+        `;
+        btn.addEventListener("click", () => {
+          deptGrid.querySelectorAll(".dept-card").forEach((el) => el.classList.remove("selected"));
+          btn.classList.add("selected");
+          buildPathSlides(s);
+        });
+        deptGrid.appendChild(btn);
+      });
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deckEl = shell?.querySelector(".deck");
+      if (!shell || !deckEl) return;
+      deckEl.style.transform = "none";
+      slides.forEach((s) => { s.style.zoom = ""; s.style.transform = ""; });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW, deckH;
+      if (sw / sh > ASPECT) { deckH = sh; deckW = Math.round(sh * ASPECT); }
+      else { deckW = sw; deckH = Math.round(sw / ASPECT); }
+      deckEl.style.width = `${deckW}px`;
+      deckEl.style.height = `${deckH}px`;
+      deckEl.style.maxWidth = "100%";
+      deckEl.style.maxHeight = "100%";
+      const active = deckEl.querySelector(".slide.active");
+      if (active) {
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) active.style.overflow = "auto";
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    function onPickerSlide() {
+      return slides[index]?.id === "pickerSlide" || slides[index]?.dataset.title === "Choose department";
+    }
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = Boolean(selectedId) && index >= slides.length - 1;
+      const atStart = index <= 0;
+      window.parent.postMessage({
+        type: EMBED_EVENT,
+        kind: "scenarios",
+        slideIndex: index,
+        slideCount: slides.length,
+        atEnd,
+        atStart,
+      }, "*");
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function next() {
+      if (onPickerSlide() && !selectedId) {
+        pickerNote.classList.remove("pulse");
+        void pickerNote.offsetWidth;
+        pickerNote.classList.add("pulse");
+        pickerNote.textContent = "Select a department above to continue.";
+        publishEmbedState();
+        return;
+      }
+      showSlide(index + 1);
+    }
+
+    function prev() { showSlide(index - 1); }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          if (slide.dataset.path === "1" && !selectedId) return;
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    deck.addEventListener("click", (event) => {
+      const t = event.target;
+      if (t && t.matches && t.matches("[data-action='change']")) {
+        clearPathSlides();
+        refreshSlides();
+        buildOverview();
+        const pickerIdx = slides.findIndex((s) => s.id === "pickerSlide");
+        showSlide(pickerIdx >= 0 ? pickerIdx : 1);
+        pickerNote.classList.remove("pulse");
+        pickerNote.textContent = "Select one path. You’ll get an interactive scenario — about five short slides.";
+      }
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") { overview.classList.toggle("open"); return; }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open"); return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault(); next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault(); prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) showSlide(Number(data.index));
+      });
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") new ResizeObserver(fitEmbedDeck).observe(shell);
+      } catch { /* ignore */ }
+    }
+
+    renderDeptGrid();
+    refreshSlides();
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>
