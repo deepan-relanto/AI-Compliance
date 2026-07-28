@@ -2,7 +2,7 @@
 
 import type { EmployeeFacets, EmployeeRecord } from "@/lib/employee-types";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   EmployeeFilterBar,
@@ -237,6 +237,50 @@ export function EmployeePicker({
     updateSelection(new Set(), new Map());
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setSelectingAll(true);
+      const xlsx = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = xlsx.read(buffer, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = xlsx.utils.sheet_to_json<Record<string, unknown>>(ws);
+
+      const next = new Set(selectedEmails);
+      const nextDetails = new Map(selectedDetails);
+
+      for (const row of data) {
+        const email =
+          row["Work Email"] ||
+          row["Email"] ||
+          row["work_email"] ||
+          row["email"] ||
+          row["Work Mail"] ||
+          row["work mail"];
+        if (!email) continue;
+        const key = String(email).toLowerCase().trim();
+        next.add(key);
+        if (!nextDetails.has(key)) {
+          nextDetails.set(key, {
+            workEmail: key,
+            name: String(row["Full Name"] || row["Name"] || row["name"] || "Unknown"),
+            department: String(row["Department"] || row["department"] || "—"),
+            location: String(row["Location"] || row["location"] || "—"),
+          });
+        }
+      }
+      updateSelection(next, nextDetails);
+    } catch (err) {
+      console.error("Failed to parse excel", err);
+      alert("Failed to parse Excel file.");
+    } finally {
+      setSelectingAll(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
   const allFilteredSelected = useMemo(() => {
     if (!filteredEmployees?.length) return false;
     const matching = applyExclude(filteredEmployees, excludeEmails);
@@ -272,6 +316,18 @@ export function EmployeePicker({
             <span className="font-semibold text-[#2e3192]">{selectedEmails.size}</span> selected
           </p>
           <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-[#2e3192] hover:underline">
+              <Upload className="h-3.5 w-3.5" />
+              Upload Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(e) => void handleFileUpload(e)}
+                disabled={selectingAll}
+              />
+            </label>
+            <span className="text-zinc-300">·</span>
             <button
               type="button"
               onClick={() => void toggleAllFiltered()}

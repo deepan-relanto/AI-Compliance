@@ -17,7 +17,19 @@ export async function POST(
   const forceResend =
     req.nextUrl.searchParams.get("forceResend") === "1" ||
     req.nextUrl.searchParams.get("forceResend") === "true";
+  const body = await req.json().catch(() => ({}));
+  const batchId =
+    typeof body?.batchId === "string" && body.batchId.trim()
+      ? body.batchId.trim()
+      : undefined;
+  const reminderOnlyNotStarted =
+    body?.mode === "course_not_started_reminder" ||
+    body?.reminderOnlyNotStarted === true;
   const sql = getSql();
-  const result = await sendModuleInvitationEmails(sql, id, { forceResend });
+  const result = await sendModuleInvitationEmails(sql, id, {
+    forceResend,
+    batchId,
+    reminderOnlyNotStarted,
+  });
   return NextResponse.json(result);
 }

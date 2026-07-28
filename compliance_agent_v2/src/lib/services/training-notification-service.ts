@@ -12,6 +12,7 @@ import {
   SCORE_RING_IMAGE_CID,
 } from "@/lib/services/score-ring-image";
 import { sendGraphMail } from "@/lib/services/graph-mail-service";
+import { normalizeProgressStatus } from "@/lib/services/course-progress-db-service";
 import { trainingLoginUrl } from "@/lib/training-link";
 
 type Sql = ReturnType<typeof getSql>;
@@ -130,6 +131,54 @@ function invitationTextBody(params: {
     `Start here: ${loginUrl}`,
     "Sign in with your @relanto.ai Microsoft work account to begin.",
   ].join("\n\n");
+}
+
+function reminderHtml(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto AI Course</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Friendly reminder to start your course</h1>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>This is a friendly reminder to begin <strong>${escapeHtml(moduleTitle)}</strong>. It is available in your Relanto AI learning queue and takes ${durationLabel}.</p>
+  <p style="font-size:13px;color:#52525b">Please start it when you next have a focused stretch of time so you can complete it smoothly in one sitting.</p>
+  ${ctaButtonHtml(loginUrl, "Start course")}
+  <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
+  <p style="font-size:12px;color:#71717a">If you run into access issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+</body></html>`;
+  }
+
+  return invitationHtml(params);
+}
+
+function reminderTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+  durationLabel: string;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind, durationLabel } = params;
+  if (kind === "course") {
+    return [
+      `Hi ${displayName},`,
+      `This is a friendly reminder to begin "${moduleTitle}". It is available in your Relanto AI learning queue and takes ${durationLabel}.`,
+      "Please start it when you next have a focused stretch of time so you can complete it smoothly in one sitting.",
+      `Start course: ${loginUrl}`,
+      "Sign in with your @relanto.ai Microsoft work account to begin.",
+    ].join("\n\n");
+  }
+  return invitationTextBody(params);
 }
 
 function completionHtml(params: {
@@ -319,6 +368,10 @@ export interface InvitationSendResult {
 export interface SendModuleInvitationOptions {
   /** When true, resend even if the learner was already notified for this module. */
   forceResend?: boolean;
+  /** Restrict sending to one batch when the module is assigned to multiple batches. */
+  batchId?: string;
+  /** For course reminders, email only learners who still have not started. */
+  reminderOnlyNotStarted?: boolean;
 }
 
 /** Email all learners in assigned batches when a module is ready. */
@@ -328,6 +381,8 @@ export async function sendModuleInvitationEmails(
   options?: SendModuleInvitationOptions,
 ): Promise<InvitationSendResult> {
   const forceResend = options?.forceResend === true;
+  const batchId = options?.batchId?.trim() || null;
+  const reminderOnlyNotStarted = options?.reminderOnlyNotStarted === true;
   const cfg = getGraphMailConfig();
   if (!cfg.isConfigured) {
     return {
@@ -368,6 +423,16 @@ export async function sendModuleInvitationEmails(
   const moduleTitle = moduleRows[0].title as string;
   const loginBase = cfg.baseUrl;
   const isCourse = modules.length > 0;
+  if (reminderOnlyNotStarted && !isCourse) {
+    return {
+      ok: false,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: ["Not-started reminders are supported only for course bundles."],
+      message: "Not-started reminders are supported only for course bundles.",
+    };
+  }
   const kind: MailKind = isCourse ? "course" : "compliance";
   const durationLabel = isCourse
     ? courseDurationLabel(Number(moduleRows[0].duration_minutes))
@@ -378,10 +443,23 @@ export async function sendModuleInvitationEmails(
 
   const learners = isCourse
     ? await sql`
-        SELECT DISTINCT u.email, u.display_name
+        SELECT DISTINCT
+          u.email,
+          u.display_name,
+          cp.status AS progress_status,
+          LEAST(cp.score_percent, 100) AS score_percent,
+          cp.completed_at,
+          cp.last_accessed_at,
+          cp.current_slide,
+          cp.warning_count,
+          cp.mcq_answers
         FROM users u
         INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
+        LEFT JOIN course_progress cp
+          ON cp.user_email = u.email
+          AND cp.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
+          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -391,6 +469,7 @@ export async function sendModuleInvitationEmails(
         FROM users u
         INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
         WHERE mb.module_id = ${moduleId}
+          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -406,8 +485,34 @@ export async function sendModuleInvitationEmails(
     const displayName =
       (row.display_name as string | null)?.trim() || firstNameFromEmail(email);
 
+    if (reminderOnlyNotStarted && isCourse) {
+      const rawAnswers =
+        row.mcq_answers &&
+        typeof row.mcq_answers === "object" &&
+        !Array.isArray(row.mcq_answers)
+          ? (row.mcq_answers as Record<string, boolean>)
+          : {};
+      const answerCount = Object.keys(rawAnswers).length;
+      const status = normalizeProgressStatus(
+        (row.progress_status as string | null) ?? null,
+        row.score_percent != null ? Number(row.score_percent) : null,
+        (row.completed_at as string | null) ?? null,
+        {
+          lastAccessedAt: (row.last_accessed_at as string | null) ?? null,
+          currentSlide: Number(row.current_slide ?? 0),
+          answerCount,
+          warningCount: Number(row.warning_count ?? 0),
+        },
+      );
+      if (status !== "not_started") {
+        skipped++;
+        continue;
+      }
+    }
+
     if (
       !forceResend &&
+      !reminderOnlyNotStarted &&
       (await wasNotificationSent(sql, moduleId, email, "invited"))
     ) {
       skipped++;
@@ -416,25 +521,46 @@ export async function sendModuleInvitationEmails(
 
     try {
       const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
+      const subjectPrefix = reminderOnlyNotStarted
+        ? "Friendly reminder"
+        : "Action required";
       await sendGraphMail({
         to: email,
-        subject: `Action required: ${moduleTitle} — ${subjectBrand}`,
-        htmlBody: invitationHtml({
-          displayName,
-          moduleTitle,
-          loginUrl,
-          kind,
-          durationLabel,
-        }),
-        textBody: invitationTextBody({
-          displayName,
-          moduleTitle,
-          loginUrl,
-          kind,
-          durationLabel,
-        }),
+        subject: `${subjectPrefix}: ${moduleTitle} — ${subjectBrand}`,
+        htmlBody: reminderOnlyNotStarted
+          ? reminderHtml({
+              displayName,
+              moduleTitle,
+              loginUrl,
+              kind,
+              durationLabel,
+            })
+          : invitationHtml({
+              displayName,
+              moduleTitle,
+              loginUrl,
+              kind,
+              durationLabel,
+            }),
+        textBody: reminderOnlyNotStarted
+          ? reminderTextBody({
+              displayName,
+              moduleTitle,
+              loginUrl,
+              kind,
+              durationLabel,
+            })
+          : invitationTextBody({
+              displayName,
+              moduleTitle,
+              loginUrl,
+              kind,
+              durationLabel,
+            }),
       });
-      await recordNotification(sql, moduleId, email, "invited");
+      if (!reminderOnlyNotStarted) {
+        await recordNotification(sql, moduleId, email, "invited");
+      }
       sent++;
     } catch (err) {
       failed++;
@@ -452,12 +578,20 @@ export async function sendModuleInvitationEmails(
     errors,
     message:
       sent > 0
-        ? `Invitation emails sent to ${sent} learner${sent === 1 ? "" : "s"}.`
+        ? reminderOnlyNotStarted
+          ? `Reminder emails sent to ${sent} learner${sent === 1 ? "" : "s"}.`
+          : `Invitation emails sent to ${sent} learner${sent === 1 ? "" : "s"}.`
         : failed > 0
-          ? `Failed to send ${failed} invitation email(s).`
+          ? reminderOnlyNotStarted
+            ? `Failed to send ${failed} reminder email(s).`
+            : `Failed to send ${failed} invitation email(s).`
           : skipped > 0
-            ? "All learners were already notified."
-            : "No learners found in assigned batches.",
+            ? reminderOnlyNotStarted
+              ? "No eligible not-started learners matched this reminder."
+              : "All learners were already notified."
+            : batchId
+              ? "No learners found in the selected batch."
+              : "No learners found in assigned batches.",
   };
 }
 

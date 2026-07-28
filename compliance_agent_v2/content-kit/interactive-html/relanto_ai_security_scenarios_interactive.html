@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto AI Security, Privacy &amp; Compliance — Scenario-Based Learning</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+    body.embed { background: #0a0a0a; }
+    body.embed .deck-shell {
+      padding: 0; display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; box-sizing: border-box; container-type: size;
+    }
+    body.embed .deck {
+      flex-shrink: 0; transform: none; aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none;
+    }
+    body.embed .slide { padding: 14px 20px 34px; overflow: hidden; gap: 8px; }
+    body.embed .nav, body.embed .help, body.embed .progress, body.embed .overview { display: none !important; }
+    body.embed h1 { font-size: clamp(16px, 2.3vw, 26px); }
+    body.embed .footer { left: 20px; right: 20px; bottom: 8px; font-size: 10px; }
+    body.embed .dept-grid { gap: 7px; margin-top: 6px; }
+    body.embed .dept-card { padding: 8px 10px; }
+    body.embed .dept-card .dept-name { font-size: 12px; }
+    body.embed .dept-card .dept-hint { font-size: 10px; }
+    body.embed .path-layout { gap: 12px; }
+    body.embed .scene-panel { padding: 10px; }
+    body.embed .content-panel { padding: 12px 14px; gap: 8px; }
+    body.embed .phase-body { font-size: 13px; line-height: 1.35; }
+    body.embed .choice-btn { padding: 8px 10px; font-size: 12px; }
+    body.embed .step-card { padding: 8px 10px; }
+    body.embed .takeaway-hero { padding: 12px 14px; font-size: 14px; }
+    body.embed .cover-title { font-size: clamp(26px, 4.2vw, 44px); }
+    body.embed .cover-hero { gap: 10px; }
+
+    .deck-shell {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 100vh; min-height: 100dvh; padding: 20px; box-sizing: border-box;
+    }
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%; max-height: 100%; position: relative;
+      border-radius: 18px; box-shadow: var(--shadow); background: var(--paper-2); overflow: hidden;
+    }
+    .slide {
+      position: absolute; inset: 0; display: none; flex-direction: column;
+      justify-content: flex-start; gap: 10px; padding: 24px 32px 48px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0; transform: translateX(12px) scale(0.995);
+      box-sizing: border-box; min-height: 0; overflow: hidden;
+    }
+    .slide.active {
+      display: flex; opacity: 1; transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0) scale(1); } }
+
+    .slide.cover {
+      justify-content: space-between; padding: 22px 28px 44px;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+      color: var(--white); animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 10px; height: 22px; flex-shrink: 0;
+      color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .cover .kicker { color: #fdba8c; }
+    .kicker::before { content: ""; width: 18px; height: 2px; background: currentColor; display: block; }
+    h1 { margin: 0; font-size: clamp(20px, 2.5vw, 32px); line-height: 1.12; letter-spacing: -0.01em; font-weight: 760; }
+    p { margin: 0; line-height: 1.4; font-size: 14px; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; max-width: 52ch; }
+    .cover .subtitle { color: rgba(255,255,255,0.78); }
+    .footer {
+      position: absolute; left: 32px; right: 32px; bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      border-top: 1px solid var(--line); padding-top: 8px;
+    }
+    .cover .footer { border-top-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.65); }
+
+    .cover-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .cover-brand img { height: 28px; width: auto; }
+    .cover-brand span {
+      font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,0.7);
+    }
+    .cover-hero { display: flex; flex-direction: column; gap: 16px; flex: 1; justify-content: center; min-height: 0; }
+    .cover-title {
+      font-size: clamp(32px, 5vw, 54px); line-height: 1.05; font-weight: 780; letter-spacing: -0.02em; max-width: 14ch;
+    }
+    .cover-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 560px; }
+    .cover-stat {
+      padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    }
+    .cover-stat .stat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); margin-bottom: 4px;
+    }
+    .cover-stat .stat-value { font-size: 15px; font-weight: 700; color: #fff; }
+    .cover-stat .stat-value .num { font-size: 22px; color: #fdba8c; margin-right: 4px; }
+
+    .dept-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+      margin-top: 8px; flex: 1; min-height: 0; align-content: stretch;
+    }
+    .dept-card {
+      display: flex; flex-direction: column; justify-content: center; gap: 4px;
+      padding: 12px 12px 12px 14px; border-radius: 14px; border: 1px solid var(--line);
+      background: #fff; text-align: left; cursor: pointer; font: inherit; color: inherit;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+      position: relative; overflow: hidden; min-height: 0;
+    }
+    .dept-card::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: transparent; transition: background 180ms ease;
+    }
+    .dept-card:hover, .dept-card:focus-visible {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 10px 28px rgba(46, 49, 146, 0.12); transform: translateY(-1px);
+    }
+    .dept-card:hover::before, .dept-card.selected::before { background: var(--orange); }
+    .dept-card.selected {
+      border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 90, 36, 0.22);
+      background: linear-gradient(135deg, #fff, #fff7f3);
+    }
+    .dept-card-top { display: flex; align-items: center; gap: 10px; }
+    .dept-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(46,49,146,0.1), rgba(241,90,36,0.1));
+      color: var(--blue);
+    }
+    .dept-icon svg { width: 20px; height: 20px; }
+    .dept-card .dept-num {
+      font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--orange);
+    }
+    .dept-card .dept-name { font-size: 14px; font-weight: 740; color: var(--navy); line-height: 1.2; }
+    .dept-card .dept-hint { font-size: 11px; color: var(--muted); line-height: 1.3; padding-left: 46px; }
+    .picker-note { margin-top: 2px; font-size: 13px; color: var(--muted); }
+    .picker-note.pulse { color: var(--orange); font-weight: 700; animation: pulseHint 900ms ease; }
+    @keyframes pulseHint { 0%, 100% { opacity: 1; } 40% { opacity: 0.45; } }
+
+    .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+    .dept-badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+      background: rgba(241, 90, 36, 0.1); color: var(--orange);
+      font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .change-dept {
+      border: 0; background: transparent; color: var(--blue); font: inherit; font-size: 12px;
+      font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
+    }
+    .phase-bar { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .phase-chip {
+      padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; background: #ececf8; color: var(--blue);
+    }
+    .phase-chip.on { background: var(--blue); color: #fff; }
+    .phase-chip.done { background: rgba(46, 49, 146, 0.12); color: var(--navy); }
+
+    .path-layout {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 0.9fr 1.35fr; gap: 14px; margin-top: 4px;
+    }
+    .scene-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      gap: 10px; min-height: 0; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .scene-panel[data-phase="situation"] {
+      background:
+        radial-gradient(circle at 80% 20%, rgba(241,90,36,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f8ff, #fff);
+    }
+    .scene-panel[data-phase="challenge"] {
+      background:
+        radial-gradient(circle at 20% 80%, rgba(216,138,31,0.16), transparent 42%),
+        linear-gradient(160deg, #fffaf3, #fff);
+    }
+    .scene-panel[data-phase="recommended"] {
+      background:
+        radial-gradient(circle at 70% 30%, rgba(32,167,181,0.14), transparent 40%),
+        linear-gradient(160deg, #f3fbfc, #fff);
+    }
+    .scene-panel[data-phase="explanation"] {
+      background:
+        radial-gradient(circle at 30% 20%, rgba(107,79,163,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f5ff, #fff);
+    }
+    .scene-panel[data-phase="takeaway"] {
+      background:
+        radial-gradient(circle at 50% 0%, rgba(241,90,36,0.18), transparent 45%),
+        linear-gradient(160deg, #fff7f3, #f4f4ff);
+    }
+    .scene-art {
+      width: 100%; max-width: 100%; height: min(42vh, 320px);
+      object-fit: contain; border-radius: 14px; display: block;
+      background: rgba(255,255,255,0.7);
+      box-shadow: 0 10px 28px rgba(24, 24, 39, 0.1);
+    }
+    .scene-caption {
+      font-size: 12px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.3; max-width: 28ch;
+    }
+    .quote-chip {
+      margin-top: 4px; padding: 8px 10px; border-radius: 10px; width: 100%;
+      background: rgba(46,49,146,0.06); border-left: 3px solid var(--orange);
+      font-size: 11px; font-style: italic; color: #3f3f46; line-height: 1.35;
+    }
+
+    .content-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+      min-height: 0; overflow: auto; align-content: start;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .content-panel[data-phase="situation"] { border-top: 3px solid var(--blue); }
+    .content-panel[data-phase="challenge"] { border-top: 3px solid var(--amber); }
+    .content-panel[data-phase="recommended"] { border-top: 3px solid var(--cyan); }
+    .content-panel[data-phase="explanation"] { border-top: 3px solid var(--plum); }
+    .content-panel[data-phase="takeaway"] { border-top: 3px solid var(--orange); }
+
+    .phase-label {
+      font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--blue);
+    }
+    .content-panel[data-phase="challenge"] .phase-label { color: var(--amber); }
+    .content-panel[data-phase="recommended"] .phase-label { color: var(--cyan); }
+    .content-panel[data-phase="explanation"] .phase-label { color: var(--plum); }
+    .content-panel[data-phase="takeaway"] .phase-label { color: var(--orange); }
+    .phase-title {
+      margin: 0; font-size: clamp(16px, 2vw, 22px); font-weight: 760; line-height: 1.2; color: var(--navy);
+    }
+    .phase-body { font-size: 13.5px; line-height: 1.4; color: #3f3f46; }
+
+    .choice-prompt {
+      font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--navy);
+    }
+    .choice-list { display: flex; flex-direction: column; gap: 8px; }
+    .choice-btn {
+      text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      background: #fafafa; font: inherit; font-size: 13px; line-height: 1.35; color: var(--ink);
+      cursor: pointer; transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .choice-btn:hover { border-color: var(--blue); background: #fff; }
+    .choice-btn.picked-good {
+      border-color: var(--green); background: rgba(56,161,105,0.08);
+      box-shadow: 0 0 0 2px rgba(56,161,105,0.15);
+    }
+    .choice-btn.picked-bad {
+      border-color: var(--red); background: rgba(199,71,71,0.06);
+      box-shadow: 0 0 0 2px rgba(199,71,71,0.12);
+    }
+    .choice-btn .choice-tag {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: 3px; color: var(--muted);
+    }
+    .choice-feedback {
+      display: none; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.35;
+      background: rgba(46,49,146,0.06); border: 1px solid rgba(46,49,146,0.12); color: var(--navy);
+    }
+    .choice-feedback.show { display: block; animation: fadeUp 280ms ease; }
+    .choice-feedback.good { background: rgba(56,161,105,0.1); border-color: rgba(56,161,105,0.25); }
+    .choice-feedback.bad { background: rgba(199,71,71,0.08); border-color: rgba(199,71,71,0.2); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .step-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-card {
+      display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fafafa;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 800;
+    }
+    .step-card strong { display: block; font-size: 13px; color: var(--navy); margin-bottom: 2px; }
+    .step-card span { font-size: 12px; color: #52525b; line-height: 1.35; }
+
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .compare-card {
+      padding: 10px; border-radius: 12px; border: 1px solid var(--line); font-size: 12px; line-height: 1.35;
+    }
+    .compare-card.bad { background: rgba(199,71,71,0.06); border-color: rgba(199,71,71,0.25); }
+    .compare-card.good { background: rgba(56,161,105,0.07); border-color: rgba(56,161,105,0.28); }
+    .compare-card .cmp-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .compare-card.bad .cmp-label { color: var(--red); }
+    .compare-card.good .cmp-label { color: var(--green); }
+
+    .insight-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .insight-chip {
+      padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: rgba(107,79,163,0.1); color: var(--plum); border: 1px solid rgba(107,79,163,0.18);
+    }
+
+    .takeaway-hero {
+      margin-top: 4px; padding: 14px 16px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(241,90,36,0.14), rgba(46,49,146,0.1));
+      border: 1px solid rgba(241,90,36,0.25); color: var(--navy);
+      font-size: 15px; font-weight: 720; line-height: 1.35;
+    }
+    .takeaway-hero span {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--orange); margin-bottom: 6px;
+    }
+    .practice-box {
+      margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+      border: 1px dashed rgba(46, 49, 146, 0.35);
+      background: linear-gradient(180deg, #fbfbff, #fff);
+    }
+    .practice-box .practice-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 6px;
+    }
+    .practice-box .practice-title {
+      margin: 0 0 6px; font-size: 14px; font-weight: 760; color: var(--navy); line-height: 1.25;
+    }
+    .practice-box .practice-prompt {
+      margin: 0; font-size: 13px; line-height: 1.4; color: #3f3f46;
+    }
+    .practice-box .practice-hint {
+      margin: 8px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted);
+    }
+
+    .nav {
+      position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px; z-index: 20;
+    }
+    .nav button, .help {
+      border: 0; border-radius: 999px; padding: 10px 14px; background: #fff; color: var(--navy);
+      font: inherit; font-size: 12px; font-weight: 700; box-shadow: var(--shadow); cursor: pointer;
+    }
+    .help { position: fixed; left: 24px; bottom: 24px; z-index: 20; opacity: 0.85; }
+    .progress { position: fixed; left: 0; top: 0; height: 3px; width: 100%; background: rgba(46,49,146,0.12); z-index: 30; }
+    .progress > span {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--blue), var(--orange)); transition: width 240ms ease;
+    }
+    .overview {
+      display: none; position: fixed; inset: 0; background: rgba(10,10,20,0.72); z-index: 40; padding: 40px; overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; max-width: 960px; margin: 40px auto;
+    }
+    .thumb {
+      border: 0; border-radius: 12px; padding: 14px; text-align: left; background: #fff;
+      cursor: pointer; font: inherit; font-size: 13px; color: var(--ink);
+    }
+    .thumb b { display: block; color: var(--orange); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-title="Cover" data-fixed="1">
+        <div class="cover-brand">
+          <img src="relanto-logo.png" alt="Relanto" />
+          <span>AI Security, Privacy &amp; Compliance</span>
+        </div>
+        <div class="cover-hero">
+          <div class="kicker">Practice module</div>
+          <h1 class="cover-title">Scenario-Based Learning</h1>
+          <p class="subtitle">Pick a department path — interactive scenarios drawn from Module 3: AI Security, Privacy &amp; Compliance.</p>
+          <div class="cover-stats">
+            <div class="cover-stat">
+              <div class="stat-label">Departments</div>
+              <div class="stat-value"><span class="num">10</span> paths</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Per path</div>
+              <div class="stat-value"><span class="num">5</span> slides</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Focus</div>
+              <div class="stat-value">Decide &amp; apply</div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Relanto · Responsible AI &amp; Ethics</span>
+          <span id="counter">1 / 2</span>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Choose department" data-fixed="1" id="pickerSlide">
+        <div class="kicker">Your context</div>
+        <h1>Which department describes your work best?</h1>
+        <p class="picker-note" id="pickerNote">Select one path. You’ll get an interactive scenario — about five short slides.</p>
+        <div class="dept-grid" id="deptGrid" role="list"></div>
+        <div class="footer">
+          <span>Relanto · Scenario-Based Learning</span>
+          <span>Choose to continue</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button type="button" id="prevBtn">Prev</button>
+    <button type="button" id="overviewBtn">Overview</button>
+    <button type="button" id="nextBtn">Next</button>
+  </div>
+  <div class="help">← → · Space · O</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const urlParams = new URLSearchParams(window.location.search);
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = embedMode || urlParams.get("clean") === "1";
+
+    const PHASES = [
+      { key: "situation", label: "Situation" },
+      { key: "challenge", label: "Challenge" },
+      { key: "recommended", label: "Recommended" },
+      { key: "explanation", label: "Explanation" },
+      { key: "takeaway", label: "Takeaway" },
+    ];
+
+    const ICONS = {
+      hr: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+      sales: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+      marketing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4.5 4.5 0 0 1 0 7M17.5 6a8 8 0 0 1 0 12"/></svg>`,
+      operations: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
+      pm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>`,
+      support: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="4" height="6" rx="1"/><rect x="18" y="14" width="4" height="6" rx="1"/><path d="M6 18h2a2 2 0 0 0 2-2v-1"/></svg>`,
+      leadership: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.5 5.5L21 9.5l-4.5 4 1.2 6L12 16.8 6.3 19.5l1.2-6L3 9.5l6.5-1L12 3z"/></svg>`,
+      finance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h4"/></svg>`,
+      general: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H8l-4 3V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>`,
+    };
+
+    function sceneArtHtml(id, name, sceneId) {
+      const file = `scene-${sceneId || id}.webp`;
+      const primary = `/course-assets/scenario-scenes/${file}`;
+      const local = `scenario-scenes/${file}`;
+      return `<img class="scene-art" src="${primary}" data-fallback="${local}" alt="${escapeHtml(name)} workplace scene" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';}" />`;
+    }
+
+    const SCENARIOS = [
+      {
+        id: "hr", name: "Human Resources", short: "HR", hint: "Data protection in disciplinary work",
+        title: "The Disciplinary Letter Division",
+        quote: "Just paste the full case file — the tool is approved.",
+        sceneCaption: "Sensitive data · Smart split",
+        situation: "An HR manager wants AI help across a disciplinary process: drafting the letter, summarizing witness statements, and predicting the legal risk. She's tempted to paste the full case file into the approved AI tool.",
+        challenge: "The file contains personal and sensitive personal data (medical, witness identities) with strict legal protection. Not all tasks justify exposing all data.",
+        recommended: "Use AI for a placeholder-based letter template and generalized process questions; keep witness statements and identities inside HR systems; route legal-risk assessment to qualified counsel rather than a chatbot.",
+        explanation: "Division of labor is key: AI helps with structure and tone (no identities needed), while sensitive personal data and legal judgment stay in governed, purpose-built systems.",
+        takeaway: "Get AI help with the template, not the case file. Sensitive identities stay in HR systems.",
+        practiceTitle: "Split the task",
+        practicePrompt: "For your next sensitive document: list what AI needs (structure, tone, format) vs what it doesn't (names, IDs, medical details, legal conclusions).",
+        practiceHint: "If the prompt contains a real person's name, pause and anonymize.",
+        choices: [
+          { label: "Paste the full case file — HR work is internal by definition.", good: false, feedback: "Internal ≠ unrestricted. Personal/sensitive data needs minimization regardless of tool approval." },
+          { label: "Placeholder template + generalized questions; identities inside HR systems; legal to counsel.", good: true, feedback: "Perfect division: AI for structure, governed systems for sensitive data, humans for legal judgment." },
+          { label: "Do everything in a personal AI account to keep it off company systems.", good: false, feedback: "Personal accounts are shadow AI. Company data never goes there." },
+          { label: "Avoid AI for the letter but paste the witness statements for summarization.", good: false, feedback: "Witness data is the most sensitive part — that's exactly what shouldn't be pasted." },
+        ],
+        steps: [
+          { title: "Template via AI", body: "Placeholder letter, generalized tone questions" },
+          { title: "Identities stay in HR", body: "Names, IDs, medical history inside governed system" },
+          { title: "Legal to counsel", body: "Risk prediction needs qualified humans, not chatbots" },
+        ],
+        compare: {
+          badLabel: "Full dump", bad: "Entire case file → approved tool for all tasks.",
+          goodLabel: "Smart split", good: "AI for structure; HR system for data; counsel for law.",
+        },
+        insights: ["Minimize by task", "Sensitive = governed systems", "Legal ≠ chatbot"],
+      },
+      {
+        id: "sales", name: "Sales", short: "Sales", hint: "Governance before free pilots",
+        title: "The Free AI Pilot Trap",
+        quote: "Just export the CRM — let's see what insights emerge.",
+        sceneCaption: "Full export · Unknown terms",
+        situation: "A sales director proposes exporting the full CRM (names, revenue, renewal dates, notes) into a third-party AI analytics startup's free pilot to 'see what insights emerge.'",
+        challenge: "A free pilot is still third-party processing of confidential commercial and personal data under unknown retention and security terms.",
+        recommended: "Treat it as a vendor and data-processing decision: route through IT/procurement/privacy review of terms, security, and data handling before any company data is shared, and pilot with synthetic or properly anonymized data in the meantime.",
+        explanation: "'Free' doesn't mean low-risk — it means unvetted terms. Governance before data leaves the building, regardless of cost.",
+        takeaway: "Free pilots need the same governance as paid vendors. Synthetic data first.",
+        practiceTitle: "Governance-first pilot",
+        practicePrompt: "Before your next tool trial: list three questions for IT/procurement (data retention, security terms, who owns outputs).",
+        practiceHint: "If the vendor hasn't been reviewed, your data hasn't been authorized.",
+        choices: [
+          { label: "Run quietly — free means low-stakes.", good: false, feedback: "Free = unvetted terms, not low risk." },
+          { label: "Limit to top 50 accounts to reduce exposure.", good: false, feedback: "Less data in an unvetted tool is still unvetted processing." },
+          { label: "Route through governance; pilot with synthetic/anonymized data.", good: true, feedback: "Governance before data leaves. Synthetic pilots prove value without risk." },
+          { label: "Decline all external analytics forever.", good: false, feedback: "The lesson is governed process, not a blanket ban." },
+        ],
+        steps: [
+          { title: "Route through IT/procurement", body: "Terms, security, retention review" },
+          { title: "Pilot with synthetic data", body: "Prove value without real customer records" },
+          { title: "Only real data after clearance", body: "When terms, scope, and access are approved" },
+        ],
+        compare: {
+          badLabel: "Just try it", bad: "Full CRM → unknown startup, no review.",
+          goodLabel: "Governance first", good: "Review terms → synthetic pilot → cleared data later.",
+        },
+        insights: ["Free ≠ low-risk", "Synthetic pilots first", "Vendor = data decision"],
+      },
+      {
+        id: "operations", name: "Operations", short: "Ops", hint: "Permissions the AI inherits",
+        title: "The Oversharing Assistant",
+        quote: "The assistant found them — so I must be allowed to see them.",
+        sceneCaption: "Smart retrieval · Wrong access",
+        situation: "An employee discovers that the company's internal AI assistant, connected to the document store, will retrieve executive compensation files when asked cleverly.",
+        challenge: "The assistant inherits and amplifies whatever underlying permissions exist. Retrieval doesn't equal authorization.",
+        recommended: "Report the exposure to IT/security without further accessing the files; the root cause is over-broad underlying permissions that the assistant inherits and amplifies.",
+        explanation: "AI tools surface gaps in permissions hygiene. Access ≠ authorization, and discovery creates a duty to report, not to browse.",
+        takeaway: "If the AI shows you something you shouldn't see: stop, don't browse, report to IT.",
+        practiceTitle: "The retrieval test",
+        practicePrompt: "Ask yourself: if I stumbled on executive files in a physical filing cabinet, would I read them? Apply the same ethics to AI retrieval.",
+        practiceHint: "Access ≠ permission. Report surprises.",
+        choices: [
+          { label: "Browse the files — the assistant offered them.", good: false, feedback: "Access ≠ permission. Browsing compounds the issue." },
+          { label: "Report to IT/security without further access; root cause is over-broad permissions.", good: true, feedback: "Correct: stop, report, fix permissions. Discovery creates duty, not license." },
+          { label: "Ask the assistant to delete the files.", good: false, feedback: "The assistant can't fix permissions — and you shouldn't be manipulating the data." },
+          { label: "Post the finding in all-company chat.", good: false, feedback: "Public disclosure before security review escalates harm." },
+        ],
+        steps: [
+          { title: "Stop", body: "Do not access further — you've seen enough" },
+          { title: "Report to IT/security", body: "Describe what was retrievable and how" },
+          { title: "Org fix: permissions", body: "Tighten underlying access the assistant inherits" },
+        ],
+        compare: {
+          badLabel: "Browse freely", bad: "AI found it → must be allowed → read it all.",
+          goodLabel: "Report + stop", good: "Discovery → report → permissions fix.",
+        },
+        insights: ["Access ≠ authorization", "AI amplifies permissions", "Report, don't browse"],
+      },
+      {
+        id: "marketing", name: "Marketing", short: "Marketing", hint: "Late reporting after a paste",
+        title: "The Week-Old Confidential Paste",
+        quote: "It was a week ago — no point reporting now, right?",
+        sceneCaption: "Launch pricing · Personal tool",
+        situation: "Under deadline, a marketer pasted the confidential launch-pricing matrix into a personal chatbot, got the table formatted, shipped the work, and mentions it to you a week later asking whether to bother reporting.",
+        challenge: "The data is already in an unvetted provider's system. Time has passed but containment options still exist. Concealment is always worse.",
+        recommended: "Report it now: containment options, provider deletion mechanisms, and any notification assessments still depend on the organization knowing; late reporting beats concealment, and the lesson should fix the personal-tool habit.",
+        explanation: "Incidents don't expire. Late reporting loses some options but gains all the ones concealment loses. The habit — personal tool for confidential data — is the real fix.",
+        takeaway: "Late reporting beats concealment, every time. Fix the habit that caused it.",
+        practiceTitle: "What would you say?",
+        practicePrompt: "Draft the one-sentence response you'd give a colleague asking 'is it too late to report?'",
+        practiceHint: "The answer is always: report now. The only unforgivable version is hiding.",
+        choices: [
+          { label: "Too late to matter — reporting invites trouble.", good: false, feedback: "Late reporting still enables containment and fixes habits. Silence is worse." },
+          { label: "Report now; pursue deletion; fix the personal-tool habit.", good: true, feedback: "Correct: containment options exist, organization needs to know, fix the root cause." },
+          { label: "Delete the chatbot account and consider it resolved.", good: false, feedback: "Deletion doesn't undo provider processing or satisfy notification duties." },
+          { label: "Report only if the pricing leaks publicly.", good: false, feedback: "Waiting for visible harm is concealment by another name." },
+        ],
+        steps: [
+          { title: "Report immediately", body: "Even a week later — the org needs to know" },
+          { title: "Pursue containment", body: "Provider deletion, scope assessment" },
+          { title: "Fix the root cause", body: "Personal tools off-limits for confidential data" },
+        ],
+        compare: {
+          badLabel: "Too late, hide it", bad: "Old incident + no visible harm = stay quiet.",
+          goodLabel: "Late but honest", good: "Report → contain → fix the personal-tool habit.",
+        },
+        insights: ["Incidents don't expire", "Late > never", "Fix the habit"],
+      },
+      {
+        id: "pm", name: "Project Management", short: "PM", hint: "Shadow AI notetaker",
+        title: "The Unapproved Notetaker",
+        quote: "It joins automatically — clients don't even notice.",
+        sceneCaption: "Silent recording · No consent",
+        situation: "A project manager records client steering calls with an unapproved AI notetaker that joins meetings automatically. Clients have not been told.",
+        challenge: "Shadow AI processing of client-confidential discussion and personal data, without client knowledge or consent, possibly breaching contract and recording/privacy rules.",
+        recommended: "Stop immediately, disclose internally (manager + security/privacy), and pursue an approved, consented alternative through IT.",
+        explanation: "Automated meeting tools that clients weren't told about combine shadow AI, confidentiality breach, privacy violation, and potentially illegal recording. The need is legitimate — the route must be too.",
+        takeaway: "Meeting AI needs consent, disclosure, and approved tooling. Silent capture is never OK.",
+        practiceTitle: "Consent checkpoint",
+        practicePrompt: "Before your next recorded meeting: (1) Is the tool approved? (2) Have all participants been told? (3) Can someone opt out?",
+        practiceHint: "'They don't notice' is the opposite of consent.",
+        choices: [
+          { label: "Continue — meeting notes have always existed.", good: false, feedback: "Handwritten notes ≠ automated third-party AI processing of voice data." },
+          { label: "Stop, disclose internally, pursue approved/consented alternative.", good: true, feedback: "Correct: shadow AI + no consent + client data = stop and fix." },
+          { label: "The only issue is audio quality.", good: false, feedback: "The issues are consent, authorization, contract, and privacy law." },
+          { label: "It's acceptable if the notetaker's summary is accurate.", good: false, feedback: "Accuracy doesn't fix the consent and authorization failures." },
+        ],
+        steps: [
+          { title: "Stop the tool", body: "No more unapproved recording" },
+          { title: "Disclose internally", body: "Manager + privacy/security contact" },
+          { title: "Pursue approved path", body: "IT-cleared tool with proper consent flow" },
+        ],
+        compare: {
+          badLabel: "Silent capture", bad: "Automatic join, no disclosure, client unaware.",
+          goodLabel: "Consented path", good: "Approved tool + told participants + opt-out available.",
+        },
+        insights: ["Shadow AI recording", "Consent required", "Route need through IT"],
+      },
+      {
+        id: "finance", name: "Finance", short: "Finance", hint: "AI-polished invoice fraud",
+        title: "The Perfect Fraudulent Invoice",
+        quote: "It looks exactly like every other invoice from them.",
+        sceneCaption: "Flawless format · Altered details",
+        situation: "Finance receives an AI-cleaned, perfectly formatted vendor invoice with subtly altered bank details. It passes visual inspection.",
+        challenge: "AI enables attackers to produce flawless-looking documents. Visual inspection and language quality are no longer reliable fraud controls.",
+        recommended: "Out-of-band verification of bank-detail changes against records and known contacts holds. Visual inspection alone fails in the AI era.",
+        explanation: "AI-era fraud defeats appearance-based checks. Procedural controls (dual authorization, out-of-band verification on known contacts, change-verification processes) are what holds.",
+        takeaway: "Polish proves nothing. Verify payment changes through known channels, every time.",
+        practiceTitle: "Your verification step",
+        practicePrompt: "Write the exact verification step you'd take before processing a bank-detail change (who you call, which number, what you confirm).",
+        practiceHint: "If your only check is 'does it look right?' — it's not enough anymore.",
+        choices: [
+          { label: "Out-of-band verification holds; visual inspection fails.", good: true, feedback: "Correct: procedural controls beat appearance checks in the AI era." },
+          { label: "Both fail — nothing can stop AI-era fraud.", good: false, feedback: "Procedural controls (verification, dual auth) remain effective." },
+          { label: "Visual inspection holds if staff are trained harder.", good: false, feedback: "AI makes visual deception trivially easy — training can't outpace it." },
+          { label: "Email filters hold; verification is redundant.", good: false, feedback: "Filters catch known patterns. Novel AI-crafted fraud needs procedural controls." },
+        ],
+        steps: [
+          { title: "Never trust appearance alone", body: "AI makes perfect forgeries trivial" },
+          { title: "Verify out-of-band", body: "Call known contact on saved number" },
+          { title: "Follow change procedure", body: "Dual authorization for any payment detail change" },
+        ],
+        compare: {
+          badLabel: "Looks right = is right", bad: "Passed visual check → process payment.",
+          goodLabel: "Verify before pay", good: "Known contact + saved number + procedure.",
+        },
+        insights: ["Polish ≠ legitimate", "Out-of-band verification", "Procedural controls"],
+      },
+      {
+        id: "general", sceneId: "general", name: "Legal / Compliance", short: "Legal", hint: "Mapping AI data flows",
+        title: "The 'Nothing to Map' Response",
+        quote: "We only use the approved assistant — there's nothing to map.",
+        sceneCaption: "Approved tool · Unmapped flows",
+        situation: "Legal asks each department to map its AI data flows. The operations lead replies: 'We only use the approved assistant, so there's nothing to map.'",
+        challenge: "Approval doesn't end the inquiry. Even approved tools have data classes, integrations, permissions, output destinations, and potential shadow habits that need mapping.",
+        recommended: "Even approved-tool use needs mapping: which data classes flow in, which integrations and permissions exist, where outputs are stored and shared, plus any extensions or personal-account habits that constitute shadow AI.",
+        explanation: "Compliance isn't a label ('approved') — it's understanding actual data flows. Approved tools can still be misused, over-integrated, or shadow-extended.",
+        takeaway: "Approved ≠ nothing to govern. Map classes, integrations, permissions, outputs, and habits.",
+        practiceTitle: "Map one tool",
+        practicePrompt: "For one AI tool you use: list (1) data classes you put in, (2) integrations/permissions, (3) where outputs go, (4) any browser extensions touching it.",
+        practiceHint: "If you can't answer all four, you haven't mapped it yet.",
+        choices: [
+          { label: "Agreed — approval ends the inquiry.", good: false, feedback: "Approval is a starting point, not an endpoint. Flows still need mapping." },
+          { label: "Map data classes, integrations, permissions, outputs, and shadow habits.", good: true, feedback: "Correct: compliance requires understanding actual flows, not just the approval label." },
+          { label: "Mapping applies only to the IT department.", good: false, feedback: "Every department using AI has data flows to map." },
+          { label: "Mapping is needed only after an incident.", good: false, feedback: "Mapping prevents incidents. Waiting for one is reactive governance." },
+        ],
+        steps: [
+          { title: "Map data classes in", body: "What goes into prompts? Public, internal, confidential?" },
+          { title: "Map integrations", body: "Connected to mail, drives, calendars? What permissions?" },
+          { title: "Map outputs + habits", body: "Where do results go? Any extensions or workarounds?" },
+        ],
+        compare: {
+          badLabel: "Approved = done", bad: "We use the approved tool → nothing to report.",
+          goodLabel: "Full mapping", good: "Classes + integrations + permissions + outputs + habits.",
+        },
+        insights: ["Approved ≠ governed", "Map actual flows", "Shadow habits count"],
+      },
+      {
+        id: "support", name: "Customer Support", short: "Support", hint: "Minimizing sensitive complaint data",
+        title: "The Complaint Analysis Challenge",
+        quote: "Complaints are just internal docs — paste them all.",
+        sceneCaption: "Names + health data · Theme analysis",
+        situation: "A team wants AI to analyze customer complaints, which include names, contact details, and occasional health references. The approved tool is cleared for internal data but not sensitive personal data.",
+        challenge: "Complaints are internal documents but contain personal and sometimes sensitive personal data (health references). Tool approval has scope limits.",
+        recommended: "Strip or pseudonymize identifiers and remove/sideline health references before analysis; analyze themes on the minimized set; escalate the question of a tool cleared for sensitive data if health content is frequent.",
+        explanation: "Approved tools have scope — 'internal' clearance doesn't cover sensitive personal data. Minimization preserves the analytical value while respecting classification boundaries.",
+        takeaway: "Approval has scope. Strip identifiers and sensitive data before analysis.",
+        practiceTitle: "Minimization recipe",
+        practicePrompt: "For complaint analysis: list what AI needs (themes, sentiment, frequency) vs what it doesn't (names, account numbers, health details).",
+        practiceHint: "If the analysis works without names, the names shouldn't be there.",
+        choices: [
+          { label: "Proceed — complaints are internal documents.", good: false, feedback: "'Internal' clearance doesn't cover personal/sensitive data within those documents." },
+          { label: "Strip identifiers, remove health refs, analyze themes on minimized set.", good: true, feedback: "Correct: minimize to what the task needs; escalate if sensitive data is unavoidable." },
+          { label: "Use the tool but instruct it to 'ignore' health details in the prompt.", good: false, feedback: "Instructions don't prevent processing. The data still enters the system." },
+          { label: "Have an intern retype complaints minus names, keeping health details.", good: false, feedback: "Health references are the sensitive data — those need removing too." },
+        ],
+        steps: [
+          { title: "Strip identifiers", body: "Names → Customer A, account numbers removed" },
+          { title: "Remove/sideline health refs", body: "Sensitive personal data stays out of prompts" },
+          { title: "Escalate if frequent", body: "Request tool cleared for sensitive data if needed regularly" },
+        ],
+        compare: {
+          badLabel: "Paste all complaints", bad: "Internal doc → approved tool → all data in.",
+          goodLabel: "Minimize first", good: "Pseudonymize + remove sensitive + analyze themes.",
+        },
+        insights: ["Approval has scope", "Minimize to task needs", "Sensitive ≠ internal"],
+      },
+      {
+        id: "leadership", name: "Leadership", short: "Leadership", hint: "Fast reporting vs concealment",
+        title: "Two Mistakes, Two Responses",
+        quote: "A reported in minutes. B hid it for months.",
+        sceneCaption: "Same mistake · Different outcomes",
+        situation: "Two employees handle a mistake identically — both pasted a confidential roadmap into a personal chatbot. A reported within ten minutes. B said nothing, and it surfaced months later in an audit.",
+        challenge: "The act was identical but the organizational response must differ: incentives determine whether future incidents surface in minutes or in audits.",
+        recommended: "Treat A's fast reporting as the desired behavior (coach the habit, fix the cause) while treating B's concealment as the serious failure, because it blocked containment and broke trust.",
+        explanation: "Security culture depends on what behavior gets rewarded. Punishing honest reporters trains concealment. The real failure is always hiding, not the original mistake.",
+        takeaway: "Fast reporting = desired behavior. Concealment = the serious failure. Incentives shape culture.",
+        practiceTitle: "Check your incentives",
+        practicePrompt: "If you made a data mistake tomorrow: do you know the channel? Would you feel safe reporting fast? If not, what needs to change?",
+        practiceHint: "If people hide mistakes, the reporting culture — not the people — is the problem.",
+        choices: [
+          { label: "Punish both identically — the act was identical.", good: false, feedback: "Identical punishment ignores what matters most: speed of reporting and containment." },
+          { label: "Coach A (fast report = desired); treat B's concealment as the serious failure.", good: true, feedback: "Correct: incentivize reporting, penalize hiding. Culture follows incentives." },
+          { label: "Punish A more — A created paperwork.", good: false, feedback: "This trains concealment. Worst possible incentive." },
+          { label: "Ignore both to keep morale high.", good: false, feedback: "Ignoring both means no learning and no containment." },
+        ],
+        steps: [
+          { title: "Reward fast reporting", body: "Coach A, fix the cause, no punishment for honesty" },
+          { title: "Address concealment seriously", body: "B's hiding blocked containment and broke trust" },
+          { title: "Fix the environment", body: "Make reporting safe, easy, and expected" },
+        ],
+        compare: {
+          badLabel: "Punish reporters", bad: "Same act = same punishment, regardless of reporting.",
+          goodLabel: "Incentivize honesty", good: "Fast reporting rewarded; concealment is the failure.",
+        },
+        insights: ["Incentives shape culture", "Concealment > mistake", "Report = desired behavior"],
+      },
+      {
+        id: "ethics", sceneId: "general", name: "Cross-team", short: "Security", hint: "The module essence in one sentence",
+        title: "The One-Sentence Rule",
+        quote: "Can you summarize all of Module 3 in one line?",
+        sceneCaption: "Whole module · One principle",
+        situation: "Leadership wants a single sentence that captures Module 3 for the whole company. Four candidates are proposed.",
+        challenge: "A good summary must capture the three pillars: match data to tool, minimize sharing, and report mistakes — not just avoidance or delegation.",
+        recommended: "'Before anything enters an AI tool, match the data class to an approved tool's scope, share the minimum the task needs, and if a mistake happens, report it immediately.'",
+        explanation: "The strongest summary captures: classification-driven tool choice, minimization, and incident response. Avoidance, blank cheques, and delegation all miss the point.",
+        takeaway: "Match class → approved scope. Share minimum. Report mistakes. That's the whole module.",
+        practiceTitle: "Your version",
+        practicePrompt: "Write your own one-sentence Module 3 rule for your team. Does it cover classification, minimization, and reporting?",
+        practiceHint: "If any of the three pillars is missing, it's not complete.",
+        choices: [
+          { label: "'Avoid AI tools and nothing can leak.'", good: false, feedback: "Avoidance throws away the value. The goal is safe use, not no use." },
+          { label: "'Match data class to approved tool scope, share minimum needed, report mistakes immediately.'", good: true, feedback: "All three pillars: classification, minimization, reporting. Complete and actionable." },
+          { label: "'Anything is fine inside the enterprise tool.'", good: false, feedback: "Approved tools have scope limits. This is the blank-cheque myth." },
+          { label: "'Security is the security team's job.'", good: false, feedback: "You are the control. Security is everyone's job at the prompt." },
+        ],
+        steps: [
+          { title: "Classify first", body: "Match data class to approved tool scope" },
+          { title: "Minimize always", body: "Share only what the task genuinely needs" },
+          { title: "Report immediately", body: "If a mistake happens — fast, honest, full details" },
+        ],
+        compare: {
+          badLabel: "Avoid or delegate", bad: "Don't use AI / security team handles it.",
+          goodLabel: "Three pillars", good: "Classify + minimize + report = safe AI use.",
+        },
+        insights: ["Classify → tool scope", "Minimum needed", "Report immediately"],
+      },
+    ];
+
+
+    const deck = document.getElementById("deck");
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    const deptGrid = document.getElementById("deptGrid");
+    const pickerNote = document.getElementById("pickerNote");
+
+    let slides = [];
+    let index = 0;
+    let selectedId = null;
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function refreshSlides() {
+      slides = Array.from(deck.querySelectorAll(".slide"));
+    }
+
+    function clearPathSlides() {
+      deck.querySelectorAll(".slide[data-path='1']").forEach((el) => el.remove());
+      selectedId = null;
+      deptGrid.querySelectorAll(".dept-card").forEach((btn) => btn.classList.remove("selected"));
+    }
+
+    function phaseChipsHtml(activeIdx) {
+      return PHASES.map((p, i) => {
+        const cls = i === activeIdx ? "on" : i < activeIdx ? "done" : "";
+        return `<span class="phase-chip ${cls}">${p.label}</span>`;
+      }).join("");
+    }
+
+    function contentForPhase(scenario, phase) {
+      if (phase.key === "situation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.situation)}</p>
+          ${scenario.compare ? `
+            <div class="compare-grid">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      if (phase.key === "challenge") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.challenge)}</p>
+          <div class="choice-prompt">What would you do?</div>
+          <div class="choice-list" data-choice-list>
+            ${(scenario.choices || []).map((c, i) => `
+              <button type="button" class="choice-btn" data-choice="${i}" data-good="${c.good ? "1" : "0"}" data-feedback="${escapeHtml(c.feedback)}">
+                <span class="choice-tag">Option ${String.fromCharCode(65 + i)}</span>
+                ${escapeHtml(c.label)}
+              </button>`).join("")}
+          </div>
+          <div class="choice-feedback" data-choice-feedback></div>`;
+      }
+      if (phase.key === "recommended") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.recommended)}</p>
+          <div class="step-list">
+            ${(scenario.steps || []).map((s, i) => `
+              <div class="step-card">
+                <div class="step-num">${i + 1}</div>
+                <div><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.body)}</span></div>
+              </div>`).join("")}
+          </div>`;
+      }
+      if (phase.key === "explanation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.explanation)}</p>
+          <div class="insight-chips">
+            ${(scenario.insights || []).map((t) => `<span class="insight-chip">${escapeHtml(t)}</span>`).join("")}
+          </div>
+          ${scenario.compare ? `
+            <div class="compare-grid" style="margin-top:4px">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      return `
+          <div class="takeaway-hero"><span>Key takeaway</span>${escapeHtml(scenario.takeaway)}</div>
+          ${scenario.practicePrompt ? `
+            <div class="practice-box">
+              <div class="practice-label">Try it yourself</div>
+              <h3 class="practice-title">${escapeHtml(scenario.practiceTitle || "Practice")}</h3>
+              <p class="practice-prompt">${escapeHtml(scenario.practicePrompt)}</p>
+              ${scenario.practiceHint ? `<p class="practice-hint">${escapeHtml(scenario.practiceHint)}</p>` : ""}
+            </div>` : ""}`;
+    }
+
+    function buildPathSlides(scenario) {
+      clearPathSlides();
+      selectedId = scenario.id;
+      PHASES.forEach((phase, i) => {
+        const section = document.createElement("section");
+        section.className = "slide";
+        section.dataset.title = `${scenario.short}: ${phase.label}`;
+        section.dataset.path = "1";
+        section.innerHTML = `
+          <div class="meta-row">
+            <span class="dept-badge">${escapeHtml(scenario.name)}</span>
+            <button type="button" class="change-dept" data-action="change">Change department</button>
+          </div>
+          <div class="phase-bar">${phaseChipsHtml(i)}</div>
+          <div class="path-layout">
+            <aside class="scene-panel" data-phase="${phase.key}">
+              ${sceneArtHtml(scenario.id, scenario.name, scenario.sceneId)}
+              <div class="scene-caption">${escapeHtml(scenario.sceneCaption || scenario.title)}</div>
+              ${phase.key === "situation" || phase.key === "challenge"
+                ? `<div class="quote-chip">${escapeHtml(scenario.quote || "")}</div>`
+                : ""}
+            </aside>
+            <div class="content-panel" data-phase="${phase.key}">
+              <div class="phase-label">${phase.label}</div>
+              <h2 class="phase-title">${escapeHtml(scenario.title)}</h2>
+              ${contentForPhase(scenario, phase)}
+            </div>
+          </div>
+          <div class="footer">
+            <span>Relanto · ${escapeHtml(scenario.short)} scenario</span>
+            <span>Step ${i + 1} of ${PHASES.length}</span>
+          </div>
+        `;
+        deck.appendChild(section);
+      });
+      refreshSlides();
+      buildOverview();
+      wireChoiceHandlers();
+      const firstPath = slides.findIndex((s) => s.dataset.path === "1");
+      showSlide(firstPath >= 0 ? firstPath : 0);
+    }
+
+    function wireChoiceHandlers() {
+      deck.querySelectorAll("[data-choice-list]").forEach((list) => {
+        const feedback = list.parentElement.querySelector("[data-choice-feedback]");
+        list.querySelectorAll(".choice-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const good = btn.dataset.good === "1";
+            list.querySelectorAll(".choice-btn").forEach((b) => {
+              b.classList.remove("picked-good", "picked-bad");
+              b.disabled = true;
+            });
+            btn.classList.add(good ? "picked-good" : "picked-bad");
+            if (feedback) {
+              feedback.textContent = btn.dataset.feedback || "";
+              feedback.className = `choice-feedback show ${good ? "good" : "bad"}`;
+            }
+            list.querySelectorAll(".choice-btn").forEach((b) => { b.disabled = false; });
+          });
+        });
+      });
+    }
+
+    function renderDeptGrid() {
+      deptGrid.innerHTML = "";
+      SCENARIOS.forEach((s, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dept-card";
+        btn.setAttribute("role", "listitem");
+        btn.dataset.id = s.id;
+        btn.innerHTML = `
+          <div class="dept-card-top">
+            <span class="dept-icon">${ICONS[s.id] || ICONS.general}</span>
+            <div>
+              <span class="dept-num">0${i + 1}</span>
+              <div class="dept-name">${escapeHtml(s.name)}</div>
+            </div>
+          </div>
+          <span class="dept-hint">${escapeHtml(s.hint)}</span>
+        `;
+        btn.addEventListener("click", () => {
+          deptGrid.querySelectorAll(".dept-card").forEach((el) => el.classList.remove("selected"));
+          btn.classList.add("selected");
+          buildPathSlides(s);
+        });
+        deptGrid.appendChild(btn);
+      });
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deckEl = shell?.querySelector(".deck");
+      if (!shell || !deckEl) return;
+      deckEl.style.transform = "none";
+      slides.forEach((s) => { s.style.zoom = ""; s.style.transform = ""; });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW, deckH;
+      if (sw / sh > ASPECT) { deckH = sh; deckW = Math.round(sh * ASPECT); }
+      else { deckW = sw; deckH = Math.round(sw / ASPECT); }
+      deckEl.style.width = `${deckW}px`;
+      deckEl.style.height = `${deckH}px`;
+      deckEl.style.maxWidth = "100%";
+      deckEl.style.maxHeight = "100%";
+      const active = deckEl.querySelector(".slide.active");
+      if (active) {
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) active.style.overflow = "auto";
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    function onPickerSlide() {
+      return slides[index]?.id === "pickerSlide" || slides[index]?.dataset.title === "Choose department";
+    }
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = Boolean(selectedId) && index >= slides.length - 1;
+      const atStart = index <= 0;
+      window.parent.postMessage({
+        type: EMBED_EVENT,
+        kind: "scenarios",
+        slideIndex: index,
+        slideCount: slides.length,
+        atEnd,
+        atStart,
+      }, "*");
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function next() {
+      if (onPickerSlide() && !selectedId) {
+        pickerNote.classList.remove("pulse");
+        void pickerNote.offsetWidth;
+        pickerNote.classList.add("pulse");
+        pickerNote.textContent = "Select a department above to continue.";
+        publishEmbedState();
+        return;
+      }
+      showSlide(index + 1);
+    }
+
+    function prev() { showSlide(index - 1); }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          if (slide.dataset.path === "1" && !selectedId) return;
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    deck.addEventListener("click", (event) => {
+      const t = event.target;
+      if (t && t.matches && t.matches("[data-action='change']")) {
+        clearPathSlides();
+        refreshSlides();
+        buildOverview();
+        const pickerIdx = slides.findIndex((s) => s.id === "pickerSlide");
+        showSlide(pickerIdx >= 0 ? pickerIdx : 1);
+        pickerNote.classList.remove("pulse");
+        pickerNote.textContent = "Select one path. You’ll get an interactive scenario — about five short slides.";
+      }
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") { overview.classList.toggle("open"); return; }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open"); return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault(); next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault(); prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) showSlide(Number(data.index));
+      });
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") new ResizeObserver(fitEmbedDeck).observe(shell);
+      } catch { /* ignore */ }
+    }
+
+    renderDeptGrid();
+    refreshSlides();
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>
