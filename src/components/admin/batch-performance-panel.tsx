@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/admin/metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { BatchPerformancePayload } from "@/lib/batch-performance-types";
+import type { InviteSendResult } from "@/lib/invite-result";
 import { exportBatchPerformanceCsv } from "@/lib/batch-performance-export";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
@@ -100,6 +101,9 @@ export function BatchPerformancePanel({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderResult, setReminderResult] = useState<InviteSendResult | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
 
   const flatRows = useMemo(() => {
     const rows: {
@@ -208,6 +212,68 @@ export function BatchPerformancePanel({
     });
   }, [flatRows, search, statusFilter, moduleFilter]);
 
+  const reminderRows = useMemo(
+    () => filtered.filter((r) => r.status === "not_started" && r.moduleId !== "none"),
+    [filtered],
+  );
+  const reminderModuleIds = useMemo(
+    () => [...new Set(reminderRows.map((r) => r.moduleId))],
+    [reminderRows],
+  );
+  const reminderLearnerCount = reminderRows.length;
+  const canSendReminder =
+    track === "course" && reminderModuleIds.length > 0 && data.modules.length > 0;
+
+  async function handleResendReminder() {
+    if (!canSendReminder || reminderSending) return;
+    setReminderSending(true);
+    setReminderError(null);
+    setReminderResult(null);
+
+    const aggregate: InviteSendResult = {
+      ok: true,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: [],
+      message: "",
+    };
+
+    try {
+      for (const moduleId of reminderModuleIds) {
+        const res = await fetch(`/api/modules/${encodeURIComponent(moduleId)}/send-invites`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchId: data.batch.id,
+            mode: "course_not_started_reminder",
+            reminderOnlyNotStarted: true,
+          }),
+        });
+        const result = (await res.json()) as InviteSendResult;
+        if (!res.ok || !result.ok) {
+          aggregate.ok = false;
+        }
+        aggregate.sent += Number(result.sent ?? 0);
+        aggregate.skipped += Number(result.skipped ?? 0);
+        aggregate.failed += Number(result.failed ?? 0);
+        aggregate.errors.push(...(Array.isArray(result.errors) ? result.errors : []));
+      }
+
+      aggregate.message =
+        aggregate.sent > 0
+          ? `Reminder emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}.`
+          : aggregate.failed > 0
+            ? `Failed to send ${aggregate.failed} reminder email(s).`
+            : "No eligible not-started learners matched this reminder.";
+      setReminderResult(aggregate);
+    } catch {
+      setReminderError("Could not reach the server.");
+    } finally {
+      setReminderSending(false);
+    }
+  }
+
   const { summary, batch } = data;
 
   return (
@@ -260,6 +326,23 @@ export function BatchPerformancePanel({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {track === "course" && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleResendReminder()}
+                  disabled={!canSendReminder || reminderSending}
+                >
+                  {reminderSending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  )}
+                  {reminderSending
+                    ? "Sending reminders…"
+                    : `Resend reminder to not started (${reminderLearnerCount})`}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -343,6 +426,51 @@ export function BatchPerformancePanel({
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {(reminderResult || reminderError) && (
+            <div className="border-b border-zinc-100 px-6 py-4">
+              {reminderError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+                  <p className="font-semibold">Reminder send failed</p>
+                  <p className="mt-1 text-xs opacity-90">{reminderError}</p>
+                </div>
+              ) : reminderResult ? (
+                <div
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm",
+                    reminderResult.failed > 0
+                      ? "border-amber-200 bg-amber-50 text-amber-950"
+                      : reminderResult.sent > 0
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-700",
+                  )}
+                >
+                  <p className="font-semibold">
+                    {reminderResult.sent > 0
+                      ? `Reminder emails sent to ${reminderResult.sent} learner${reminderResult.sent === 1 ? "" : "s"}`
+                      : reminderResult.failed > 0
+                        ? "Reminder send completed with failures"
+                        : "No not-started learners needed a reminder"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed opacity-90">
+                    {reminderResult.message}
+                    {reminderResult.skipped > 0
+                      ? ` ${reminderResult.skipped} learner${reminderResult.skipped === 1 ? "" : "s"} were skipped because they were no longer not started.`
+                      : ""}
+                    {reminderResult.failed > 0
+                      ? ` ${reminderResult.failed} learner${reminderResult.failed === 1 ? "" : "s"} failed.`
+                      : ""}
+                  </p>
+                  {reminderResult.errors.length > 0 && (
+                    <ul className="mt-2 list-inside list-disc text-xs opacity-80">
+                      {reminderResult.errors.slice(0, 5).map((err) => (
+                        <li key={err}>{err}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
           {data.modules.length === 0 ? (
             <div className="empty-state mx-6 my-10 border-dashed py-12">
               <p className="text-sm font-medium text-zinc-600">

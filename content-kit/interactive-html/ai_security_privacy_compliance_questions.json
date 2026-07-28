@@ -1,0 +1,220 @@
+{
+  "questions": [
+    {
+      "prompt": "A colleague says: \"I closed the chat window right after pasting the contract, so the data is gone.\" The most accurate response is:",
+      "options": [
+        { "id": "a", "label": "Correct; closing the window deletes the session everywhere." },
+        { "id": "b", "label": "Incorrect; closing a window changes nothing on the provider's side, where the content may be retained under the provider's own policies and settings." },
+        { "id": "c", "label": "Correct, as long as the browser cache is also cleared." },
+        { "id": "d", "label": "Incorrect; the data is only retained if the chat was saved manually." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The content was transmitted to and processed on the provider's systems the moment it was sent. Local actions such as closing windows or clearing cache do not affect provider-side retention."
+    },
+    {
+      "prompt": "You need AI help prioritizing 40 client accounts. Your CRM export contains client names, contacts, revenue, and renewal dates. The company has an approved AI tool cleared for internal data but not for confidential client data. Your best option is:",
+      "options": [
+        { "id": "a", "label": "Paste the full export into the approved tool; approval covers everything." },
+        { "id": "b", "label": "Paste the full export into a free AI website, since the approved tool isn't cleared for it." },
+        { "id": "c", "label": "Anonymize the accounts into profiles (segment, size band, renewal quarter) or ask the question in abstract form, using the approved tool." },
+        { "id": "d", "label": "Skip AI entirely; there is no compliant way to get help." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Approval has scope, and this dataset exceeds it. Anonymization and generalization keep the task within the tool's cleared scope while preserving most of the value."
+    },
+    {
+      "prompt": "True or False: A two-line excerpt can be more sensitive than a fifty-page document, because sensitivity depends on content, not length.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "a",
+      "explanation": "Classification is about what the information is, not how long it is. A short excerpt about an acquisition, security weakness, or salary issue can be more sensitive than many pages of public material."
+    },
+    {
+      "prompt": "Which of the following best defines \"shadow AI\"?",
+      "options": [
+        { "id": "a", "label": "AI models that run at night to save energy." },
+        { "id": "b", "label": "Using AI tools, extensions, or personal accounts for work content without the organization's approval or knowledge." },
+        { "id": "c", "label": "An AI feature that summarizes documents in dark mode." },
+        { "id": "d", "label": "Any AI tool produced by a competitor." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Shadow AI parallels shadow IT: unsanctioned tools used with work content outside vetted terms, controls, and visibility."
+    },
+    {
+      "prompt": "[Select all that apply] Which actions are examples of safe prompting?",
+      "options": [
+        { "id": "a", "label": "Replacing client names with placeholders like \"Client A\" before pasting" },
+        { "id": "b", "label": "Pasting the entire case file because the AI works better with full context" },
+        { "id": "c", "label": "Asking the question in generalized form that needs no real details" },
+        { "id": "d", "label": "Creating a fresh, purpose-built file for upload instead of the working spreadsheet" },
+        { "id": "e", "label": "Uploading a screenshot without checking what appears in its corners and toolbars" }
+      ],
+      "correctOptionIds": ["a", "c", "d"],
+      "explanation": "Anonymization, generalization, and purpose-built clean copies are core minimization techniques. Full-context dumps and unchecked screenshots often overshare."
+    },
+    {
+      "prompt": "An employee pastes personal customer data into an unapproved consumer AI app. Nothing appears to leak publicly. From a privacy-law perspective:",
+      "options": [
+        { "id": "a", "label": "No harm, no foul; laws only care about visible damage." },
+        { "id": "b", "label": "The unapproved processing itself can constitute a breach of privacy obligations, potentially triggering reporting duties, regardless of whether visible harm occurs." },
+        { "id": "c", "label": "It is only an issue if the customer complains." },
+        { "id": "d", "label": "Privacy laws do not apply to AI tools." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Privacy regimes regulate how personal data is processed, not only whether it becomes publicly visible. Unauthorized third-party processing can itself be the violation."
+    },
+    {
+      "prompt": "Mid-task, you realize you pasted three pages of a restricted board pack into your personal AI chatbot account by mistake. Your next move is:",
+      "options": [
+        { "id": "a", "label": "Delete the conversation and tell no one; deletion fixes it." },
+        { "id": "b", "label": "Report it immediately to your manager and the designated security/privacy contact with full details (what, where, when, which account), and follow their instructions." },
+        { "id": "c", "label": "Wait a week to see whether anything bad happens before deciding." },
+        { "id": "d", "label": "Switch to the approved tool and continue working." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Containment options and legal notification clocks depend on fast, honest reporting. Silent deletion does not remove provider-side copies and turns a mistake into concealment."
+    },
+    {
+      "prompt": "Why are browser extensions that \"read any page and answer questions\" a particular security concern?",
+      "options": [
+        { "id": "a", "label": "They slow the browser down." },
+        { "id": "b", "label": "They typically have permission to read everything in the browser, including internal systems and webmail, and send content to an unknown third party continuously and silently." },
+        { "id": "c", "label": "They only work on public websites." },
+        { "id": "d", "label": "They are always illegal." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Read-everything permissions can turn an extension into a silent, continuous data pipeline from internal systems to an unvetted recipient."
+    },
+    {
+      "prompt": "True or False: If your organization approves an enterprise AI tool, you may paste any company data into it, including restricted material.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Approval always has scope: specific data classes, use cases, and sometimes teams. Restricted or sensitive material is often excluded even from approved tools."
+    },
+    {
+      "prompt": "A finance employee uploads a spreadsheet to the approved AI tool. The visible tab is permitted aggregate data, but the file also contains hidden tabs with salaries and bank details. What principle did the employee miss?",
+      "options": [
+        { "id": "a", "label": "Tables should never be shared with AI tools." },
+        { "id": "b", "label": "Files carry everything they contain: hidden tabs, comments, prior versions, and metadata travel with the upload, so uploads should be purpose-built clean copies." },
+        { "id": "c", "label": "Hidden tabs are automatically excluded from uploads." },
+        { "id": "d", "label": "Salary data is not personal data." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Tools receive the whole file, not just the active view. The safe pattern is a fresh file containing only the data needed for the task."
+    },
+    {
+      "prompt": "[Select all that apply] Which factors make an AI tool account worth protecting like an email account?",
+      "options": [
+        { "id": "a", "label": "The prompt history can amount to a store of company and personal data" },
+        { "id": "b", "label": "A compromised login exposes everything ever pasted under that account" },
+        { "id": "c", "label": "Multi-factor authentication and unique passwords materially reduce takeover risk" },
+        { "id": "d", "label": "AI accounts cannot be phished, so protection is unnecessary" }
+      ],
+      "correctOptionIds": ["a", "b", "c"],
+      "explanation": "Prompt histories and uploads form a sensitive archive, making AI accounts a credential target. MFA and unique passwords are standard defenses; AI accounts can absolutely be phished."
+    },
+    {
+      "prompt": "A flawless email from a known supplier contact references a genuine current order and asks you to update their bank account before the next payment run. The correct response is:",
+      "options": [
+        { "id": "a", "label": "Update the account; the details prove it's genuine." },
+        { "id": "b", "label": "Reply to the email asking them to confirm." },
+        { "id": "c", "label": "Verify by calling the supplier on the number already on file, follow the bank-change procedure, and report the email to IT security regardless of outcome." },
+        { "id": "d", "label": "Update the account but flag the payment for extra review afterwards." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "AI-polished fraud can pass language and detail checks. Payment-detail changes require out-of-band verification on known contacts before any money moves."
+    },
+    {
+      "prompt": "What is the best quick test for whether information is effectively public?",
+      "options": [
+        { "id": "a", "label": "Whether it is shorter than one page." },
+        { "id": "b", "label": "Whether you found it on your own laptop." },
+        { "id": "c", "label": "Whether it could be posted on the company's public website right now without anyone objecting." },
+        { "id": "d", "label": "Whether it has been emailed to more than ten people." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "The publish test captures the essence of public information. Length, storage location, and internal circulation do not determine classification."
+    },
+    {
+      "prompt": "True or False: Ten individually harmless internal facts can together reveal confidential information, so combinations matter when deciding what to paste.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "a",
+      "explanation": "Aggregation is a real risk: fragments that seem harmless alone can reveal strategy, transactions, or sensitive plans when combined in one prompt or thread."
+    },
+    {
+      "prompt": "Your organization's customer-support platform has a built-in, approved AI reply feature. A colleague still prefers copying ticket threads into a separate consumer chatbot because the answers feel better. The strongest reason to use the built-in feature for customer data is:",
+      "options": [
+        { "id": "a", "label": "Built-in features are always smarter." },
+        { "id": "b", "label": "Data stays inside a governed, vetted system under the company's terms, instead of moving to an unapproved third party with unknown retention." },
+        { "id": "c", "label": "Consumer chatbots cannot write empathetic replies." },
+        { "id": "d", "label": "It saves one copy-paste step." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The decisive difference is governance: vetted terms, approved access controls, and visibility over where customer data travels and under whose rules it sits."
+    },
+    {
+      "prompt": "Your team genuinely needs an AI transcription capability, but no approved tool offers it. The team lead suggests everyone quietly use a free transcription website until IT catches up. The most responsible response is:",
+      "options": [
+        { "id": "a", "label": "Agree; business needs outrank policy." },
+        { "id": "b", "label": "Use the free site but only for meetings that feel unimportant." },
+        { "id": "c", "label": "Decline the workaround, and submit a formal tool request to IT describing the need so a vetted option can be provided." },
+        { "id": "d", "label": "Use the free site with your personal email so the company isn't linked to it." }
+      ],
+      "correctOptionId": "c",
+      "explanation": "This is shadow AI by team decision. The legitimate business need is the reason to request a proper vetted tool, not to multiply exposure with a workaround."
+    },
+    {
+      "prompt": "Which statement about AI tool integrations (connecting an assistant to mailboxes, drives, or calendars) is most accurate?",
+      "options": [
+        { "id": "a", "label": "Integrations are risk-free because both systems are approved." },
+        { "id": "b", "label": "Grant the narrowest access that achieves the purpose and involve IT, because an assistant inherits and amplifies whatever permissions it is given." },
+        { "id": "c", "label": "Always grant full access so the assistant never hits a limitation." },
+        { "id": "d", "label": "Integrations only matter for developers." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Connected assistants surface whatever the integration can reach. Least-privilege access and IT involvement are the standard controls."
+    },
+    {
+      "prompt": "A consultant wants AI help summarizing a client's internal financial documents. The engagement contract says client material may only be processed on systems the client has approved, which do not include the consultant's AI tool. Using the tool anyway would be:",
+      "options": [
+        { "id": "a", "label": "Fine, provided the summary is accurate." },
+        { "id": "b", "label": "A breach of contractual confidentiality obligations, regardless of whether any leak or harm ever occurs." },
+        { "id": "c", "label": "Acceptable if the documents are anonymized to perfection." },
+        { "id": "d", "label": "Only a problem if the client finds out." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Contracts define permitted processing, and AI tools count as processing. The unauthorized processing itself is the breach."
+    },
+    {
+      "prompt": "[Select all that apply] Which lessons follow from publicly reported AI security incidents?",
+      "options": [
+        { "id": "a", "label": "Well-meaning productivity shortcuts (pasting code, minutes) caused real corporate leaks" },
+        { "id": "b", "label": "Consumer AI services have had bugs and breaches exposing parts of users' conversations" },
+        { "id": "c", "label": "Assistants connected to document stores have surfaced files users shouldn't see, exposing weak permissions" },
+        { "id": "d", "label": "Fluent, personalized phishing has become easier to produce, so polish no longer signals legitimacy" },
+        { "id": "e", "label": "Incidents only happen to companies without firewalls" }
+      ],
+      "correctOptionIds": ["a", "b", "c", "d"],
+      "explanation": "All four are recurring incident patterns: productivity shortcuts, exposed histories, oversharing assistants, and AI-polished fraud. Firewalls do not prevent user pastes, provider breaches, or loose permissions."
+    },
+    {
+      "prompt": "You're drafting a job advert with AI and want feedback on the offered salary band's competitiveness. The salary band is internal-only. The approved tool is cleared for internal data. A teammate says: \"Better ask the free public chatbot, it knows the market better.\" You should:",
+      "options": [
+        { "id": "a", "label": "Use the public chatbot; market knowledge outweighs policy." },
+        { "id": "b", "label": "Use the approved tool, since the data class (internal) matches the tool's clearance, and supplement with published salary surveys for market data." },
+        { "id": "c", "label": "Use the public chatbot but round the salary numbers slightly." },
+        { "id": "d", "label": "Email the salary band to a friend at another company to ask instead." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The decision rule is classification-to-tool match: internal data belongs in the approved internal-cleared tool. Public market knowledge should come from public sources, not an unapproved chatbot."
+    }
+  ]
+}
