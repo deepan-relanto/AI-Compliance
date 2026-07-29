@@ -6,6 +6,7 @@ export { emailsMatch, normalizeEmail };
 export function resolvePostLoginPath(
   callbackUrl: string | null | undefined,
   role: "admin" | "user" | undefined,
+  forEmail?: string | null,
 ): string {
   if (
     callbackUrl &&
@@ -20,6 +21,15 @@ export function resolvePostLoginPath(
       callbackUrl.startsWith("/dashboard") ||
       callbackUrl.startsWith("/admin")
     ) {
+      if (callbackUrl.startsWith("/training/") && forEmail) {
+        const intended = normalizeEmail(forEmail);
+        if (intended) {
+          const [path, existingQs] = callbackUrl.split("?");
+          const qs = new URLSearchParams(existingQs ?? "");
+          qs.set("forEmail", intended);
+          return `${path}?${qs.toString()}`;
+        }
+      }
       return callbackUrl;
     }
   }

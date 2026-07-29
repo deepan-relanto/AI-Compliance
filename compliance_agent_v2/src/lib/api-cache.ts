@@ -64,7 +64,7 @@ export function invalidateCache(prefix?: string): void {
 /** TTL values in milliseconds (used by cachedFetch). */
 export const CACHE_TTL = {
   batches: 60_000,
-  analytics: 45_000,
+  analytics: 120_000,
   batchPerformance: 30_000,
   courseLibrary: 60_000,
 } as const;

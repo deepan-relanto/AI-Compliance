@@ -1,11 +1,14 @@
 /**
  * Clears all feedback_entries from the database.
- * Usage: npm run db:clear-feedback
+ * Usage:
+ *   npm run db:clear-feedback -- --dry-run
+ *   npm run db:clear-feedback -- --confirm
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -45,9 +48,20 @@ if (!url) {
   process.exit(1);
 }
 
+const { dryRun } = requireDestructiveConfirm("db-clear-feedback.mjs", {
+  description: "Clears all feedback_entries from the database.",
+});
+
 const sql = neon(url);
 
 console.log("🧹 Clearing feedback entries…");
+
+if (dryRun) {
+  const [{ count }] = await sql`SELECT COUNT(*)::int AS count FROM feedback_entries`;
+  console.log(`[dry-run] Would delete ${count} feedback row(s).`);
+  console.log("\nNo changes written. Pass --confirm to execute.");
+  process.exit(0);
+}
 
 const result = await sql`DELETE FROM feedback_entries RETURNING id`;
 console.log(`  · ${result.length} feedback row(s) removed`);

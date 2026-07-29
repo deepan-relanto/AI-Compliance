@@ -12,7 +12,8 @@ export async function GET(
   try {
     const { id } = await params;
     const claimedEmail = req.nextUrl.searchParams.get("userEmail");
-    const access = await requireLearnerModuleAccess(id, claimedEmail);
+    const intendedEmail = req.nextUrl.searchParams.get("forEmail");
+    const access = await requireLearnerModuleAccess(id, claimedEmail, intendedEmail);
     if (!access.ok) return access.response;
 
     const sql = getSql();

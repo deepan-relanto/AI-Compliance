@@ -75,8 +75,23 @@ export async function requireLearnerModuleAccess(
   const sessionCheck = await requireSessionEmail(claimedEmail);
   if (!sessionCheck.ok) return sessionCheck;
 
-  // Hot-path cache: learner batch assignment is stable for a session — skip 3
-  // DB queries per MCQ submission after the first hit.
+  // Invite binding must always be enforced — never skip via access cache.
+  if (intendedEmail && !emailsMatch(sessionCheck.email, intendedEmail)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          ok: false,
+          message: `This training link was sent to ${intendedEmail.trim().toLowerCase()}. Sign in with that Microsoft account.`,
+          code: "wrong_recipient" satisfies ModuleAccessDenyCode,
+        },
+        { status: 403 },
+      ),
+    };
+  }
+
+  // Hot-path cache: learner batch assignment is stable for the duration of a
+  // session — skip DB roundtrips per MCQ. Invalidated on roster/assignment changes.
   const cachedBatch = getCachedLearnerAccess(sessionCheck.email, moduleId);
   if (cachedBatch) {
     return { ok: true, email: sessionCheck.email, batchId: cachedBatch };

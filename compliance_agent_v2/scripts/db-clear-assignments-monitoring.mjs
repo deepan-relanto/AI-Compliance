@@ -2,12 +2,15 @@
  * Clears batch assignments and all monitoring/progress data.
  * Keeps batches, training modules, MCQs, PDF storage, employees, and users.
  *
- * Usage: npm run db:clear-assignments-monitoring
+ * Usage:
+ *   npm run db:clear-assignments-monitoring -- --dry-run
+ *   npm run db:clear-assignments-monitoring -- --confirm
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -47,9 +50,45 @@ if (!url) {
   process.exit(1);
 }
 
+const { dryRun } = requireDestructiveConfirm("db-clear-assignments-monitoring.mjs", {
+  description: "Clears batch assignments and monitoring/progress (keeps batches, modules, MCQs, PDFs).",
+});
+
 const sql = neon(url);
 
 console.log("🧹 Clearing assignments & monitoring (keeping batches, PDFs, MCQs)…\n");
+
+const tableNames = [
+  "training_notifications",
+  "assessment_progress",
+  "feedback_entries",
+  "review_requests",
+  "audit_logs",
+  "live_sessions",
+  "module_batches",
+];
+
+if (dryRun) {
+  const counts = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM training_notifications) AS training_notifications,
+      (SELECT COUNT(*)::int FROM assessment_progress) AS assessment_progress,
+      (SELECT COUNT(*)::int FROM feedback_entries) AS feedback_entries,
+      (SELECT COUNT(*)::int FROM review_requests) AS review_requests,
+      (SELECT COUNT(*)::int FROM audit_logs) AS audit_logs,
+      (SELECT COUNT(*)::int FROM live_sessions) AS live_sessions,
+      (SELECT COUNT(*)::int FROM module_batches) AS module_batches,
+      (SELECT COUNT(*)::int FROM batches) AS batches
+  `;
+  const c = counts[0];
+  console.log("[dry-run] Would delete:");
+  for (const name of tableNames) {
+    console.log(`  · ${name}: ${c[name]} row(s)`);
+  }
+  console.log(`  · batches: reset compliance counters on ${c.batches} row(s)`);
+  console.log("\nNo changes written. Pass --confirm to execute.");
+  process.exit(0);
+}
 
 const tables = [
   ["training_notifications", await sql`DELETE FROM training_notifications RETURNING id`],

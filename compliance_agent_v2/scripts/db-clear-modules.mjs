@@ -1,11 +1,14 @@
 /**
  * Clears all training content for a fresh test (keeps users + batches).
- * Usage: npm run db:clear-modules
+ * Usage:
+ *   npm run db:clear-modules -- --dry-run
+ *   npm run db:clear-modules -- --confirm
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -45,9 +48,55 @@ if (!url) {
   process.exit(1);
 }
 
+const { dryRun } = requireDestructiveConfirm("db-clear-modules.mjs", {
+  description: "Clears training modules, MCQs, progress, and uploads (keeps users + batches).",
+});
+
 const sql = neon(url);
 
 console.log("Clearing training modules, MCQs, progress, uploads…");
+
+const uploadsDir = join(root, "public", "uploads");
+
+if (dryRun) {
+  const counts = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM training_notifications) AS training_notifications,
+      (SELECT COUNT(*)::int FROM assessment_progress) AS assessment_progress,
+      (SELECT COUNT(*)::int FROM feedback_entries) AS feedback_entries,
+      (SELECT COUNT(*)::int FROM review_requests) AS review_requests,
+      (SELECT COUNT(*)::int FROM audit_logs) AS audit_logs,
+      (SELECT COUNT(*)::int FROM live_sessions) AS live_sessions,
+      (SELECT COUNT(*)::int FROM mcq_options) AS mcq_options,
+      (SELECT COUNT(*)::int FROM mcq_questions) AS mcq_questions,
+      (SELECT COUNT(*)::int FROM module_batches) AS module_batches,
+      (SELECT COUNT(*)::int FROM upload_files) AS upload_files,
+      (SELECT COUNT(*)::int FROM pdf_storage) AS pdf_storage,
+      (SELECT COUNT(*)::int FROM training_modules) AS training_modules,
+      (SELECT COUNT(*)::int FROM batches) AS batches
+  `;
+  const c = counts[0];
+  console.log("[dry-run] Would delete from database:");
+  for (const [name, n] of Object.entries(c)) {
+    console.log(`  · ${name}: ${n} row(s)`);
+  }
+  let uploadCount = 0;
+  try {
+    for (const name of readdirSync(uploadsDir)) {
+      if (name.endsWith(".pdf") || name.endsWith(".ppt") || name.endsWith(".pptx")) {
+        uploadCount++;
+        console.log(`  · would remove public/uploads/${name}`);
+      }
+    }
+  } catch {
+    console.log("  · public/uploads: (empty or missing)");
+  }
+  if (uploadCount === 0) {
+    console.log("  · public/uploads: no PDF/PPT files to remove");
+  }
+  console.log("\nNo changes written. Pass --confirm to execute.");
+  process.exit(0);
+}
 
 await sql`DELETE FROM training_notifications`;
 await sql`DELETE FROM assessment_progress`;
@@ -68,7 +117,6 @@ await sql`
       updated_at = NOW()
 `;
 
-const uploadsDir = join(root, "public", "uploads");
 try {
   for (const name of readdirSync(uploadsDir)) {
     if (name.endsWith(".pdf") || name.endsWith(".ppt") || name.endsWith(".pptx")) {

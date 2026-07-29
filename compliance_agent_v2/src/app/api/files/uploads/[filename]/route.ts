@@ -1,4 +1,7 @@
+import { requireAdminSession } from "@/lib/api-admin";
 import { requireSessionEmail } from "@/lib/api-session";
+import { getSql } from "@/lib/db";
+import { canAccessUploadPdf } from "@/lib/services/file-access-service";
 import { getPdfBuffer } from "@/lib/services/pdf-storage-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,8 +20,23 @@ export async function GET(
     return NextResponse.json({ ok: false, message: "Invalid file." }, { status: 400 });
   }
 
+  const pdfUrl = `/uploads/${filename}`;
+  const admin = await requireAdminSession();
+  const allowed = await canAccessUploadPdf(
+    getSql(),
+    session.email,
+    pdfUrl,
+    !admin.error,
+  );
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, message: "Not authorized for this file." },
+      { status: 403 },
+    );
+  }
+
   try {
-    const buffer = await getPdfBuffer(`/uploads/${filename}`);
+    const buffer = await getPdfBuffer(pdfUrl);
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {

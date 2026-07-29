@@ -4,14 +4,14 @@ import { RouteGuard } from "@/components/auth/route-guard";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/auth-store";
-import type { AnalyticsPayload } from "@/lib/analytics-types";
+import type { AnalyticsPayload, BatchAnalytics } from "@/lib/analytics-types";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
-  Activity,
   ArrowRight,
   ArrowUpRight,
   BarChart3,
+  BookOpen,
   CheckCircle2,
   ClipboardList,
   Layers3,
@@ -28,8 +28,16 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+type TrackKind = "compliance" | "course";
+
+type TrackedBatch = BatchAnalytics & { track: TrackKind };
+
 function clamp(v: number) {
   return Math.min(100, Math.max(0, v));
+}
+
+function completionPct(b: BatchAnalytics): number {
+  return clamp(b.compliance);
 }
 
 function greeting(): string {
@@ -240,7 +248,7 @@ function ActivityItem({
         ) : failed ? (
           <ShieldAlert className="h-4 w-4" />
         ) : (
-          <Activity className="h-4 w-4" />
+          <ClipboardList className="h-4 w-4" />
         )}
       </div>
       <div className="min-w-0 flex-1">
@@ -277,15 +285,19 @@ function ActivityItem({
 
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user);
-  const [data, setData] = useState<AnalyticsPayload | null>(null);
+  const [complianceData, setComplianceData] = useState<AnalyticsPayload | null>(null);
+  const [courseData, setCourseData] = useState<AnalyticsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [clock, setClock] = useState(formatTime);
 
   useEffect(() => {
-    fetch("/api/analytics")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setData(d as AnalyticsPayload);
+    Promise.all([
+      fetch("/api/analytics").then((r) => r.json()),
+      fetch("/api/analytics?track=course").then((r) => r.json()),
+    ])
+      .then(([compliance, course]) => {
+        if (compliance.ok) setComplianceData(compliance as AnalyticsPayload);
+        if (course.ok) setCourseData(course as AnalyticsPayload);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -306,18 +318,55 @@ export default function AdminPage() {
       .join(" ");
   }, [user?.username]);
 
-  const summary = data?.summary;
+  const summary = complianceData?.summary;
+  const courseSummary = courseData?.summary;
+
   const topBatches = useMemo(() => {
-    if (!data) return [];
-    return [...data.batches]
-      .sort((a, b) => b.totalAttempts - a.totalAttempts || b.compliance - a.compliance)
-      .slice(0, 3);
-  }, [data]);
+    const rows: TrackedBatch[] = [];
+    for (const b of complianceData?.batches ?? []) {
+      // Skip empty compliance rows that only exist because course batches are in the all-batches join
+      if (b.totalAttempts <= 0 && b.learnersStarted <= 0) continue;
+      rows.push({ ...b, track: "compliance" });
+    }
+    for (const b of courseData?.batches ?? []) {
+      rows.push({ ...b, track: "course" });
+    }
+    return rows
+      .sort(
+        (a, b) =>
+          b.totalAttempts - a.totalAttempts ||
+          completionPct(b) - completionPct(a) ||
+          a.label.localeCompare(b.label),
+      )
+      .slice(0, 4);
+  }, [complianceData, courseData]);
 
   const recent = useMemo(() => {
-    if (!data) return [];
-    return data.history.slice(0, 6);
-  }, [data]);
+    if (!complianceData) return [];
+    return complianceData.history.slice(0, 6);
+  }, [complianceData]);
+
+  const courseKpiValue = useMemo(() => {
+    if (!courseSummary) return "—";
+    if (courseSummary.avgScore != null) return clamp(courseSummary.avgScore);
+    if (courseSummary.totalAttempts > 0) {
+      return clamp(
+        Math.round(
+          (100 * courseSummary.completedCount) / courseSummary.totalAttempts,
+        ),
+      );
+    }
+    return "—";
+  }, [courseSummary]);
+
+  const courseKpiHint =
+    courseSummary == null
+      ? "Loading course metrics…"
+      : courseSummary.avgScore != null
+        ? `Avg score · ${courseSummary.completedCount} completed · ${courseSummary.totalAttempts} attempts`
+        : courseSummary.totalAttempts > 0
+          ? `Completion rate · ${courseSummary.completedCount} completed · ${courseSummary.totalAttempts} attempts`
+          : "No scored course results yet";
 
   return (
     <RouteGuard allowedRoles={["admin"]}>
@@ -433,15 +482,12 @@ export default function AdminPage() {
               hint={`Pass threshold: ${PASS_THRESHOLD_PERCENT}% · ${summary?.completedCount ?? 0} passed`}
             />
             <KpiCard
-              label="Active sessions"
-              value={summary?.inProgressCount ?? 0}
-              icon={Activity}
+              label="Courses"
+              value={courseKpiValue}
+              suffix={typeof courseKpiValue === "number" ? "%" : undefined}
+              icon={BookOpen}
               accent="accent"
-              hint={
-                (summary?.inProgressCount ?? 0) > 0
-                  ? "Learners in training right now"
-                  : "No live sessions"
-              }
+              hint={courseKpiHint}
             />
             <KpiCard
               label="Total learners"
@@ -590,7 +636,7 @@ export default function AdminPage() {
                 <div>
                   <p className="section-label">Top batches</p>
                   <h2 className="mt-1 text-base font-semibold text-zinc-900">
-                    By activity
+                    Courses &amp; compliance
                   </h2>
                 </div>
                 <Link
@@ -610,50 +656,71 @@ export default function AdminPage() {
                   </div>
                   <p className="text-sm font-medium text-zinc-600">No batch activity</p>
                   <p className="text-xs text-zinc-400">
-                    Compliance metrics will appear after first attempts.
+                    Course and compliance metrics appear after first attempts.
                   </p>
                 </div>
               ) : (
                 topBatches.map((b) => {
-                  const compliance = clamp(b.compliance);
+                  const pct = completionPct(b);
+                  const isCourse = b.track === "course";
+                  const hasActivity = b.totalAttempts > 0;
+                  const displayPct = hasActivity ? pct : null;
                   return (
                     <Link
-                      key={b.id}
-                      href={`/admin/batch/${b.id}`}
+                      key={`${b.track}-${b.id}`}
+                      href={`/admin/analytics/batch/${b.id}?track=${b.track}`}
                       className="group block rounded-lg border border-zinc-200/80 p-3 transition-all hover:border-[#2e3192]/30 hover:bg-[#2e3192]/[0.03]"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-medium text-zinc-800 group-hover:text-[#2e3192]">
-                          {b.label}
-                        </p>
+                        <div className="min-w-0 flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-zinc-800 group-hover:text-[#2e3192]">
+                            {b.label}
+                          </p>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                              isCourse
+                                ? "bg-orange-50 text-[#c2410c] ring-1 ring-orange-100"
+                                : "bg-[#2e3192]/8 text-[#2e3192] ring-1 ring-[#2e3192]/15",
+                            )}
+                          >
+                            {isCourse ? "Course" : "Compliance"}
+                          </span>
+                        </div>
                         <span
                           className={cn(
                             "shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums",
-                            compliance >= 70
-                              ? "bg-emerald-50 text-emerald-700"
-                              : compliance > 0
-                                ? "bg-amber-50 text-amber-800"
-                                : "bg-zinc-100 text-zinc-500",
+                            displayPct == null
+                              ? "bg-zinc-100 text-zinc-500"
+                              : displayPct >= 70
+                                ? "bg-emerald-50 text-emerald-700"
+                                : displayPct > 0
+                                  ? "bg-amber-50 text-amber-800"
+                                  : "bg-zinc-100 text-zinc-500",
                           )}
                         >
-                          {compliance}%
+                          {displayPct == null ? "—" : `${displayPct}%`}
                         </span>
                       </div>
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100">
                         <div
                           className={cn(
                             "h-full rounded-full transition-all",
-                            compliance >= 70
-                              ? "bg-emerald-500"
-                              : compliance > 0
-                                ? "bg-amber-500"
-                                : "bg-zinc-300",
+                            displayPct == null
+                              ? "bg-zinc-200"
+                              : displayPct >= 70
+                                ? "bg-emerald-500"
+                                : displayPct > 0
+                                  ? "bg-amber-500"
+                                  : "bg-zinc-300",
                           )}
-                          style={{ width: `${compliance}%` }}
+                          style={{ width: `${displayPct ?? 0}%` }}
                         />
                       </div>
                       <p className="mt-2 text-[11px] text-zinc-500">
-                        {b.totalAttempts} attempts · {b.memberCount} members
+                        {hasActivity
+                          ? `${b.totalAttempts} attempts · ${b.memberCount} members`
+                          : `Assigned · ${b.memberCount} members · no attempts yet`}
                       </p>
                     </Link>
                   );

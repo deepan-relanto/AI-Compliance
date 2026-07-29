@@ -1,5 +1,7 @@
 import type { getSql } from "@/lib/db";
 import { slugifyBatchId } from "@/lib/parse-hr-date";
+import { invalidateLearnerAccess } from "@/lib/learner-access-cache";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -13,18 +15,31 @@ export async function syncProgressBatchForEmails(
   const normalized = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
   if (!normalized.length) return 0;
 
-  const rows = await sql`
-    UPDATE assessment_progress ap
-    SET batch_id = u.batch_id,
-        updated_at = NOW()
-    FROM users u
-    WHERE LOWER(ap.user_email) = LOWER(u.email)
-      AND LOWER(u.email) = ANY(${normalized})
-      AND u.batch_id IS NOT NULL
-      AND ap.batch_id IS DISTINCT FROM u.batch_id
-    RETURNING ap.user_email
-  `;
-  return rows.length;
+  const [compliance, course] = await Promise.all([
+    sql`
+      UPDATE assessment_progress ap
+      SET batch_id = u.batch_id,
+          updated_at = NOW()
+      FROM users u
+      WHERE LOWER(ap.user_email) = LOWER(u.email)
+        AND LOWER(u.email) = ANY(${normalized})
+        AND u.batch_id IS NOT NULL
+        AND ap.batch_id IS DISTINCT FROM u.batch_id
+      RETURNING ap.user_email
+    `,
+    sql`
+      UPDATE course_progress cp
+      SET batch_id = u.batch_id,
+          updated_at = NOW()
+      FROM users u
+      WHERE LOWER(cp.user_email) = LOWER(u.email)
+        AND LOWER(u.email) = ANY(${normalized})
+        AND u.batch_id IS NOT NULL
+        AND cp.batch_id IS DISTINCT FROM u.batch_id
+      RETURNING cp.user_email
+    `,
+  ]);
+  return compliance.length + course.length;
 }
 
 export async function syncBatchMemberCount(sql: Sql, batchId: string): Promise<number> {
@@ -36,6 +51,33 @@ export async function syncBatchMemberCount(sql: Sql, batchId: string): Promise<n
     UPDATE batches SET member_count = ${count}, updated_at = NOW() WHERE id = ${batchId}
   `;
   return count;
+}
+
+/** Recompute member_count for every batch from live user roster. */
+export async function syncAllBatchMemberCounts(sql: Sql): Promise<number> {
+  const rows = await sql`
+    UPDATE batches b
+    SET member_count = COALESCE(u.c, 0),
+        updated_at = NOW()
+    FROM (
+      SELECT batch_id, COUNT(*)::int AS c
+      FROM users
+      WHERE role = 'user' AND batch_id IS NOT NULL
+      GROUP BY batch_id
+    ) u
+    WHERE b.id = u.batch_id
+    RETURNING b.id
+  `;
+  // Zero out batches with no users
+  await sql`
+    UPDATE batches b
+    SET member_count = 0, updated_at = NOW()
+    WHERE NOT EXISTS (
+      SELECT 1 FROM users u WHERE u.batch_id = b.id AND u.role = 'user'
+    )
+      AND b.member_count <> 0
+  `;
+  return rows.length;
 }
 
 async function assignEmployeesToBatch(
@@ -68,6 +110,8 @@ async function assignEmployeesToBatch(
     assigned++;
   }
   await syncProgressBatchForEmails(sql, normalized);
+  for (const email of normalized) invalidateLearnerAccess(email);
+  invalidateAdminCaches();
   return assigned;
 }
 
@@ -134,6 +178,8 @@ export async function removeBatchMembers(
   const removedEmails = rows.map((r) => r.email as string);
   if (removedEmails.length) {
     await syncProgressBatchForEmails(sql, removedEmails);
+    for (const email of removedEmails) invalidateLearnerAccess(email);
+    invalidateAdminCaches();
   }
   await syncBatchMemberCount(sql, batchId);
   return rows.length;
