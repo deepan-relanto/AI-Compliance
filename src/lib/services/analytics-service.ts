@@ -9,14 +9,12 @@ import type {
   TimeSeriesPoint,
 } from "@/lib/analytics-types";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
-import { countMcqAnswers, resolveDisplayScorePercent } from "@/lib/progress-score";
+import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 // NOTE: reconcileInvalidProgressScores / reconcilePassedProgressStatus are
-// intentionally NOT called here. Running heavy UPDATE+SELECT repair on every
-// dashboard load added 1-4 s of latency. Run `npm run db:reconcile-progress`
-// as a maintenance job when needed, or call the functions from a dedicated
-// admin action endpoint.
+// intentionally NOT called here. Run `npm run db:reconcile-progress` as a
+// maintenance job when needed.
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -75,251 +73,260 @@ export async function getAnalytics(
   if (track === "course") {
     return getCourseAnalytics(sql);
   }
-  // Reconcile functions intentionally removed from read path — see comment above.
+  return getComplianceAnalytics(sql);
+}
 
-  const [summaryRows, batchRows, seriesRows, moduleRows, statusRows, historyRows] =
-    await Promise.all([
-      sql`
+async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+  // One Neon HTTP round-trip — Promise.all of 6 queries was ~9s due to
+  // serverless HTTP serialization / connection overhead.
+  const rows = await sql`
+    WITH
+    summary AS (
+      SELECT
+        (SELECT COUNT(*)::int FROM users WHERE role = 'user') AS total_learners,
+        (SELECT COUNT(*)::int FROM batches) AS total_batches,
+        (SELECT COUNT(*)::int FROM training_modules WHERE mcq_generation_status = 'completed') AS published_modules,
+        COUNT(*)::int AS total_attempts,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
+        COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
+        COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
+        ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        COALESCE(SUM(warning_count), 0)::int AS total_warnings,
+        COALESCE(SUM(retake_count), 0)::int AS total_retakes
+      FROM assessment_progress
+    ),
+    batch_stats AS (
+      SELECT
+        b.id,
+        b.label,
+        b.member_count,
+        COUNT(ap.id)::int AS total_attempts,
+        COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
+        COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
+        COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
+          / NULLIF(COUNT(ap.id), 0)
+        )::int AS compliance
+      FROM batches b
+      LEFT JOIN assessment_progress ap ON ap.batch_id = b.id
+      WHERE EXISTS (SELECT 1 FROM module_batches mb WHERE mb.batch_id = b.id)
+      GROUP BY b.id, b.label, b.member_count
+    ),
+    series AS (
+      SELECT
+        TO_CHAR(day::date, 'YYYY-MM-DD') AS date,
+        completions::int,
+        failures::int
+      FROM (
         SELECT
-          (SELECT COALESCE(SUM(member_count), 0)::int FROM batches) AS total_learners,
-          (SELECT COUNT(*)::int FROM batches) AS total_batches,
-          (SELECT COUNT(*)::int FROM training_modules WHERE mcq_generation_status = 'completed') AS published_modules,
-          (SELECT COUNT(*)::int FROM assessment_progress) AS total_attempts,
-          (SELECT COUNT(*)::int FROM assessment_progress WHERE status = 'completed') AS completed_count,
-          (SELECT COUNT(*)::int FROM assessment_progress WHERE status IN ('failed', 'permanently_failed')) AS failed_count,
-          (SELECT COUNT(*)::int FROM assessment_progress WHERE status = 'in_progress') AS in_progress_count,
-          (SELECT ROUND(AVG(LEAST(score_percent, 100)))::int FROM assessment_progress WHERE score_percent IS NOT NULL) AS avg_score,
-          (SELECT ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
-          )::int FROM assessment_progress) AS pass_rate,
-          (SELECT COALESCE(SUM(warning_count), 0)::int FROM assessment_progress) AS total_warnings,
-          (SELECT COALESCE(SUM(retake_count), 0)::int FROM assessment_progress) AS total_retakes
-      `,
-      sql`
-        SELECT
-          b.id,
-          b.label,
-          b.member_count,
-          COUNT(ap.id)::int AS total_attempts,
-          COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
-          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
-          COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
-          COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
-          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
-          )::int AS pass_rate,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
-            / NULLIF(COUNT(ap.id), 0)
-          )::int AS compliance
-        FROM batches b
-        LEFT JOIN assessment_progress ap ON ap.batch_id = b.id
-        GROUP BY b.id, b.label, b.member_count
-        ORDER BY b.label
-      `,
-      sql`
-        SELECT
-          TO_CHAR(day::date, 'YYYY-MM-DD') AS date,
-          completions::int,
-          failures::int
-        FROM (
-          SELECT
-            DATE(COALESCE(completed_at, updated_at)) AS day,
-            COUNT(*) FILTER (WHERE status = 'completed') AS completions,
-            COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed')) AS failures
-          FROM assessment_progress
-          WHERE COALESCE(completed_at, updated_at) >= NOW() - INTERVAL '30 days'
-            AND status IN ('completed', 'failed', 'permanently_failed')
-          GROUP BY DATE(COALESCE(completed_at, updated_at))
-        ) sub
-        ORDER BY day
-      `,
-      sql`
-        SELECT
-          ap.module_id,
-          ap.module_title,
-          COUNT(*)::int AS attempt_count,
-          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
-          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
-          )::int AS pass_rate
-        FROM assessment_progress ap
-        GROUP BY ap.module_id, ap.module_title
-        ORDER BY attempt_count DESC, ap.module_title
-      `,
-      sql`
-        SELECT status, COUNT(*)::int AS count
+          DATE(COALESCE(completed_at, updated_at)) AS day,
+          COUNT(*) FILTER (WHERE status = 'completed') AS completions,
+          COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed')) AS failures
         FROM assessment_progress
-        GROUP BY status
-        ORDER BY count DESC
-      `,
-      sql`
-        SELECT
-          ap.user_email,
-          ap.module_id,
-          ap.module_title,
-          ap.batch_id,
-          COALESCE(b.label, ub.label) AS batch_label,
-          ap.status,
-          LEAST(ap.score_percent, 100) AS score_percent,
-          ap.mcq_correct,
-          ap.mcq_total,
-          ap.retake_count,
-          ap.acknowledgement,
-          ap.completed_at,
-          ap.updated_at,
-          ap.last_accessed_at,
-          ap.current_slide,
-          ap.warning_count,
-          ap.mcq_answers
-        FROM assessment_progress ap
-        LEFT JOIN batches b ON b.id = ap.batch_id
-        LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
-        LEFT JOIN batches ub ON ub.id = u.batch_id
-        ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC
-        LIMIT 500
-      `,
-    ]);
+        WHERE COALESCE(completed_at, updated_at) >= NOW() - INTERVAL '30 days'
+          AND status IN ('completed', 'failed', 'permanently_failed')
+        GROUP BY DATE(COALESCE(completed_at, updated_at))
+      ) sub
+    ),
+    module_stats AS (
+      SELECT
+        ap.module_id,
+        ap.module_title,
+        COUNT(*)::int AS attempt_count,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate
+      FROM assessment_progress ap
+      GROUP BY ap.module_id, ap.module_title
+    ),
+    status_stats AS (
+      SELECT status, COUNT(*)::int AS count
+      FROM assessment_progress
+      GROUP BY status
+    ),
+    history AS (
+      SELECT
+        ap.user_email,
+        ap.module_id,
+        ap.module_title,
+        ap.batch_id,
+        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.status,
+        LEAST(ap.score_percent, 100) AS score_percent,
+        ap.mcq_correct,
+        ap.mcq_total,
+        ap.retake_count,
+        ap.acknowledgement,
+        ap.completed_at,
+        ap.updated_at,
+        ap.last_accessed_at,
+        ap.current_slide,
+        ap.warning_count
+      FROM assessment_progress ap
+      LEFT JOIN batches b ON b.id = ap.batch_id
+      ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
+      LIMIT 100
+    )
+    SELECT
+      (SELECT row_to_json(summary.*) FROM summary) AS summary,
+      (SELECT COALESCE(json_agg(batch_stats.* ORDER BY label), '[]'::json) FROM batch_stats) AS batches,
+      (SELECT COALESCE(json_agg(series.* ORDER BY date), '[]'::json) FROM series) AS series,
+      (SELECT COALESCE(json_agg(module_stats.* ORDER BY attempt_count DESC, module_title), '[]'::json) FROM module_stats) AS modules,
+      (SELECT COALESCE(json_agg(status_stats.* ORDER BY count DESC), '[]'::json) FROM status_stats) AS status,
+      (SELECT COALESCE(json_agg(history.*), '[]'::json) FROM history) AS history
+  `;
 
+  const row = rows[0] ?? {};
   return mapAnalyticsRows(
-    summaryRows,
-    batchRows,
-    seriesRows,
-    moduleRows,
-    statusRows,
-    historyRows,
+    [row.summary as Record<string, unknown>].filter(Boolean),
+    (row.batches as Record<string, unknown>[]) ?? [],
+    (row.series as Record<string, unknown>[]) ?? [],
+    (row.modules as Record<string, unknown>[]) ?? [],
+    (row.status as Record<string, unknown>[]) ?? [],
+    (row.history as Record<string, unknown>[]) ?? [],
   );
 }
 
 async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
-  const [summaryRows, batchRows, seriesRows, moduleRows, statusRows, historyRows] =
-    await Promise.all([
-      sql`
-        SELECT
-          (SELECT COALESCE(SUM(b.member_count), 0)::int
-           FROM batches b
-           WHERE EXISTS (
-             SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id
+  const rows = await sql`
+    WITH
+    summary AS (
+      SELECT
+        (SELECT COUNT(*)::int
+         FROM users u
+         WHERE u.role = 'user'
+           AND u.batch_id IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = u.batch_id
            )) AS total_learners,
-          (SELECT COUNT(DISTINCT cmb.batch_id)::int FROM course_module_batches cmb) AS total_batches,
-          (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
-          (SELECT COUNT(*)::int FROM course_progress) AS total_attempts,
-          (SELECT COUNT(*)::int FROM course_progress WHERE status = 'completed') AS completed_count,
-          (SELECT COUNT(*)::int FROM course_progress WHERE status IN ('failed', 'permanently_failed')) AS failed_count,
-          (SELECT COUNT(*)::int FROM course_progress WHERE status = 'in_progress') AS in_progress_count,
-          (SELECT ROUND(AVG(LEAST(score_percent, 100)))::int FROM course_progress WHERE score_percent IS NOT NULL) AS avg_score,
-          (SELECT ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
-          )::int FROM course_progress) AS pass_rate,
-          (SELECT COALESCE(SUM(warning_count), 0)::int FROM course_progress) AS total_warnings,
-          (SELECT COALESCE(SUM(retake_count), 0)::int FROM course_progress) AS total_retakes
-      `,
-      sql`
+        (SELECT COUNT(DISTINCT cmb.batch_id)::int FROM course_module_batches cmb) AS total_batches,
+        (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
+        COUNT(*)::int AS total_attempts,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
+        COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
+        COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
+        ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        COALESCE(SUM(warning_count), 0)::int AS total_warnings,
+        COALESCE(SUM(retake_count), 0)::int AS total_retakes
+      FROM course_progress
+    ),
+    batch_stats AS (
+      SELECT
+        b.id,
+        b.label,
+        b.member_count,
+        COUNT(ap.id)::int AS total_attempts,
+        COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
+        COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
+        COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
+          / NULLIF(COUNT(ap.id), 0)
+        )::int AS compliance
+      FROM batches b
+      LEFT JOIN course_progress ap ON ap.batch_id = b.id
+      WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
+      GROUP BY b.id, b.label, b.member_count
+    ),
+    series AS (
+      SELECT
+        TO_CHAR(day::date, 'YYYY-MM-DD') AS date,
+        completions::int,
+        failures::int
+      FROM (
         SELECT
-          b.id,
-          b.label,
-          b.member_count,
-          COUNT(ap.id)::int AS total_attempts,
-          COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
-          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
-          COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
-          COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
-          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
-          )::int AS pass_rate,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
-            / NULLIF(COUNT(ap.id), 0)
-          )::int AS compliance
-        FROM batches b
-        LEFT JOIN course_progress ap ON ap.batch_id = b.id
-        WHERE EXISTS (
-          SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id
-        )
-        GROUP BY b.id, b.label, b.member_count
-        ORDER BY b.label
-      `,
-      sql`
-        SELECT
-          TO_CHAR(day::date, 'YYYY-MM-DD') AS date,
-          completions::int,
-          failures::int
-        FROM (
-          SELECT
-            DATE(COALESCE(completed_at, updated_at)) AS day,
-            COUNT(*) FILTER (WHERE status = 'completed') AS completions,
-            COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed')) AS failures
-          FROM course_progress
-          WHERE COALESCE(completed_at, updated_at) >= NOW() - INTERVAL '30 days'
-            AND status IN ('completed', 'failed', 'permanently_failed')
-          GROUP BY DATE(COALESCE(completed_at, updated_at))
-        ) sub
-        ORDER BY day
-      `,
-      sql`
-        SELECT
-          ap.module_id,
-          ap.module_title,
-          COUNT(*)::int AS attempt_count,
-          COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
-          ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
-          ROUND(
-            100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
-            / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
-          )::int AS pass_rate
-        FROM course_progress ap
-        GROUP BY ap.module_id, ap.module_title
-        ORDER BY attempt_count DESC, ap.module_title
-      `,
-      sql`
-        SELECT status, COUNT(*)::int AS count
+          DATE(COALESCE(completed_at, updated_at)) AS day,
+          COUNT(*) FILTER (WHERE status = 'completed') AS completions,
+          COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed')) AS failures
         FROM course_progress
-        GROUP BY status
-        ORDER BY count DESC
-      `,
-      sql`
-        SELECT
-          ap.user_email,
-          ap.module_id,
-          ap.module_title,
-          ap.batch_id,
-          COALESCE(b.label, ub.label) AS batch_label,
-          ap.status,
-          LEAST(ap.score_percent, 100) AS score_percent,
-          ap.mcq_correct,
-          ap.mcq_total,
-          ap.retake_count,
-          ap.acknowledgement,
-          ap.completed_at,
-          ap.updated_at,
-          ap.last_accessed_at,
-          ap.current_slide,
-          ap.warning_count,
-          ap.mcq_answers
-        FROM course_progress ap
-        LEFT JOIN batches b ON b.id = ap.batch_id
-        LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
-        LEFT JOIN batches ub ON ub.id = u.batch_id
-        ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC
-        LIMIT 500
-      `,
-    ]);
+        WHERE COALESCE(completed_at, updated_at) >= NOW() - INTERVAL '30 days'
+          AND status IN ('completed', 'failed', 'permanently_failed')
+        GROUP BY DATE(COALESCE(completed_at, updated_at))
+      ) sub
+    ),
+    module_stats AS (
+      SELECT
+        ap.module_id,
+        ap.module_title,
+        COUNT(*)::int AS attempt_count,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate
+      FROM course_progress ap
+      GROUP BY ap.module_id, ap.module_title
+    ),
+    status_stats AS (
+      SELECT status, COUNT(*)::int AS count
+      FROM course_progress
+      GROUP BY status
+    ),
+    history AS (
+      SELECT
+        ap.user_email,
+        ap.module_id,
+        ap.module_title,
+        ap.batch_id,
+        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.status,
+        LEAST(ap.score_percent, 100) AS score_percent,
+        ap.mcq_correct,
+        ap.mcq_total,
+        ap.retake_count,
+        ap.acknowledgement,
+        ap.completed_at,
+        ap.updated_at,
+        ap.last_accessed_at,
+        ap.current_slide,
+        ap.warning_count
+      FROM course_progress ap
+      LEFT JOIN batches b ON b.id = ap.batch_id
+      ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
+      LIMIT 100
+    )
+    SELECT
+      (SELECT row_to_json(summary.*) FROM summary) AS summary,
+      (SELECT COALESCE(json_agg(batch_stats.* ORDER BY label), '[]'::json) FROM batch_stats) AS batches,
+      (SELECT COALESCE(json_agg(series.* ORDER BY date), '[]'::json) FROM series) AS series,
+      (SELECT COALESCE(json_agg(module_stats.* ORDER BY attempt_count DESC, module_title), '[]'::json) FROM module_stats) AS modules,
+      (SELECT COALESCE(json_agg(status_stats.* ORDER BY count DESC), '[]'::json) FROM status_stats) AS status,
+      (SELECT COALESCE(json_agg(history.*), '[]'::json) FROM history) AS history
+  `;
 
+  const row = rows[0] ?? {};
   return mapAnalyticsRows(
-    summaryRows,
-    batchRows,
-    seriesRows,
-    moduleRows,
-    statusRows,
-    historyRows,
+    [row.summary as Record<string, unknown>].filter(Boolean),
+    (row.batches as Record<string, unknown>[]) ?? [],
+    (row.series as Record<string, unknown>[]) ?? [],
+    (row.modules as Record<string, unknown>[]) ?? [],
+    (row.status as Record<string, unknown>[]) ?? [],
+    (row.history as Record<string, unknown>[]) ?? [],
   );
 }
 
@@ -331,7 +338,7 @@ function mapAnalyticsRows(
   statusRows: Record<string, unknown>[],
   historyRows: Record<string, unknown>[],
 ): AnalyticsPayload {
-  const s = summaryRows[0];
+  const s = summaryRows[0] ?? {};
   const summary: AnalyticsSummary = {
     totalLearners: Number(s.total_learners ?? 0),
     totalBatches: Number(s.total_batches ?? 0),
@@ -400,9 +407,7 @@ function mapAnalyticsRows(
       {
         lastAccessedAt: (r.last_accessed_at as string) ?? null,
         currentSlide: Number(r.current_slide ?? 0),
-        answerCount: countMcqAnswers(
-          r.mcq_answers as Record<string, boolean> | null,
-        ),
+        answerCount: mcqCorrect,
         warningCount: Number(r.warning_count ?? 0),
       },
     );

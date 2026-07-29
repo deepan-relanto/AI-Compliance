@@ -3,12 +3,15 @@
  * Keeps course bundles (modules, steps, MCQs, assets).
  * Does NOT touch security compliance tables.
  *
- * Usage: node scripts/db-clear-course-assignments-monitoring.mjs
+ * Usage:
+ *   node scripts/db-clear-course-assignments-monitoring.mjs --dry-run
+ *   node scripts/db-clear-course-assignments-monitoring.mjs --confirm
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
@@ -39,6 +42,10 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+const { dryRun } = requireDestructiveConfirm("db-clear-course-assignments-monitoring.mjs", {
+  description: "Clears ALL course assignments + course learner/monitoring state (keeps course bundles).",
+});
+
 const sql = postgres(process.env.DATABASE_URL, { ssl: "require", max: 1 });
 
 console.log("Clearing course assignments + monitoring (keeping course bundles)…\n");
@@ -56,6 +63,20 @@ const before = await sql`
     (SELECT COUNT(*)::int FROM assessment_progress) AS compliance_progress
 `;
 console.log("BEFORE:", before[0]);
+
+if (dryRun) {
+  const b = before[0];
+  console.log("\n[dry-run] Would delete:");
+  console.log(`  course_notifications: ${b.notifications}`);
+  console.log(`  course_feedback_entries: ${b.feedback}`);
+  console.log(`  course_review_requests: ${b.reviews}`);
+  console.log(`  course_progress: ${b.progress}`);
+  console.log(`  course_audit_logs: ${b.audit_logs}`);
+  console.log(`  course_module_batches: ${b.assignments}`);
+  console.log("\nNo changes written. Pass --confirm to execute.");
+  await sql.end();
+  process.exit(0);
+}
 
 const n = await sql`DELETE FROM course_notifications RETURNING id`;
 const f = await sql`DELETE FROM course_feedback_entries RETURNING id`;

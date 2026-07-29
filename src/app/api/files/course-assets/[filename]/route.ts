@@ -112,6 +112,25 @@ async function serveAsset(req: NextRequest, filename: string) {
   const isHead = req.method === "HEAD";
 
   try {
+    const { getSql } = await import("@/lib/db");
+    const { requireAdminSession } = await import("@/lib/api-admin");
+    const { canAccessCourseAsset } = await import(
+      "@/lib/services/file-access-service"
+    );
+    const admin = await requireAdminSession();
+    const allowed = await canAccessCourseAsset(
+      getSql(),
+      session.email,
+      assetUrl,
+      !admin.error,
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, message: "Not authorized for this asset." },
+        { status: 403 },
+      );
+    }
+
     const meta = await getCourseAssetMeta(assetUrl);
     const rangeHeader = req.headers.get("range");
 

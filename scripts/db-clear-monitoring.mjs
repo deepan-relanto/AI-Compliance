@@ -1,11 +1,14 @@
 /**
  * Clears monitoring-related database tables.
- * Usage: npm run db:clear-monitoring
+ * Usage:
+ *   npm run db:clear-monitoring -- --dry-run
+ *   npm run db:clear-monitoring -- --confirm
  */
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -45,9 +48,33 @@ if (!url) {
   process.exit(1);
 }
 
+const { dryRun } = requireDestructiveConfirm("db-clear-monitoring.mjs", {
+  description: "Clears monitoring-related database tables.",
+});
+
 const sql = neon(url);
 
 console.log("🧹 Clearing monitoring data…");
+
+if (dryRun) {
+  const counts = await sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM assessment_progress) AS assessment_progress,
+      (SELECT COUNT(*)::int FROM review_requests) AS review_requests,
+      (SELECT COUNT(*)::int FROM audit_logs) AS audit_logs,
+      (SELECT COUNT(*)::int FROM live_sessions) AS live_sessions,
+      (SELECT COUNT(*)::int FROM batches) AS batches
+  `;
+  const c = counts[0];
+  console.log("[dry-run] Would delete:");
+  console.log(`  · assessment_progress: ${c.assessment_progress} row(s)`);
+  console.log(`  · review_requests: ${c.review_requests} row(s)`);
+  console.log(`  · audit_logs: ${c.audit_logs} row(s)`);
+  console.log(`  · live_sessions: ${c.live_sessions} row(s)`);
+  console.log(`  · batches: reset active_sessions on ${c.batches} row(s)`);
+  console.log("\nNo changes written. Pass --confirm to execute.");
+  process.exit(0);
+}
 
 const progress = await sql`DELETE FROM assessment_progress RETURNING id`;
 console.log(`  · assessment_progress: ${progress.length} row(s)`);

@@ -10,7 +10,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import type { BatchPerformancePayload } from "@/lib/batch-performance-types";
 import { Users } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type Track = "compliance" | "course";
@@ -18,11 +18,29 @@ type Track = "compliance" | "course";
 export default function BatchAnalyticsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const batchId = typeof params.batchId === "string" ? params.batchId : "";
-  const [track, setTrack] = useState<Track>("compliance");
+  const trackParam = searchParams.get("track");
+  const [track, setTrack] = useState<Track>(
+    trackParam === "course" ? "course" : "compliance",
+  );
   const [data, setData] = useState<BatchPerformancePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTrack(trackParam === "course" ? "course" : "compliance");
+  }, [trackParam]);
+
+  const onTrackChange = useCallback(
+    (next: Track) => {
+      setTrack(next);
+      const qs = new URLSearchParams(searchParams.toString());
+      qs.set("track", next);
+      router.replace(`?${qs.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const load = useCallback(() => {
     if (!batchId) return;
@@ -74,7 +92,7 @@ export default function BatchAnalyticsPage() {
         backLabel="Analytics"
       >
         <div className="mb-6 space-y-3">
-          <TrackSegmentedControl value={track} onChange={setTrack} />
+          <TrackSegmentedControl value={track} onChange={onTrackChange} />
           {data && (
             <div>
               <Link

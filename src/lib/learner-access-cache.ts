@@ -52,3 +52,15 @@ export function invalidateLearnerAccess(email: string, moduleId?: string): void 
     if (k.startsWith(prefix)) cache.delete(k);
   }
 }
+
+/** Drop every cached allow for a module (e.g. after publish/unassign). */
+export function invalidateLearnerAccessForModule(moduleId: string): void {
+  const suffix = `::${moduleId}`;
+  for (const k of cache.keys()) {
+    if (k.endsWith(suffix)) cache.delete(k);
+  }
+}
+
+export function clearLearnerAccessCache(): void {
+  cache.clear();
+}

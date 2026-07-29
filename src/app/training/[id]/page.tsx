@@ -7,7 +7,7 @@ import type { McqQuestion, TrainingModule } from "@/lib/types";
 import { useAuthStore } from "@/lib/auth-store";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -23,6 +23,7 @@ const CoursePlayer = dynamic(() => preloadCoursePlayer(), { ssr: false });
 export default function TrainingPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const [freshStart, setFreshStart] = useState(false);
   const isHydrated = useAuthStore((s) => s.isHydrated);
@@ -47,9 +48,11 @@ export default function TrainingPage() {
 
   useEffect(() => {
     if (!id || !authReady) return;
-    const query = user?.username
-      ? `?userEmail=${encodeURIComponent(user.username)}`
-      : "";
+    const qs = new URLSearchParams();
+    if (user?.username) qs.set("userEmail", user.username);
+    const forEmail = searchParams.get("forEmail");
+    if (forEmail) qs.set("forEmail", forEmail);
+    const query = qs.toString() ? `?${qs.toString()}` : "";
     const controller = new AbortController();
     fetch(`/api/modules/${encodeURIComponent(id)}${query}`, {
       signal: controller.signal,
@@ -90,7 +93,7 @@ export default function TrainingPage() {
         }
       });
     return () => controller.abort();
-  }, [id, user?.username, authReady]);
+  }, [id, user?.username, authReady, searchParams]);
 
   useEffect(() => {
     if (!authReady || !ready) return;

@@ -1,3 +1,5 @@
+import { requireAdminSession } from "@/lib/api-admin";
+import { requireSessionEmail } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { clientPdfUrl } from "@/lib/pdf-url";
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +32,28 @@ export async function GET(req: NextRequest) {
         { ok: false, error: "batchId query parameter is required." },
         { status: 400 },
       );
+    }
+
+    const session = await requireSessionEmail();
+    if (!session.ok) return session.response;
+
+    const admin = await requireAdminSession();
+    const isAdmin = !admin.error;
+
+    if (!isAdmin) {
+      const sql = getSql();
+      const me = await sql`
+        SELECT batch_id FROM users
+        WHERE LOWER(email) = LOWER(${session.email})
+        LIMIT 1
+      `;
+      const myBatch = (me[0]?.batch_id as string | null) ?? null;
+      if (!myBatch || myBatch !== batchId) {
+        return NextResponse.json(
+          { ok: false, error: "You can only list modules for your own batch." },
+          { status: 403 },
+        );
+      }
     }
 
     const sql = getSql();

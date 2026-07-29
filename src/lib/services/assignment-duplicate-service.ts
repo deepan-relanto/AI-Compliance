@@ -48,6 +48,41 @@ export async function findAssignmentBatchConflicts(
   }));
 }
 
+/** Same for course bundles (course_modules / course_module_batches). */
+export async function findCourseAssignmentBatchConflicts(
+  sql: Sql,
+  params: {
+    title: string;
+    batchIds: string[];
+    excludeModuleId?: string | null;
+  },
+): Promise<AssignmentBatchConflict[]> {
+  const normalized = normalizeAssignmentTitle(params.title);
+  if (!normalized || params.batchIds.length === 0) return [];
+
+  const rows = await sql`
+    SELECT
+      b.id AS batch_id,
+      b.label AS batch_label,
+      cm.id AS module_id,
+      cm.title AS module_title
+    FROM course_module_batches cmb
+    INNER JOIN course_modules cm ON cm.id = cmb.module_id
+    INNER JOIN batches b ON b.id = cmb.batch_id
+    WHERE LOWER(TRIM(cm.title)) = ${normalized}
+      AND cmb.batch_id = ANY(${params.batchIds}::text[])
+      AND (${params.excludeModuleId ?? null}::text IS NULL OR cm.id <> ${params.excludeModuleId ?? null})
+    ORDER BY b.label, cm.title
+  `;
+
+  return rows.map((row) => ({
+    batchId: row.batch_id as string,
+    batchLabel: row.batch_label as string,
+    moduleId: row.module_id as string,
+    moduleTitle: row.module_title as string,
+  }));
+}
+
 export function formatAssignmentConflictMessage(
   conflicts: AssignmentBatchConflict[],
   assignmentTitle: string,

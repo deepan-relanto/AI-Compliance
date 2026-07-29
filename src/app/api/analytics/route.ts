@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     const sql = getSql();
     const data = await getAnalytics(sql, track);
-    cacheSet(cacheKey, data, 45);
+    cacheSet(cacheKey, data, 120);
     return NextResponse.json(
       { ok: true, ...data, track },
       { headers: { "X-Cache": "MISS" } },

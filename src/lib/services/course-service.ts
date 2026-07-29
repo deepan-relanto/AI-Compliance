@@ -299,6 +299,21 @@ export async function publishCourseModuleDb(
     ? (await sql`SELECT id FROM batches`).map((r) => r.id as string)
     : batchIds;
 
+  const titleRows = await sql`
+    SELECT title FROM course_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  const title = (titleRows[0]?.title as string) ?? "";
+  const { findCourseAssignmentBatchConflicts, formatAssignmentConflictMessage } =
+    await import("@/lib/services/assignment-duplicate-service");
+  const conflicts = await findCourseAssignmentBatchConflicts(sql, {
+    title,
+    batchIds: ids,
+    excludeModuleId: moduleId,
+  });
+  if (conflicts.length) {
+    throw new Error(formatAssignmentConflictMessage(conflicts, title));
+  }
+
   // Clear prior invite history so republish emails go out again
   await sql`
     DELETE FROM course_notifications
@@ -313,6 +328,11 @@ export async function publishCourseModuleDb(
       ON CONFLICT DO NOTHING
     `;
   }
+
+  const { invalidateLearnerAccessForModule } = await import(
+    "@/lib/learner-access-cache"
+  );
+  invalidateLearnerAccessForModule(moduleId);
 
   await sql`
     UPDATE course_modules

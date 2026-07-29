@@ -115,7 +115,7 @@ export function LoginForm() {
       if (wrongAccount) {
         await signOut({ redirect: false });
       }
-      const postLogin = resolvePostLoginPath(rawCallback, undefined);
+      const postLogin = resolvePostLoginPath(rawCallback, undefined, forEmail);
       const authParams = isTraining ? { prompt: "select_account" as const } : undefined;
       await signIn(
         "microsoft-entra-id",
@@ -128,7 +128,7 @@ export function LoginForm() {
     } finally {
       setLoading(false);
     }
-  }, [authConfigured, rawCallback, isTraining, wrongAccount]);
+  }, [authConfigured, rawCallback, isTraining, wrongAccount, forEmail]);
 
   return (
     <motion.div

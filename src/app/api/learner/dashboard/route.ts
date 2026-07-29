@@ -98,10 +98,18 @@ export async function GET() {
       ),
     );
 
+    const moduleIds = new Set([
+      ...complianceModules.map((m) => m.id),
+      ...courseModules.map((m) => m.id),
+    ]);
+    const progress = [...complianceProgress, ...courseProgress].filter((p) =>
+      moduleIds.has(p.moduleId),
+    );
+
     return NextResponse.json({
       ok: true,
       modules: [...complianceModules, ...courseModules],
-      progress: [...complianceProgress, ...courseProgress],
+      progress,
       batchId,
       displayName,
       role,
