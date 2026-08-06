@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Responsible AI & Ethics · Mind Map · Relanto</title>
+    <style>
+      /* Tokens from compliance_agent_v2/src/app/globals.css */
+      :root {
+        --background: #f8f9fb;
+        --foreground: #18181b;
+        --muted: #71717a;
+        --muted-foreground: #a1a1aa;
+        --border: #e4e4e7;
+        --surface: #ffffff;
+        --brand: #2e3192;
+        --brand-light: #3d42a8;
+        --accent: #f15a24;
+        --accent-light: #ff6b35;
+        --shadow-crisp: 0 1px 2px rgba(24, 24, 27, 0.05), 0 0 0 1px rgba(24, 24, 27, 0.04);
+        --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04), 0 4px 20px rgba(24, 24, 27, 0.06);
+        --shadow-elevated: 0 16px 48px rgba(46, 49, 146, 0.1), 0 0 0 1px rgba(24, 24, 27, 0.04);
+        --radius-card: 0.75rem;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+        letter-spacing: -0.011em;
+        color: var(--foreground);
+        background: var(--background);
+        -webkit-font-smoothing: antialiased;
+        user-select: none;
+      }
+
+      body {
+        background-color: var(--background);
+        background-image:
+          radial-gradient(ellipse 90% 60% at 50% -15%, rgba(46, 49, 146, 0.07), transparent),
+          radial-gradient(ellipse 50% 40% at 100% 0%, rgba(241, 90, 36, 0.04), transparent),
+          linear-gradient(to bottom, #f8f9fb, #f4f4f5);
+      }
+
+      #viewport::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.5;
+        background-image:
+          linear-gradient(#ececee 1px, transparent 1px),
+          linear-gradient(90deg, #ececee 1px, transparent 1px);
+        background-size: 32px 32px;
+        mask-image: radial-gradient(ellipse 75% 65% at 40% 45%, #000 15%, transparent 85%);
+      }
+
+      #shell { position: relative; height: 100%; }
+
+      #topbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 18px;
+        border-bottom: 1px solid rgba(228, 228, 231, 0.7);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px) saturate(150%);
+        -webkit-backdrop-filter: blur(20px) saturate(150%);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .brand img { width: 32px; height: 32px; object-fit: contain; }
+
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.15;
+      }
+
+      .brand-copy strong {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--brand);
+      }
+
+      .brand-copy span {
+        margin-top: 2px;
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #71717a;
+      }
+
+      .divider {
+        width: 1px;
+        height: 28px;
+        background: #e4e4e7;
+        flex-shrink: 0;
+      }
+
+      .module-meta { min-width: 0; }
+
+      .eyebrow {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+
+      .module-title {
+        margin-top: 1px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: #18181b;
+        white-space: nowrap;
+      }
+
+      #search {
+        flex: 1;
+        min-width: 140px;
+        max-width: 360px;
+        height: 36px;
+        margin-left: auto;
+        padding: 0 12px;
+        border-radius: 0.5rem;
+        border: 1px solid #e4e4e7;
+        background: #fff;
+        color: #18181b;
+        font-size: 13px;
+        outline: none;
+        box-shadow: var(--shadow-crisp);
+        caret-color: auto;
+        user-select: text;
+        cursor: text;
+      }
+
+      #search::placeholder { color: #a1a1aa; }
+
+      #search:focus {
+        border-color: rgba(46, 49, 146, 0.4);
+        box-shadow: 0 0 0 3px rgba(46, 49, 146, 0.15);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 0.5rem;
+        border: 1px solid #e4e4e7;
+        background: #fff;
+        color: #3f3f46;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        cursor: pointer;
+        transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+        box-shadow: 0 1px 2px rgba(24, 24, 27, 0.04);
+      }
+
+      button:hover {
+        background: #fafafa;
+        border-color: #d4d4d8;
+        color: #18181b;
+      }
+
+      button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(46, 49, 146, 0.4);
+      }
+
+      button.primary {
+        background: #2e3192;
+        border-color: #2e3192;
+        color: #fff;
+      }
+
+      button.primary:hover {
+        background: #3d42a8;
+        border-color: #3d42a8;
+        color: #fff;
+      }
+
+      button.accent {
+        background: #f15a24;
+        border-color: #f15a24;
+        color: #fff;
+      }
+
+      button.accent:hover {
+        background: #ff6b35;
+        border-color: #ff6b35;
+        color: #fff;
+      }
+
+      #viewport {
+        position: absolute;
+        inset: 0;
+        top: 61px;
+        overflow: hidden;
+        cursor: grab;
+      }
+
+      #viewport.dragging { cursor: grabbing; }
+
+      #canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform-origin: 0 0;
+        will-change: transform;
+      }
+
+      #svg { display: block; overflow: visible; }
+
+      .link {
+        fill: none;
+        stroke: #2e3192;
+        stroke-width: 2.25;
+        opacity: 1;
+        marker-end: url(#arrowEnd);
+      }
+
+      .node { cursor: pointer; }
+
+      .node-rect { filter: url(#nodeShadow); }
+
+      .node-rect.root {
+        fill: url(#rootFill);
+        stroke: transparent;
+      }
+
+      .node-rect.branch {
+        fill: #ffffff;
+        stroke: rgba(46, 49, 146, 0.16);
+        stroke-width: 1.35;
+      }
+
+      .node-rect.mid {
+        fill: #ffffff;
+        stroke: rgba(46, 49, 146, 0.18);
+        stroke-width: 1.15;
+      }
+
+      .node-rect.leaf {
+        fill: #ffffff;
+        stroke: rgba(24, 24, 27, 0.08);
+        stroke-width: 1.1;
+      }
+
+      .node-rect.highlight {
+        stroke: #f15a24;
+        stroke-width: 2;
+        filter: url(#nodeShadow), drop-shadow(0 0 8px rgba(241, 90, 36, 0.25));
+      }
+
+      .node-label {
+        pointer-events: none;
+        font-family: inherit;
+        letter-spacing: -0.015em;
+      }
+
+      .node-label.root {
+        fill: #ffffff;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .node-label.branch {
+        fill: #2e3192;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .node-label.mid {
+        fill: #27272a;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+
+      .node-label.leaf {
+        fill: #3f3f46;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .toggle {
+        fill: #fff;
+        stroke: #f15a24;
+        stroke-width: 1.5;
+      }
+
+      .toggle-fill {
+        fill: #ffffff;
+        stroke: #f15a24;
+        stroke-width: 1.6;
+      }
+
+      .toggle-chevron {
+        fill: none;
+        stroke: #f15a24;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      #hint, #zoomBadge {
+        position: fixed;
+        z-index: 25;
+        border-radius: var(--radius-card);
+        background: #fff;
+        border: 1px solid rgba(228, 228, 231, 0.8);
+        box-shadow: var(--shadow-card);
+      }
+
+      #hint {
+        left: 16px;
+        bottom: 16px;
+        max-width: min(480px, calc(100vw - 32px));
+        padding: 12px 14px;
+        color: #71717a;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      #hint .label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #f15a24;
+      }
+
+      #hint strong { color: #2e3192; font-weight: 600; }
+
+      #zoomBadge {
+        right: 16px;
+        bottom: 16px;
+        min-width: 64px;
+        padding: 8px 12px;
+        text-align: center;
+        color: #2e3192;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      @media (max-width: 900px) {
+        #topbar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+        .divider, .module-meta { display: none; }
+        #search { order: 3; margin-left: 0; max-width: none; width: 100%; }
+        #viewport { top: 108px; }
+      }
+
+      body.embed #topbar,
+      body.embed #hint,
+      body.embed #zoomBadge {
+        display: none !important;
+      }
+
+      body.embed #viewport {
+        top: 0 !important;
+      }
+
+      body.embed {
+        background: var(--background);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shell">
+      <header id="topbar">
+        <div class="brand">
+          <img src="/relanto-logo.png" alt="Relanto" onerror="this.src='./assets/relanto-logo.png'; this.onerror=null;" />
+          <div class="brand-copy">
+            <strong>Relanto</strong>
+            <span>Compliance Agent</span>
+          </div>
+        </div>
+        <div class="divider" aria-hidden="true"></div>
+        <div class="module-meta">
+          <div class="eyebrow">Course mind map</div>
+          <div class="module-title">Responsible AI &amp; Ethics</div>
+        </div>
+        <input id="search" type="search" placeholder="Search topics…" autocomplete="off" aria-label="Search mind map topics" />
+        <div class="actions">
+          <button id="resetBtn" type="button">Reset</button>
+          <button id="collapseAllBtn" type="button">Collapse</button>
+          <button id="expandAllBtn" type="button" class="primary">Expand all</button>
+          <button id="fitBtn" type="button" class="accent">Fit</button>
+        </div>
+      </header>
+
+      <div id="viewport" aria-label="Interactive mind map canvas">
+        <div id="canvas">
+          <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Responsible AI and Ethics mind map"></svg>
+        </div>
+      </div>
+
+      <aside id="hint">
+        <span class="label">How to explore</span>
+        Drag to pan · Scroll to zoom · Click a node (or its orange toggle) to expand or collapse ·
+        Search highlights matches in <strong>Relanto</strong> orange
+      </aside>
+      <div id="zoomBadge" aria-live="polite">100%</div>
+    </div>
+
+    <script>
+      /**
+       * Responsible AI & Ethics mind map (Module 2).
+       * Branches align with Topic2 PDF + NotebookLM overview:
+       * Core Principles → Fairness & Bias → Human Accountability →
+       * Ethical Decision Framework (PACT) → Misuse & Risks → Workplace Best Practices
+       */
+      const MINDMAP_DATA = {
+        id: "root",
+        label: "Responsible AI & Ethics",
+        children: [
+          {
+            id: "core-principles",
+            label: "Core Principles",
+            children: [
+              {
+                id: "fairness",
+                label: "Fairness",
+                children: [
+                  { id: "fair-no-disadvantage", label: "No systematic disadvantage" },
+                  { id: "fair-review-skew", label: "Review rankings for skew" },
+                ],
+              },
+              {
+                id: "transparency",
+                label: "Transparency",
+                children: [
+                  { id: "trans-disclose", label: "Disclose AI involvement" },
+                  { id: "trans-label-bots", label: "Label bots honestly" },
+                ],
+              },
+              {
+                id: "explainability",
+                label: "Explainability",
+                children: [
+                  { id: "exp-people-decisions", label: "People decisions must be clear" },
+                  { id: "exp-no-score-only", label: "Not “the system scored lower”" },
+                ],
+              },
+              {
+                id: "accountability",
+                label: "Accountability",
+                children: [
+                  { id: "acc-named-human", label: "Named human answers for outcomes" },
+                  { id: "acc-you-sign-off", label: "You sign off on AI-assisted work" },
+                ],
+              },
+              {
+                id: "human-oversight",
+                label: "Human Oversight",
+                children: [
+                  { id: "ho-recommend", label: "AI may recommend" },
+                  { id: "ho-person-decides", label: "A person decides — and can overrule" },
+                ],
+              },
+              {
+                id: "privacy-safety",
+                label: "Privacy & Safety",
+                children: [
+                  { id: "ps-protect-data", label: "Protect people’s data" },
+                  { id: "ps-wellbeing", label: "Protect wellbeing (deep dive in Module 3)" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "fairness-bias",
+            label: "Fairness and Bias",
+            children: [
+              {
+                id: "learned-patterns",
+                label: "Learned Historical Patterns",
+                children: [
+                  { id: "lp-training-data", label: "Enters through training data" },
+                  { id: "lp-not-coded", label: "Usually not coded on purpose" },
+                ],
+              },
+              {
+                id: "systematic-disadvantage",
+                label: "Systematic Disadvantage",
+                children: [
+                  { id: "sd-groups", label: "Can skew against groups" },
+                  { id: "sd-cv-example", label: "Example: biased CV screening" },
+                ],
+              },
+              {
+                id: "output-warning-signs",
+                label: "Output Skew Warning Signs",
+                children: [
+                  { id: "ows-imagery", label: "Stereotyped imagery" },
+                  { id: "ows-tone", label: "Skewed tone or priorities" },
+                  { id: "ows-summaries", label: "Uneven credit in summaries" },
+                ],
+              },
+              {
+                id: "second-eye",
+                label: "Second-Eye Review",
+                children: [
+                  { id: "se-people-output", label: "If output involves people — check fairness" },
+                  { id: "se-ask-colleague", label: "Unsure? Get a second pair of eyes" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "human-accountability",
+            label: "Human Accountability",
+            children: [
+              {
+                id: "individual-ownership",
+                label: "Individual Ownership",
+                children: [
+                  { id: "io-you-own", label: "You own what you send or publish" },
+                  { id: "io-no-delegate", label: "Cannot delegate responsibility to software" },
+                ],
+              },
+              {
+                id: "software-not-accountable",
+                label: "Software Is Not Accountable",
+                children: [
+                  { id: "sna-no-apology", label: "Software cannot apologize to a regulator" },
+                  { id: "sna-org-answers", label: "People and the org answer for outcomes" },
+                ],
+              },
+              {
+                id: "automation-bias",
+                label: "Automation Bias Risk",
+                children: [
+                  { id: "ab-overtrust", label: "Over-trusting machine suggestions" },
+                  { id: "ab-rubber-stamp", label: "Rubber-stamp approvals" },
+                ],
+              },
+              {
+                id: "meaningful-control",
+                label: "Meaningful Control",
+                children: [
+                  { id: "mc-time", label: "Time to review" },
+                  { id: "mc-info", label: "Information to decide" },
+                  { id: "mc-authority", label: "Authority to disagree" },
+                ],
+              },
+              {
+                id: "oversight-by-stakes",
+                label: "Oversight by Stakes",
+                children: [
+                  { id: "obs-low", label: "Low: quick read-through" },
+                  { id: "obs-medium", label: "Medium: full fact-check + approval" },
+                  { id: "obs-high", label: "High: documented human decision" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "pact-framework",
+            label: "Ethical Decision Framework (PACT)",
+            children: [
+              {
+                id: "pact-permission",
+                label: "Permission",
+                children: [
+                  { id: "p-policy", label: "Allowed by policy?" },
+                  { id: "p-approved-tool", label: "Approved tool?" },
+                  { id: "p-data-ok", label: "Data appropriate to share?" },
+                ],
+              },
+              {
+                id: "pact-accuracy",
+                label: "Accuracy & Fairness",
+                children: [
+                  { id: "a-verified", label: "Output verified?" },
+                  { id: "a-bias-check", label: "Could it skew against anyone affected?" },
+                ],
+              },
+              {
+                id: "pact-candor",
+                label: "Candor",
+                children: [
+                  { id: "c-comfort", label: "Comfortable if everyone knew how AI was used?" },
+                  { id: "c-disclose", label: "Disclose when trust depends on it" },
+                ],
+              },
+              {
+                id: "pact-takeover",
+                label: "Takeover",
+                children: [
+                  { id: "t-human-decision", label: "Human still makes the consequential call?" },
+                  { id: "t-overrule", label: "Authority to overrule the AI?" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "misuse-risks",
+            label: "Misuse and Risks",
+            children: [
+              {
+                id: "deception",
+                label: "Deception",
+                children: [
+                  { id: "dec-fake-testimonials", label: "Fake testimonials / case studies" },
+                  { id: "dec-impersonation", label: "Unauthorized impersonation" },
+                ],
+              },
+              {
+                id: "manipulation",
+                label: "Manipulation",
+                children: [
+                  { id: "man-misleading", label: "Misleading content at scale" },
+                  { id: "man-pressure", label: "Exploiting pressure / astroturfing" },
+                ],
+              },
+              {
+                id: "harassment",
+                label: "Harassment",
+                children: [
+                  { id: "har-mock", label: "Mocking or demeaning others" },
+                  { id: "har-fabricate", label: "Fabricating claims about people" },
+                ],
+              },
+              {
+                id: "dishonesty",
+                label: "Dishonesty",
+                children: [
+                  { id: "dis-pass-off", label: "Passing AI off as independent expertise" },
+                  { id: "dis-circumvention", label: "Circumventing safety / approved tools" },
+                ],
+              },
+              {
+                id: "deepfakes",
+                label: "Deepfakes",
+                children: [
+                  { id: "df-voice", label: "Voice cloning" },
+                  { id: "df-likeness", label: "Likeness impersonation" },
+                  { id: "df-urgency", label: "Urgency + secrecy red flags" },
+                  { id: "df-verify", label: "Out-of-band verify, then report" },
+                ],
+              },
+              {
+                id: "copyright",
+                label: "Copyright",
+                children: [
+                  { id: "cr-input", label: "Input: rights to use the source" },
+                  { id: "cr-output", label: "Output: originality / brand checks" },
+                  { id: "cr-ownership", label: "Ownership can be ambiguous — ask Legal" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "workplace-best-practices",
+            label: "Workplace Best Practices",
+            children: [
+              {
+                id: "label-chatbots",
+                label: "Label Chatbots",
+                children: [
+                  { id: "lc-identify", label: "Identify virtual assistants" },
+                  { id: "lc-never-human", label: "Never claim to be human" },
+                ],
+              },
+              {
+                id: "disclose-assistance",
+                label: "Disclose AI Assistance",
+                children: [
+                  { id: "da-policy", label: "Where policy or trust requires it" },
+                  { id: "da-recipients", label: "Be clear with recipients / teams" },
+                ],
+              },
+              {
+                id: "source-benchmarks",
+                label: "Source Benchmarks & Stats",
+                children: [
+                  { id: "sb-no-invented", label: "No AI-invented “industry facts”" },
+                  { id: "sb-verify", label: "Verify claims before sending" },
+                ],
+              },
+              {
+                id: "informed-consent",
+                label: "Informed Consent for Likeness",
+                children: [
+                  { id: "ic-voice-face", label: "Voice / face only with approval" },
+                  { id: "ic-no-joke", label: "Not even “as a joke”" },
+                ],
+              },
+              {
+                id: "report-bias",
+                label: "Report Systemic Bias",
+                children: [
+                  { id: "rb-document", label: "Document patterns" },
+                  { id: "rb-owner", label: "Tell the tool / process owner" },
+                ],
+              },
+              {
+                id: "match-review",
+                label: "Match Review to Impact",
+                children: [
+                  { id: "mr-people", label: "More scrutiny for people decisions" },
+                  { id: "mr-money-rep", label: "More scrutiny for money / reputation" },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const viewport = document.getElementById("viewport");
+      const canvas = document.getElementById("canvas");
+      const svg = document.getElementById("svg");
+      const searchEl = document.getElementById("search");
+      const zoomBadge = document.getElementById("zoomBadge");
+      const urlParams = new URLSearchParams(window.location.search);
+      const embedMode = urlParams.get("embed") === "1";
+      if (embedMode) document.body.classList.add("embed");
+
+      /* Horizontal (left → right) layout — matches NotebookLM screenshots */
+      const NODE_H = 40;
+      const NODE_GAP_Y = 18;
+      const COLUMN_GAP = 48;
+      const H_PAD = 16;
+      const CHAR_W = 7.6;
+      const TOGGLE_R = 7;
+      const TOGGLE_FOOTPRINT = TOGGLE_R * 2 + 12;
+
+      const collapsed = new Map();
+      let highlightIds = new Set();
+      let pan = { x: 28, y: 24 };
+      let zoom = 0.85;
+      const MIN_ZOOM = 0.28;
+      const MAX_ZOOM = 1.7;
+
+      function measureWidthFor(node, depth) {
+        const base = Math.ceil(String(node.label).length * CHAR_W) + H_PAD * 2;
+        if (depth === 0) return Math.max(238, base + 16);
+        if (depth === 1) return Math.max(170, base);
+        if (depth === 2) return Math.max(148, base);
+        return Math.max(130, base);
+      }
+
+      function nodeExtentRight(width, hasKids) {
+        return width + (hasKids ? TOGGLE_FOOTPRINT : 0);
+      }
+
+      function hasChildren(node) {
+        return Array.isArray(node.children) && node.children.length > 0;
+      }
+
+      function isCollapsed(id) {
+        return collapsed.get(id) === true;
+      }
+
+      function visibleChildren(node) {
+        if (!hasChildren(node) || isCollapsed(node.id)) return [];
+        return node.children;
+      }
+
+      function roleForDepth(depth, node) {
+        if (depth === 0) return "root";
+        if (depth === 1) return "branch";
+        if (hasChildren(node)) return "mid";
+        return "leaf";
+      }
+
+      function applyTransform() {
+        canvas.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`;
+        zoomBadge.textContent = `${Math.round(zoom * 100)}%`;
+      }
+
+      /** Horizontal tree: x by dynamic column, y by subtree midpoints */
+      function layout(root) {
+        const positions = new Map();
+        const sizes = new Map();
+        const maxWidthByDepth = new Map();
+
+        function subtreeHeight(node) {
+          const kids = visibleChildren(node);
+          if (!kids.length) return NODE_H;
+          let h = 0;
+          for (let i = 0; i < kids.length; i++) {
+            h += subtreeHeight(kids[i]);
+            if (i < kids.length - 1) h += NODE_GAP_Y;
+          }
+          return Math.max(NODE_H, h);
+        }
+
+        function measureDepths(node, depth) {
+          const width = measureWidthFor(node, depth);
+          const extent = nodeExtentRight(width, hasChildren(node));
+          maxWidthByDepth.set(
+            depth,
+            Math.max(maxWidthByDepth.get(depth) || 0, extent),
+          );
+          for (const child of visibleChildren(node)) {
+            measureDepths(child, depth + 1);
+          }
+        }
+
+        measureDepths(root, 0);
+
+        const columnX = [0];
+        const maxDepth = Math.max(...maxWidthByDepth.keys(), 0);
+        for (let d = 1; d <= maxDepth; d++) {
+          const prevExtent = maxWidthByDepth.get(d - 1) || 0;
+          columnX[d] = columnX[d - 1] + prevExtent + COLUMN_GAP;
+        }
+
+        function walk(node, depth, yTop) {
+          const kids = visibleChildren(node);
+          const width = measureWidthFor(node, depth);
+          const height = subtreeHeight(node);
+          sizes.set(node.id, { w: width, h: NODE_H, depth });
+
+          const x = columnX[depth] ?? depth * 280;
+          const y = yTop + height / 2 - NODE_H / 2;
+          positions.set(node.id, { x, y });
+
+          if (!kids.length) {
+            return { minY: y, maxY: y + NODE_H };
+          }
+
+          let cursor = yTop;
+          for (let i = 0; i < kids.length; i++) {
+            const childH = subtreeHeight(kids[i]);
+            walk(kids[i], depth + 1, cursor);
+            cursor += childH + NODE_GAP_Y;
+          }
+
+          return { minY: yTop, maxY: yTop + height };
+        }
+
+        const bounds = walk(root, 0, 0);
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (const [id, p] of positions) {
+          const s = sizes.get(id);
+          const extent = nodeExtentRight(s.w, true);
+          minX = Math.min(minX, p.x);
+          maxX = Math.max(maxX, p.x + extent);
+        }
+        return {
+          positions,
+          sizes,
+          bounds: {
+            minX,
+            maxX,
+            minY: bounds.minY,
+            maxY: bounds.maxY,
+          },
+        };
+      }
+
+      function ensureDefs() {
+        const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+        const rootFill = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+        rootFill.id = "rootFill";
+        rootFill.setAttribute("x1", "0%");
+        rootFill.setAttribute("y1", "0%");
+        rootFill.setAttribute("x2", "100%");
+        rootFill.setAttribute("y2", "100%");
+        rootFill.innerHTML = `
+          <stop offset="0%" stop-color="#2e3192"/>
+          <stop offset="55%" stop-color="#3d42a8"/>
+          <stop offset="100%" stop-color="#f15a24"/>
+        `;
+
+        const linkGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+        linkGradient.id = "linkGradient";
+        /* userSpaceOnUse avoids zero-height objectBoundingBox failure on flat edges */
+        linkGradient.setAttribute("gradientUnits", "userSpaceOnUse");
+        linkGradient.setAttribute("x1", "0");
+        linkGradient.setAttribute("y1", "0");
+        linkGradient.setAttribute("x2", "1200");
+        linkGradient.setAttribute("y2", "0");
+        linkGradient.innerHTML = `
+          <stop offset="0%" stop-color="#2e3192" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#f15a24" stop-opacity="0.45"/>
+        `;
+
+        const nodeShadow = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+        nodeShadow.id = "nodeShadow";
+        nodeShadow.setAttribute("x", "-25%");
+        nodeShadow.setAttribute("y", "-35%");
+        nodeShadow.setAttribute("width", "150%");
+        nodeShadow.setAttribute("height", "190%");
+        nodeShadow.innerHTML = `
+          <feDropShadow dx="0" dy="2" stdDeviation="3.5" flood-color="#18181b" flood-opacity="0.07"/>
+        `;
+
+        const arrowEnd = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+        arrowEnd.id = "arrowEnd";
+        arrowEnd.setAttribute("markerWidth", "8");
+        arrowEnd.setAttribute("markerHeight", "8");
+        arrowEnd.setAttribute("refX", "7");
+        arrowEnd.setAttribute("refY", "4");
+        arrowEnd.setAttribute("orient", "auto");
+        arrowEnd.setAttribute("markerUnits", "userSpaceOnUse");
+        arrowEnd.innerHTML = `
+          <path d="M0,0 L8,4 L0,8 Z" fill="#2e3192" fill-opacity="0.95"/>
+        `;
+
+        defs.appendChild(rootFill);
+        defs.appendChild(linkGradient);
+        defs.appendChild(nodeShadow);
+        defs.appendChild(arrowEnd);
+        svg.appendChild(defs);
+      }
+
+      function clearSvg() {
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+      }
+
+      function drawCurve(x1, y1, x2, y2) {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("class", "link");
+        const span = Math.max(1, x2 - x1);
+        const dx = Math.min(Math.max(18, span * 0.45), span * 0.55);
+        const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        path.setAttribute("d", d);
+        svg.appendChild(path);
+      }
+
+      function drawNode(node, pos, size) {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("class", "node");
+        g.setAttribute("data-id", node.id);
+
+        const role = roleForDepth(size.depth, node);
+        const rx = size.depth === 0 ? 12 : 10;
+
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", pos.x);
+        rect.setAttribute("y", pos.y);
+        rect.setAttribute("width", size.w);
+        rect.setAttribute("height", size.h);
+        rect.setAttribute("rx", rx);
+        rect.setAttribute("ry", rx);
+        rect.setAttribute("class", `node-rect ${role}`);
+        if (highlightIds.has(node.id)) rect.classList.add("highlight");
+
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("x", pos.x + H_PAD);
+        label.setAttribute("y", pos.y + size.h / 2 + 4.2);
+        label.setAttribute("class", `node-label ${role}`);
+        label.textContent = node.label;
+
+        g.appendChild(rect);
+        g.appendChild(label);
+
+        if (hasChildren(node)) {
+          const cx = pos.x + size.w + TOGGLE_R + 4;
+          const cy = pos.y + size.h / 2;
+          const open = !isCollapsed(node.id);
+
+          const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          circle.setAttribute("cx", cx);
+          circle.setAttribute("cy", cy);
+          circle.setAttribute("r", TOGGLE_R);
+          circle.setAttribute("class", "toggle-fill");
+
+          const chevron = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          /* NotebookLM uses "<" when expanded (collapse toward parent); ">" when collapsed */
+          chevron.setAttribute(
+            "points",
+            open
+              ? `${cx + 2},${cy - 3.5} ${cx - 2},${cy} ${cx + 2},${cy + 3.5}`
+              : `${cx - 2},${cy - 3.5} ${cx + 2},${cy} ${cx - 2},${cy + 3.5}`,
+          );
+          chevron.setAttribute("class", "toggle-chevron");
+
+          g.appendChild(circle);
+          g.appendChild(chevron);
+        }
+
+        g.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!hasChildren(node)) return;
+          collapsed.set(node.id, !isCollapsed(node.id));
+          render();
+        });
+
+        svg.appendChild(g);
+      }
+
+      function renderLinks(node, positions, sizes) {
+        const kids = visibleChildren(node);
+        const parent = positions.get(node.id);
+        const parentSize = sizes.get(node.id);
+        if (!parent || !parentSize) return;
+
+        const x1 = parent.x + parentSize.w + (hasChildren(node) ? TOGGLE_R * 2 + 4 : 2);
+        const y1 = parent.y + parentSize.h / 2;
+
+        for (const child of kids) {
+          const childPos = positions.get(child.id);
+          const childSize = sizes.get(child.id);
+          if (!childPos || !childSize) continue;
+          const x2 = childPos.x - 2;
+          const y2 = childPos.y + childSize.h / 2;
+          drawCurve(x1, y1, x2, y2);
+          renderLinks(child, positions, sizes);
+        }
+      }
+
+      function renderNodes(node, positions, sizes) {
+        const pos = positions.get(node.id);
+        const size = sizes.get(node.id);
+        if (!pos || !size) return;
+        drawNode(node, pos, size);
+        for (const child of visibleChildren(node)) {
+          renderNodes(child, positions, sizes);
+        }
+      }
+
+      function render() {
+        clearSvg();
+        ensureDefs();
+        const { positions, sizes, bounds } = layout(MINDMAP_DATA);
+        const pad = 56;
+        const vbW = Math.max(320, bounds.maxX - bounds.minX + pad * 2);
+        const vbH = Math.max(240, bounds.maxY - bounds.minY + pad * 2);
+        svg.setAttribute("width", String(vbW));
+        svg.setAttribute("height", String(vbH));
+        svg.setAttribute(
+          "viewBox",
+          `${bounds.minX - pad} ${bounds.minY - pad} ${vbW} ${vbH}`,
+        );
+
+        renderLinks(MINDMAP_DATA, positions, sizes);
+        renderNodes(MINDMAP_DATA, positions, sizes);
+      }
+
+      function collectMatches(query) {
+        const q = query.trim().toLowerCase();
+        const matchIds = new Set();
+        const expandIds = new Set();
+        if (!q) return { matchIds, expandIds };
+
+        function walk(node, ancestors) {
+          const hit = String(node.label).toLowerCase().includes(q);
+          const path = ancestors.concat(node.id);
+          if (hit) {
+            matchIds.add(node.id);
+            path.forEach((id) => expandIds.add(id));
+          }
+          (node.children || []).forEach((child) => walk(child, path));
+        }
+        walk(MINDMAP_DATA, []);
+        return { matchIds, expandIds };
+      }
+
+      function applySearch() {
+        const { matchIds, expandIds } = collectMatches(searchEl.value || "");
+        highlightIds = matchIds;
+        if (searchEl.value.trim()) {
+          expandIds.forEach((id) => collapsed.set(id, false));
+        }
+        render();
+      }
+
+      function collapseAll() {
+        function walk(node) {
+          if (hasChildren(node)) collapsed.set(node.id, true);
+          (node.children || []).forEach(walk);
+        }
+        walk(MINDMAP_DATA);
+        /* Root open + 6 branches visible; depth-2+ hidden until expanded */
+        collapsed.set("root", false);
+        (MINDMAP_DATA.children || []).forEach((branch) => {
+          collapsed.set(branch.id, true);
+        });
+        render();
+      }
+
+      function expandAll() {
+        collapsed.clear();
+        render();
+      }
+
+      function fitToScreen() {
+        const rect = viewport.getBoundingClientRect();
+        const mapW = Number(svg.getAttribute("width") || 1200);
+        const mapH = Number(svg.getAttribute("height") || 700);
+        const nextZoom = Math.min(
+          1.05,
+          Math.max(0.35, Math.min((rect.width - 40) / mapW, (rect.height - 40) / mapH)),
+        );
+        zoom = nextZoom;
+        pan = {
+          x: (rect.width - mapW * zoom) / 2,
+          y: Math.max(12, (rect.height - mapH * zoom) / 2),
+        };
+        applyTransform();
+      }
+
+      let dragging = false;
+      let dragStart = { x: 0, y: 0 };
+      let panStart = { x: 0, y: 0 };
+
+      viewport.addEventListener("pointerdown", (e) => {
+        if (e.target.closest("button, input, .node")) return;
+        dragging = true;
+        viewport.classList.add("dragging");
+        viewport.setPointerCapture(e.pointerId);
+        dragStart = { x: e.clientX, y: e.clientY };
+        panStart = { ...pan };
+      });
+
+      viewport.addEventListener("pointermove", (e) => {
+        if (!dragging) return;
+        pan = {
+          x: panStart.x + (e.clientX - dragStart.x),
+          y: panStart.y + (e.clientY - dragStart.y),
+        };
+        applyTransform();
+      });
+
+      function endDrag(e) {
+        dragging = false;
+        viewport.classList.remove("dragging");
+        try { viewport.releasePointerCapture(e.pointerId); } catch {}
+      }
+
+      viewport.addEventListener("pointerup", endDrag);
+      viewport.addEventListener("pointercancel", endDrag);
+
+      viewport.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const rect = viewport.getBoundingClientRect();
+          const cx = e.clientX - rect.left;
+          const cy = e.clientY - rect.top;
+          const oldZoom = zoom;
+          const factor = e.deltaY > 0 ? 0.92 : 1.08;
+          zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+          pan = {
+            x: pan.x + (1 - zoom / oldZoom) * (cx - pan.x),
+            y: pan.y + (1 - zoom / oldZoom) * (cy - pan.y),
+          };
+          applyTransform();
+        },
+        { passive: false },
+      );
+
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        pan = { x: 28, y: 24 };
+        zoom = 0.85;
+        applyTransform();
+      });
+      document.getElementById("collapseAllBtn").addEventListener("click", collapseAll);
+      document.getElementById("expandAllBtn").addEventListener("click", expandAll);
+      document.getElementById("fitBtn").addEventListener("click", fitToScreen);
+      searchEl.addEventListener("input", applySearch);
+
+      collapseAll();
+      applyTransform();
+      requestAnimationFrame(fitToScreen);
+    </script>
+  </body>
+</html>

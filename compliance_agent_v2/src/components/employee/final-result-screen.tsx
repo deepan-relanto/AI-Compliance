@@ -4,7 +4,7 @@ import type { GamificationBadge } from "@/components/employee/badge-unlock";
 import { Button } from "@/components/ui/button";
 import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import {
   Award,
   CheckCircle2,
@@ -48,6 +48,7 @@ function ResultGauge({
   const offset = circumference - (Math.min(100, Math.max(0, scorePercent)) / 100) * circumference;
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="relative h-32 w-32 shrink-0">
       <svg className="h-full w-full -rotate-90" viewBox="0 0 112 112" aria-hidden="true">
         <circle
@@ -88,6 +89,7 @@ function ResultGauge({
         </span>
       </div>
     </div>
+    </LazyMotion>
   );
 }
 
@@ -109,6 +111,7 @@ export function FinalResultScreen({
   const wrongAnswers = Math.max(0, mcqTotal - mcqCorrect);
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-zinc-950/80 p-4 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
@@ -256,5 +259,6 @@ export function FinalResultScreen({
         </div>
       </motion.div>
     </div>
+    </LazyMotion>
   );
 }

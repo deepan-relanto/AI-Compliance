@@ -56,16 +56,20 @@ function assetHeaders(
 ) {
   // Images must not stick for an hour — patched infographics (e.g. watermark
   // removal) would otherwise keep serving the old bytes from browser cache.
+  // Videos can cache longer; HTML stays no-cache for live patches.
   const cacheControl = isHtmlAsset(filename, mimeType)
     ? "private, no-cache, must-revalidate"
     : mimeType.startsWith("image/")
       ? "private, max-age=60, must-revalidate"
-      : "private, max-age=3600";
+      : mimeType.startsWith("video/")
+        ? "private, max-age=86400, stale-while-revalidate=604800"
+        : "private, max-age=3600";
   return {
     "Content-Type": mimeType,
     "Content-Length": String(length),
     "Accept-Ranges": "bytes",
     "Cache-Control": cacheControl,
+    "ETag": `"${length}-${filename}"`,
     ...extra,
   };
 }
@@ -132,6 +136,13 @@ async function serveAsset(req: NextRequest, filename: string) {
     }
 
     const meta = await getCourseAssetMeta(assetUrl);
+
+    const etag = `"${meta.size}-${filename}"`;
+    const ifNoneMatch = req.headers.get("if-none-match");
+    if (ifNoneMatch === etag) {
+      return new NextResponse(null, { status: 304, headers: { ETag: etag } });
+    }
+
     const rangeHeader = req.headers.get("range");
 
     if (rangeHeader) {

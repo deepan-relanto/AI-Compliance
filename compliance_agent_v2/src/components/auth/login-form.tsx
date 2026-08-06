@@ -4,7 +4,7 @@ import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import { resolvePostLoginPath, isTrainingCallback } from "@/lib/auth-routes";
 import { emailsMatch, normalizeEmail } from "@/lib/training-link";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -131,6 +131,7 @@ export function LoginForm() {
   }, [authConfigured, rawCallback, isTraining, wrongAccount, forEmail]);
 
   return (
+    <LazyMotion features={domAnimation}>
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -228,5 +229,6 @@ export function LoginForm() {
         </p>
       </div>
     </motion.div>
+    </LazyMotion>
   );
 }

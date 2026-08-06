@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const batch = await createBatch(sql, { label, description, employeeEmails });
     // Invalidate stale caches asynchronously so the response is not blocked
     void Promise.resolve().then(() => {
-      cacheInvalidate(CACHE_KEYS.batches, CACHE_KEYS.analytics);
+      cacheInvalidate(CACHE_KEYS.batches, "analytics:*");
     });
     return NextResponse.json({ ok: true, batch });
   } catch (err) {

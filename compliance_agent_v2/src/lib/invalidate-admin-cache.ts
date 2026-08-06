@@ -7,6 +7,9 @@ export function invalidateAdminCaches(): void {
   invalidateCache("batch:perf:");
   invalidateCache("content:course-library");
   invalidateCache("content:compliance-library");
+  invalidateCache("monitoring:");
+  invalidateCache("course-monitoring:");
+  invalidateCache("learner-dashboard:");
 }
 
 /** Non-blocking cache bust — use on hot learner paths (MCQ submit, etc.). */

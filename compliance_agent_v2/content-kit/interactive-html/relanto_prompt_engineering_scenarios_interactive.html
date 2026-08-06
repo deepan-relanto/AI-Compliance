@@ -1,0 +1,1145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relanto Prompt Engineering Essentials — Scenario-Based Learning</title>
+  <style>
+    :root {
+      --ink: #18181b;
+      --muted: #71717a;
+      --line: #e4e4e7;
+      --paper: #f4f4f5;
+      --paper-2: #fafafa;
+      --navy: #1e2060;
+      --blue: #2e3192;
+      --orange: #f15a24;
+      --cyan: #20a7b5;
+      --green: #38a169;
+      --amber: #d88a1f;
+      --red: #c74747;
+      --plum: #6b4fa3;
+      --white: #ffffff;
+      --shadow: 0 18px 48px rgba(24, 24, 39, 0.14);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(46, 49, 146, 0.10), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(241, 90, 36, 0.08), transparent 32%),
+        linear-gradient(135deg, #f4f4f5 0%, #ececf8 100%);
+    }
+    body.embed { background: #0a0a0a; }
+    body.embed .deck-shell {
+      padding: 0; display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; box-sizing: border-box; container-type: size;
+    }
+    body.embed .deck {
+      flex-shrink: 0; transform: none; aspect-ratio: 16 / 9;
+      width: min(100cqw, calc(100cqh * 16 / 9));
+      height: min(100cqh, calc(100cqw * 9 / 16));
+      max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none;
+    }
+    body.embed .slide { padding: 14px 20px 34px; overflow: hidden; gap: 8px; }
+    body.embed .nav, body.embed .help, body.embed .progress, body.embed .overview { display: none !important; }
+    body.embed h1 { font-size: clamp(16px, 2.3vw, 26px); }
+    body.embed .footer { left: 20px; right: 20px; bottom: 8px; font-size: 10px; }
+    body.embed .dept-grid { gap: 7px; margin-top: 6px; }
+    body.embed .dept-card { padding: 8px 10px; }
+    body.embed .dept-card .dept-name { font-size: 12px; }
+    body.embed .dept-card .dept-hint { font-size: 10px; }
+    body.embed .path-layout { gap: 12px; }
+    body.embed .scene-panel { padding: 10px; }
+    body.embed .content-panel { padding: 12px 14px; gap: 8px; }
+    body.embed .phase-body { font-size: 13px; line-height: 1.35; }
+    body.embed .choice-btn { padding: 8px 10px; font-size: 12px; }
+    body.embed .step-card { padding: 8px 10px; }
+    body.embed .takeaway-hero { padding: 12px 14px; font-size: 14px; }
+    body.embed .cover-title { font-size: clamp(26px, 4.2vw, 44px); }
+    body.embed .cover-hero { gap: 10px; }
+
+    .deck-shell {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 100vh; min-height: 100dvh; padding: 20px; box-sizing: border-box;
+    }
+    .deck {
+      width: min(100vw - 40px, calc((100vh - 40px) * 16 / 9));
+      height: min(100vh - 40px, calc((100vw - 40px) * 9 / 16));
+      max-width: 100%; max-height: 100%; position: relative;
+      border-radius: 18px; box-shadow: var(--shadow); background: var(--paper-2); overflow: hidden;
+    }
+    .slide {
+      position: absolute; inset: 0; display: none; flex-direction: column;
+      justify-content: flex-start; gap: 10px; padding: 24px 32px 48px;
+      background:
+        linear-gradient(90deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(46, 49, 146, 0.04) 1px, transparent 1px),
+        var(--paper-2);
+      background-size: 36px 36px;
+      opacity: 0; transform: translateX(12px) scale(0.995);
+      box-sizing: border-box; min-height: 0; overflow: hidden;
+    }
+    .slide.active {
+      display: flex; opacity: 1; transform: none;
+      animation: slideIn 420ms cubic-bezier(.22,.8,.25,1) forwards;
+    }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0) scale(1); } }
+
+    .slide.cover {
+      justify-content: space-between; padding: 22px 28px 44px;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(241, 90, 36, 0.28), transparent 28%),
+        linear-gradient(135deg, #12143a 0%, #2e3192 52%, #1a1c4a 120%);
+      color: var(--white); animation: none !important; opacity: 1 !important; transform: none !important;
+    }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 10px; height: 22px; flex-shrink: 0;
+      color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .cover .kicker { color: #fdba8c; }
+    .kicker::before { content: ""; width: 18px; height: 2px; background: currentColor; display: block; }
+    h1 { margin: 0; font-size: clamp(20px, 2.5vw, 32px); line-height: 1.12; letter-spacing: -0.01em; font-weight: 760; }
+    p { margin: 0; line-height: 1.4; font-size: 14px; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; max-width: 52ch; }
+    .cover .subtitle { color: rgba(255,255,255,0.78); }
+    .footer {
+      position: absolute; left: 32px; right: 32px; bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      border-top: 1px solid var(--line); padding-top: 8px;
+    }
+    .cover .footer { border-top-color: rgba(255,255,255,0.18); color: rgba(255,255,255,0.65); }
+
+    .cover-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .cover-brand img { height: 28px; width: auto; }
+    .cover-brand span {
+      font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,0.7);
+    }
+    .cover-hero { display: flex; flex-direction: column; gap: 16px; flex: 1; justify-content: center; min-height: 0; }
+    .cover-title {
+      font-size: clamp(32px, 5vw, 54px); line-height: 1.05; font-weight: 780; letter-spacing: -0.02em; max-width: 14ch;
+    }
+    .cover-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 560px; }
+    .cover-stat {
+      padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    }
+    .cover-stat .stat-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: rgba(255,255,255,0.55); margin-bottom: 4px;
+    }
+    .cover-stat .stat-value { font-size: 15px; font-weight: 700; color: #fff; }
+    .cover-stat .stat-value .num { font-size: 22px; color: #fdba8c; margin-right: 4px; }
+
+    .dept-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+      margin-top: 8px; flex: 1; min-height: 0; align-content: stretch;
+    }
+    .dept-card {
+      display: flex; flex-direction: column; justify-content: center; gap: 4px;
+      padding: 12px 12px 12px 14px; border-radius: 14px; border: 1px solid var(--line);
+      background: #fff; text-align: left; cursor: pointer; font: inherit; color: inherit;
+      transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+      position: relative; overflow: hidden; min-height: 0;
+    }
+    .dept-card::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: transparent; transition: background 180ms ease;
+    }
+    .dept-card:hover, .dept-card:focus-visible {
+      outline: none; border-color: var(--blue);
+      box-shadow: 0 10px 28px rgba(46, 49, 146, 0.12); transform: translateY(-1px);
+    }
+    .dept-card:hover::before, .dept-card.selected::before { background: var(--orange); }
+    .dept-card.selected {
+      border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 90, 36, 0.22);
+      background: linear-gradient(135deg, #fff, #fff7f3);
+    }
+    .dept-card-top { display: flex; align-items: center; gap: 10px; }
+    .dept-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(46,49,146,0.1), rgba(241,90,36,0.1));
+      color: var(--blue);
+    }
+    .dept-icon svg { width: 20px; height: 20px; }
+    .dept-card .dept-num {
+      font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--orange);
+    }
+    .dept-card .dept-name { font-size: 14px; font-weight: 740; color: var(--navy); line-height: 1.2; }
+    .dept-card .dept-hint { font-size: 11px; color: var(--muted); line-height: 1.3; padding-left: 46px; }
+    .picker-note { margin-top: 2px; font-size: 13px; color: var(--muted); }
+    .picker-note.pulse { color: var(--orange); font-weight: 700; animation: pulseHint 900ms ease; }
+    @keyframes pulseHint { 0%, 100% { opacity: 1; } 40% { opacity: 0.45; } }
+
+    .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+    .dept-badge {
+      display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+      background: rgba(241, 90, 36, 0.1); color: var(--orange);
+      font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .change-dept {
+      border: 0; background: transparent; color: var(--blue); font: inherit; font-size: 12px;
+      font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
+    }
+    .phase-bar { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .phase-chip {
+      padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase; background: #ececf8; color: var(--blue);
+    }
+    .phase-chip.on { background: var(--blue); color: #fff; }
+    .phase-chip.done { background: rgba(46, 49, 146, 0.12); color: var(--navy); }
+
+    .path-layout {
+      flex: 1; min-height: 0; display: grid; grid-template-columns: 0.9fr 1.35fr; gap: 14px; margin-top: 4px;
+    }
+    .scene-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+      gap: 10px; min-height: 0; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .scene-panel[data-phase="situation"] {
+      background:
+        radial-gradient(circle at 80% 20%, rgba(241,90,36,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f8ff, #fff);
+    }
+    .scene-panel[data-phase="challenge"] {
+      background:
+        radial-gradient(circle at 20% 80%, rgba(216,138,31,0.16), transparent 42%),
+        linear-gradient(160deg, #fffaf3, #fff);
+    }
+    .scene-panel[data-phase="recommended"] {
+      background:
+        radial-gradient(circle at 70% 30%, rgba(32,167,181,0.14), transparent 40%),
+        linear-gradient(160deg, #f3fbfc, #fff);
+    }
+    .scene-panel[data-phase="explanation"] {
+      background:
+        radial-gradient(circle at 30% 20%, rgba(107,79,163,0.14), transparent 40%),
+        linear-gradient(160deg, #f8f5ff, #fff);
+    }
+    .scene-panel[data-phase="takeaway"] {
+      background:
+        radial-gradient(circle at 50% 0%, rgba(241,90,36,0.18), transparent 45%),
+        linear-gradient(160deg, #fff7f3, #f4f4ff);
+    }
+    .scene-art {
+      width: 100%; max-width: 100%; height: min(42vh, 320px);
+      object-fit: contain; border-radius: 14px; display: block;
+      background: rgba(255,255,255,0.7);
+      box-shadow: 0 10px 28px rgba(24, 24, 39, 0.1);
+    }
+    .scene-caption {
+      font-size: 12px; font-weight: 700; color: var(--navy); text-align: center; line-height: 1.3; max-width: 28ch;
+    }
+    .quote-chip {
+      margin-top: 4px; padding: 8px 10px; border-radius: 10px; width: 100%;
+      background: rgba(46,49,146,0.06); border-left: 3px solid var(--orange);
+      font-size: 11px; font-style: italic; color: #3f3f46; line-height: 1.35;
+    }
+
+    .content-panel {
+      border-radius: 16px; border: 1px solid var(--line); background: #fff;
+      padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+      min-height: 0; overflow: auto; align-content: start;
+      box-shadow: 0 8px 24px rgba(24, 24, 39, 0.05);
+    }
+    .content-panel[data-phase="situation"] { border-top: 3px solid var(--blue); }
+    .content-panel[data-phase="challenge"] { border-top: 3px solid var(--amber); }
+    .content-panel[data-phase="recommended"] { border-top: 3px solid var(--cyan); }
+    .content-panel[data-phase="explanation"] { border-top: 3px solid var(--plum); }
+    .content-panel[data-phase="takeaway"] { border-top: 3px solid var(--orange); }
+
+    .phase-label {
+      font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--blue);
+    }
+    .content-panel[data-phase="challenge"] .phase-label { color: var(--amber); }
+    .content-panel[data-phase="recommended"] .phase-label { color: var(--cyan); }
+    .content-panel[data-phase="explanation"] .phase-label { color: var(--plum); }
+    .content-panel[data-phase="takeaway"] .phase-label { color: var(--orange); }
+    .phase-title {
+      margin: 0; font-size: clamp(16px, 2vw, 22px); font-weight: 760; line-height: 1.2; color: var(--navy);
+    }
+    .phase-body { font-size: 13.5px; line-height: 1.4; color: #3f3f46; }
+
+    .choice-prompt {
+      font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--navy);
+    }
+    .choice-list { display: flex; flex-direction: column; gap: 8px; }
+    .choice-btn {
+      text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+      background: #fafafa; font: inherit; font-size: 13px; line-height: 1.35; color: var(--ink);
+      cursor: pointer; transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .choice-btn:hover { border-color: var(--blue); background: #fff; }
+    .choice-btn.picked-good {
+      border-color: var(--green); background: rgba(56,161,105,0.08);
+      box-shadow: 0 0 0 2px rgba(56,161,105,0.15);
+    }
+    .choice-btn.picked-bad {
+      border-color: var(--red); background: rgba(199,71,71,0.06);
+      box-shadow: 0 0 0 2px rgba(199,71,71,0.12);
+    }
+    .choice-btn .choice-tag {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: 3px; color: var(--muted);
+    }
+    .choice-feedback {
+      display: none; padding: 10px 12px; border-radius: 12px; font-size: 12.5px; line-height: 1.35;
+      background: rgba(46,49,146,0.06); border: 1px solid rgba(46,49,146,0.12); color: var(--navy);
+    }
+    .choice-feedback.show { display: block; animation: fadeUp 280ms ease; }
+    .choice-feedback.good { background: rgba(56,161,105,0.1); border-color: rgba(56,161,105,0.25); }
+    .choice-feedback.bad { background: rgba(199,71,71,0.08); border-color: rgba(199,71,71,0.2); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .step-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-card {
+      display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start;
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fafafa;
+    }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 800;
+    }
+    .step-card strong { display: block; font-size: 13px; color: var(--navy); margin-bottom: 2px; }
+    .step-card span { font-size: 12px; color: #52525b; line-height: 1.35; }
+
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .compare-card {
+      padding: 10px; border-radius: 12px; border: 1px solid var(--line); font-size: 12px; line-height: 1.35;
+    }
+    .compare-card.bad { background: rgba(199,71,71,0.06); border-color: rgba(199,71,71,0.25); }
+    .compare-card.good { background: rgba(56,161,105,0.07); border-color: rgba(56,161,105,0.28); }
+    .compare-card .cmp-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px;
+    }
+    .compare-card.bad .cmp-label { color: var(--red); }
+    .compare-card.good .cmp-label { color: var(--green); }
+
+    .insight-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .insight-chip {
+      padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: rgba(107,79,163,0.1); color: var(--plum); border: 1px solid rgba(107,79,163,0.18);
+    }
+
+    .takeaway-hero {
+      margin-top: 4px; padding: 14px 16px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(241,90,36,0.14), rgba(46,49,146,0.1));
+      border: 1px solid rgba(241,90,36,0.25); color: var(--navy);
+      font-size: 15px; font-weight: 720; line-height: 1.35;
+    }
+    .takeaway-hero span {
+      display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--orange); margin-bottom: 6px;
+    }
+    .practice-box {
+      margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+      border: 1px dashed rgba(46, 49, 146, 0.35);
+      background: linear-gradient(180deg, #fbfbff, #fff);
+    }
+    .practice-box .practice-label {
+      font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 6px;
+    }
+    .practice-box .practice-title {
+      margin: 0 0 6px; font-size: 14px; font-weight: 760; color: var(--navy); line-height: 1.25;
+    }
+    .practice-box .practice-prompt {
+      margin: 0; font-size: 13px; line-height: 1.4; color: #3f3f46;
+    }
+    .practice-box .practice-hint {
+      margin: 8px 0 0; font-size: 12px; line-height: 1.35; color: var(--muted);
+    }
+
+    .nav {
+      position: fixed; right: 24px; bottom: 24px; display: flex; gap: 8px; z-index: 20;
+    }
+    .nav button, .help {
+      border: 0; border-radius: 999px; padding: 10px 14px; background: #fff; color: var(--navy);
+      font: inherit; font-size: 12px; font-weight: 700; box-shadow: var(--shadow); cursor: pointer;
+    }
+    .nav button#nextBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .help { position: fixed; left: 24px; bottom: 24px; z-index: 20; opacity: 0.85; }
+    .progress { position: fixed; left: 0; top: 0; height: 3px; width: 100%; background: rgba(46,49,146,0.12); z-index: 30; }
+    .progress > span {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--blue), var(--orange)); transition: width 240ms ease;
+    }
+    .overview {
+      display: none; position: fixed; inset: 0; background: rgba(10,10,20,0.72); z-index: 40; padding: 40px; overflow: auto;
+    }
+    .overview.open { display: block; }
+    .overview-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px; max-width: 960px; margin: 40px auto;
+    }
+    .thumb {
+      border: 0; border-radius: 12px; padding: 14px; text-align: left; background: #fff;
+      cursor: pointer; font: inherit; font-size: 13px; color: var(--ink);
+    }
+    .thumb b { display: block; color: var(--orange); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="deck-shell">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-title="Cover" data-fixed="1">
+        <div class="cover-brand">
+          <img src="relanto-logo.png" alt="Relanto" />
+          <span>Prompt Engineering Essentials</span>
+        </div>
+        <div class="cover-hero">
+          <div class="kicker">Module 4 of 5</div>
+          <h1 class="cover-title">Scenario-Based Learning</h1>
+          <p class="subtitle">Pick a department path — interactive scenarios from Module 4: Prompt Engineering Essentials.</p>
+          <div class="cover-stats">
+            <div class="cover-stat">
+              <div class="stat-label">Departments</div>
+              <div class="stat-value"><span class="num">9</span> paths</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Per path</div>
+              <div class="stat-value"><span class="num">5</span> slides</div>
+            </div>
+            <div class="cover-stat">
+              <div class="stat-label">Focus</div>
+              <div class="stat-value">Decide &amp; apply</div>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <span>Relanto · Prompt Engineering Essentials</span>
+          <span id="counter">1 / 2</span>
+        </div>
+      </section>
+
+      <section class="slide" data-title="Choose department" data-fixed="1" id="pickerSlide">
+        <div class="kicker">Your context</div>
+        <h1>Which department describes your work best?</h1>
+        <p class="picker-note" id="pickerNote">Select one path. You’ll get an interactive scenario — about five short slides.</p>
+        <div class="dept-grid" id="deptGrid" role="list"></div>
+        <div class="footer">
+          <span>Relanto · Scenario-Based Learning</span>
+          <span>Choose to continue</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button type="button" id="prevBtn">Prev</button>
+    <button type="button" id="overviewBtn">Overview</button>
+    <button type="button" id="nextBtn">Next</button>
+  </div>
+  <div class="help">← → · Space · O</div>
+  <div class="overview" id="overview"><div class="overview-grid" id="overviewGrid"></div></div>
+
+  <script>
+    const EMBED_EVENT = "relanto-course-embed";
+    const EMBED_COMMAND = "relanto-course-command";
+    const urlParams = new URLSearchParams(window.location.search);
+    const embedMode = urlParams.get("embed") === "1";
+    const cleanMode = embedMode || urlParams.get("clean") === "1";
+
+    const PHASES = [
+      { key: "situation", label: "Situation" },
+      { key: "challenge", label: "Challenge" },
+      { key: "recommended", label: "Recommended" },
+      { key: "explanation", label: "Explanation" },
+      { key: "takeaway", label: "Takeaway" },
+    ];
+
+    const ICONS = {
+      hr: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>`,
+      sales: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v2a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h2a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+      marketing: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a4.5 4.5 0 0 1 0 7M17.5 6a8 8 0 0 1 0 12"/></svg>`,
+      operations: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
+      pm: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>`,
+      support: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2" y="14" width="4" height="6" rx="1"/><rect x="18" y="14" width="4" height="6" rx="1"/><path d="M6 18h2a2 2 0 0 0 2-2v-1"/></svg>`,
+      leadership: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.5 5.5L21 9.5l-4.5 4 1.2 6L12 16.8 6.3 19.5l1.2-6L3 9.5l6.5-1L12 3z"/></svg>`,
+      finance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h4"/></svg>`,
+      general: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H8l-4 3V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>`,
+    };
+
+    function sceneArtHtml(id, name, sceneId) {
+      const file = `scene-${sceneId || id}.webp`;
+      const primary = `/course-assets/scenario-scenes/${file}`;
+      const local = `scenario-scenes/${file}`;
+      return `<img class="scene-art" src="${primary}" data-fallback="${local}" alt="${escapeHtml(name)} workplace scene" loading="lazy" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';}" />`;
+    }
+
+    const SCENARIOS = [
+      {
+        id: "hr", name: "Human Resources", short: "HR", hint: "Generic output from a thin prompt",
+        title: "The Job Advert That Came Back Generic",
+        quote: "Write a job ad for a data analyst.",
+        sceneCaption: "Task only · Polished but generic",
+        situation: "Imran in HR asks an approved AI tool: 'Write a job ad for a data analyst.' He gets a polished, generic advert — competent language, no real signal about Relanto's team, role, or hiring bar.",
+        challenge: "The prompt had a task only. It skipped context, format, constraints, and examples — the building blocks that turn a vague brief into a usable draft.",
+        recommended: "Rebuild with the five blocks: industry and team context; three real responsibilities; must-have vs nice-to-have skills; the company's JD sections as format; inclusive plain language and a 350-word limit as constraints; plus a liked previous advert as a style example.",
+        explanation: "Generic output almost always means a missing building block, not a weak model. Supplying context, format, constraints, and an example gives the AI the same brief you'd give a capable colleague.",
+        takeaway: "When output is generic, the cause is almost always a missing building block, not a weak tool.",
+        practiceTitle: "Rebuild Imran's prompt",
+        practicePrompt: "Rewrite 'Write a job ad for a data analyst' using all five blocks for a role on your team. Include at least three real responsibilities and one style example.",
+        practiceHint: "If you couldn't brief a new hire with that prompt alone, the AI can't either.",
+        choices: [
+          { label: "Blame the model and switch tools — this one clearly isn't good enough.", good: false, feedback: "Tool-hopping won't fix a one-line brief. The same thin prompt fails on any model." },
+          { label: "Rebuild with the five blocks: context, responsibilities, must/nice-to-haves, JD format, constraints, and a liked advert as example.", good: true, feedback: "Correct: generic output means missing blocks. Rebuild the brief, don't blame the tool." },
+          { label: "Regenerate ten times and pick the least generic version.", good: false, feedback: "Regeneration without new inputs just reshuffles the same thin brief." },
+          { label: "Add flattery — 'You're an expert recruiter, write an amazing advert.'", good: false, feedback: "Flattery isn't a building block. Role fluff without context still yields generic copy." },
+        ],
+        steps: [
+          { title: "Diagnose the gap", body: "Task-only prompt → polished but empty output" },
+          { title: "Add the five blocks", body: "Context, format, constraints, examples — plus real responsibilities" },
+          { title: "Reuse what works", body: "Save the rebuilt prompt as a JD template" },
+        ],
+        compare: {
+          badLabel: "Task only", bad: "'Write a job ad for a data analyst.'",
+          goodLabel: "Five blocks", good: "Team context + real duties + must/nice + JD format + length/inclusion + style example.",
+        },
+        insights: ["Generic = missing block", "Five blocks", "Brief like a colleague"],
+      },
+      {
+        id: "sales", name: "Sales", short: "Sales", hint: "Role-based proposal stress test",
+        title: "The Proposal Pre-Mortem",
+        quote: "We've read it so many times — we can't see the weaknesses anymore.",
+        sceneCaption: "Team blindness · Toughest audience",
+        situation: "Chloe's bid team has polished a major proposal for weeks. They're too close to see the weaknesses. They want AI to stress-test it before the client does.",
+        challenge: "Internal review has hit diminishing returns. They need an adversarial reader — and they must anonymize confidential content (Module 3) before anything enters the tool.",
+        recommended: "On the approved tool, assign the role: 'You are the client's hard-nosed procurement director who must find reasons to reject.' Paste an anonymized proposal. Ask for the ten toughest objections and the weakest section, ranked. Fix findings in the real document internally.",
+        explanation: "Role-based prompting puts the AI in the shoes of your toughest audience. Anonymization keeps the technique compliant with Module 3 while still surfacing structure and argument gaps.",
+        takeaway: "Assign the AI the role of your toughest audience before your toughest audience gets the document.",
+        practiceTitle: "Run a pre-mortem",
+        practicePrompt: "For a recent proposal or pitch: write a role prompt for the toughest decision-maker, list what you'd anonymize first, and ask for ranked objections plus the weakest section.",
+        practiceHint: "If you wouldn't show the real names and figures to a new contractor, don't paste them into the tool.",
+        choices: [
+          { label: "Paste the full confidential proposal into a free chatbot for the toughest critique.", good: false, feedback: "Free tools + confidential text = Module 3 leak. Technique doesn't override data rules." },
+          { label: "Skip the stress test — the team has already read it many times.", good: false, feedback: "Team blindness is exactly why a pre-mortem role exists." },
+          { label: "Role of procurement director + anonymized proposal + ranked objections and weakest section.", good: true, feedback: "Correct: adversarial role + anonymization + concrete critique targets." },
+          { label: "Ask generically 'Is this proposal good?' without providing the document.", good: false, feedback: "Without the proposal (even anonymized), the model has nothing real to critique." },
+        ],
+        steps: [
+          { title: "Anonymize first", body: "Strip names, figures, and client identifiers (Module 3)" },
+          { title: "Assign the toughest role", body: "Procurement director who must find reasons to reject" },
+          { title: "Ask for ranked weaknesses", body: "Ten objections + weakest section; fix in the real doc" },
+        ],
+        compare: {
+          badLabel: "Friendly review", bad: "'Is this good?' with full confidential paste — or no paste at all.",
+          goodLabel: "Pre-mortem role", good: "Anonymized draft + adversarial audience + ranked objections.",
+        },
+        insights: ["Toughest audience first", "Anonymize (Module 3)", "Rank the weaknesses"],
+      },
+      {
+        id: "marketing", name: "Marketing", short: "Marketing", hint: "Examples beat brand adjectives",
+        title: "Adjectives vs Examples",
+        quote: "Make it fun, fresh, and on-brand.",
+        sceneCaption: "Vague adjectives · Drifted voice",
+        situation: "Bea asks the AI for social copy that is 'fun, fresh, and on-brand.' Draft after draft drifts off voice. The team already agrees three approved posts nail the brand — but those posts never enter the prompt.",
+        challenge: "Adjective prompts force the model to interpret brand voice. Interpretation drifts. The team already has concrete examples of what good looks like — they just aren't using them.",
+        recommended: "Paste three approved posts into the standing prompt. Instruct the AI to match their sentence length, emoji habits, humor level, and structure — then generate new copy in that pattern.",
+        explanation: "One good example beats ten adjectives. Imitation of agreed samples converts shared taste into a precise, repeatable pattern the model can follow.",
+        takeaway: "If you can show one example of what good looks like, show it. Imitation beats interpretation.",
+        practiceTitle: "Show, don't describe",
+        practicePrompt: "Pick three posts or paragraphs that nail your voice. Write a prompt that pastes them and asks the AI to match length, tone, and structure for a new topic.",
+        practiceHint: "If your prompt still relies on 'make it on-brand,' you haven't shown an example yet.",
+        choices: [
+          { label: "Write a longer brand description with richer adjectives.", good: false, feedback: "More adjectives still ask for interpretation — the failing mechanism." },
+          { label: "Paste three approved posts; match sentence length, emoji habits, and humor.", good: true, feedback: "Correct: examples turn agreed voice into an imitable pattern." },
+          { label: "Ask 'be more on-brand' after every draft until it lands.", good: false, feedback: "Post-hoc nagging without examples keeps guessing the voice." },
+          { label: "Rotate AI tools monthly until one guesses the brand.", good: false, feedback: "Tool-hopping won't encode voice. Examples will." },
+        ],
+        steps: [
+          { title: "Collect three approved samples", body: "Posts everyone agrees nail the voice" },
+          { title: "Paste them as style examples", body: "Match length, emoji, humor, structure" },
+          { title: "Generate new copy in pattern", body: "Same voice, new topic — then human review" },
+        ],
+        compare: {
+          badLabel: "Adjective roulette", bad: "'Fun, fresh, on-brand' — model interprets, voice drifts.",
+          goodLabel: "Show examples", good: "Three approved posts + match their patterns.",
+        },
+        insights: ["Imitation > adjectives", "Show what good looks like", "Standing style examples"],
+      },
+      {
+        id: "operations", name: "Operations", short: "Ops", hint: "Clarify before drafting procedures",
+        title: "The Procedure That Asked Questions Back",
+        quote: "Just turn my messy notes into a warehouse returns procedure.",
+        sceneCaption: "Ambiguous notes · Invented steps",
+        situation: "Raj must document the warehouse returns process from messy handwritten notes by tomorrow. He is tempted to paste the notes and ask for a finished procedure.",
+        challenge: "Where notes are ambiguous, the AI will invent plausible steps (Module 1 hallucination). For a procedure that must be right, invented gap-filling is the dominant risk.",
+        recommended: "First prompt the AI to list every ambiguity as numbered questions. Get answers from the process owner. Then generate the full procedure plus a Common Mistakes box — and have the owner review before publication.",
+        explanation: "Clarify-then-produce turns silent guessing into an explicit Q and A. For safety-relevant or must-be-right work, questions before answers is non-negotiable.",
+        takeaway: "For anything that must be right, prompt the AI to ask its questions before it writes its answers.",
+        practiceTitle: "Questions before answers",
+        practicePrompt: "Take a messy set of notes for a process you know. Prompt: list every ambiguity as numbered questions — do not draft the procedure yet.",
+        practiceHint: "If the draft fills a gap you never answered, that gap was invented.",
+        choices: [
+          { label: "Generate the procedure now, polish the language, and publish.", good: false, feedback: "Publishing invented steps on a must-be-right process is the risk." },
+          { label: "List ambiguities as numbered questions first; get answers; then full procedure + Common Mistakes box.", good: true, feedback: "Correct: clarify → answer → draft → owner review." },
+          { label: "Generate three versions and merge the overlapping steps.", good: false, feedback: "Merging plausible guesses launders hallucinations into consensus." },
+          { label: "Publish the notes as-is with a disclaimer.", good: false, feedback: "A disclaimer doesn't make ambiguous notes followable or safe." },
+        ],
+        steps: [
+          { title: "List ambiguities as questions", body: "Numbered list — no procedure draft yet" },
+          { title: "Get owner answers", body: "Resolve every gap with the process owner" },
+          { title: "Draft + Common Mistakes", body: "Full procedure, then owner review before publish" },
+        ],
+        compare: {
+          badLabel: "Invent the gaps", bad: "Messy notes → finished procedure → silent guesses.",
+          goodLabel: "Clarify first", good: "Questions → answers → procedure + Common Mistakes.",
+        },
+        insights: ["Questions before answers", "Hallucination risk", "Owner review"],
+      },
+      {
+        id: "pm", name: "Project Management", short: "PM", hint: "Keep-and-fix a half-good draft",
+        title: "Rescuing a Half-Good Draft",
+        quote: "Just start over — the risks section is wrong anyway.",
+        sceneCaption: "Good progress · Wrong risks",
+        situation: "Priya's steering-committee update is half-right: progress and decisions (sections 1 and 3) are solid, but the risks section invents the wrong concerns — it misses vendor dependency and a testing-resource gap.",
+        challenge: "Restarting throws away what's already good. Blind regeneration won't know what to keep. She needs a keep-and-fix instruction that states what stays, what changes, and what right looks like.",
+        recommended: "Keep-and-fix: keep sections 1 and 3 unchanged; rewrite section 2 to cover vendor dependency and the testing-resource gap; leave everything else alone.",
+        explanation: "Iteration is the normal workflow. Precise keep/change/success criteria steers the model without discarding good work or hoping regeneration guesses your intent.",
+        takeaway: "Don't restart, refine: state what to keep, what to change, and what right looks like.",
+        practiceTitle: "Write a keep-and-fix",
+        practicePrompt: "Take a half-good draft. Write one prompt that names what to keep, what to rewrite, and what the rewritten section must include.",
+        practiceHint: "If your prompt says 'make it better' without keep/change, you're restarting in disguise.",
+        choices: [
+          { label: "Delete everything and regenerate from a one-line brief.", good: false, feedback: "Restarting wastes the good sections and invites new errors." },
+          { label: "Keep sections 1 and 3; rewrite section 2 for vendor dependency + testing-resource gap.", good: true, feedback: "Correct: keep / change / what right looks like." },
+          { label: "Ask the AI to 'improve the whole document' with no further detail.", good: false, feedback: "Vague improve = uncontrolled edits to sections that were already fine." },
+          { label: "Give up on AI and rewrite the entire update by hand from scratch.", good: false, feedback: "You can still use AI — just with a precise keep-and-fix." },
+        ],
+        steps: [
+          { title: "Name what to keep", body: "Sections 1 and 3 stay unchanged" },
+          { title: "Name what to change", body: "Rewrite risks only" },
+          { title: "Define what right looks like", body: "Vendor dependency + testing-resource gap" },
+        ],
+        compare: {
+          badLabel: "Restart", bad: "Throw away the draft and hope a new one is better.",
+          goodLabel: "Keep-and-fix", good: "Keep sections 1 and 3; rewrite 2 with named risks.",
+        },
+        insights: ["Don't restart, refine", "Keep / change / right", "Iteration is normal"],
+      },
+      {
+        id: "support", name: "Customer Support", short: "Support", hint: "Shared templates scale best practice",
+        title: "The Template That Trained the Team",
+        quote: "My replies are solid — the other eleven are all over the place.",
+        sceneCaption: "One strong performer · Inconsistent team",
+        situation: "Sam writes excellent complaint replies with AI, but the team of twelve produces inconsistent quality. Each agent improvises their own prompts. Customers notice the uneven tone and structure.",
+        challenge: "Hero prompting doesn't scale. Without a shared skeleton, best-performer skill stays locked in one person's chat history.",
+        recommended: "Build a shared template: acknowledge, explain, fix, make-good, next step. Add constraints (180 words, no legalese, never promise beyond policy) and two anonymized best replies as examples. Publish it to the team library.",
+        explanation: "One excellent prompt template encodes structure, guardrails, and examples so the whole team operates at the best performer's floor — not their improvisation ceiling.",
+        takeaway: "One excellent prompt template spreads your best performer's skill across the whole team.",
+        practiceTitle: "Template your best reply",
+        practicePrompt: "Turn your best customer reply into a five-part template with word limit, tone constraints, and two anonymized examples. Add an anonymize-first step.",
+        practiceHint: "If only you can run the prompt from memory, it isn't a team asset yet.",
+        choices: [
+          { label: "Keep improvising — templates kill creativity.", good: false, feedback: "Templates raise the floor; agents still adapt within the structure." },
+          { label: "Shared template (acknowledge → explain → fix → make-good → next step) + constraints + two anonymized examples.", good: true, feedback: "Correct: structure, guardrails, and examples scale Sam's skill." },
+          { label: "Have Sam write every sensitive reply personally forever.", good: false, feedback: "Hero dependency doesn't scale a team of twelve." },
+          { label: "Paste full complaint threads with names and account numbers into every prompt.", good: false, feedback: "Templates must include anonymization — Module 3 still applies." },
+        ],
+        steps: [
+          { title: "Define the five-part structure", body: "Acknowledge, explain, fix, make-good, next step" },
+          { title: "Add constraints + examples", body: "180 words, no legalese, policy limits, two best replies" },
+          { title: "Share in the team library", body: "Anonymize-first step built in" },
+        ],
+        compare: {
+          badLabel: "Hero prompts", bad: "Each agent improvises; quality depends on who is on shift.",
+          goodLabel: "Shared template", good: "Structure + constraints + examples for everyone.",
+        },
+        insights: ["Templates scale skill", "Structure + examples", "Anonymize first"],
+      },
+      {
+        id: "leadership", name: "Leadership", short: "Leadership", hint: "Contrasting versions teach judgement",
+        title: "Three Versions Before the Decision",
+        quote: "I need candor and reassurance — and I can't pick one tone yet.",
+        sceneCaption: "Reorg message · Competing tones",
+        situation: "Noor must announce a reorganization. She is torn between candor and reassurance and doesn't yet know which tone the message needs.",
+        challenge: "When you don't know what you want, a single draft locks you into one guess. Contrasting versions surface trade-offs so judgement can catch up.",
+        recommended: "Ask for three versions with the same facts: A candid, B reassuring, C balanced. Flag sentences that differ in risk. Build the final from B's opening plus A's honesty on timelines. Route through HR/comms review before sending.",
+        explanation: "Variant prompting teaches judgement by comparison. It never replaces human review, fairness checks, or the normal approval chain for people-affecting messages.",
+        takeaway: "When you don't know what you want, ask for contrasting versions and let the comparison teach you.",
+        practiceTitle: "Request three tones",
+        practicePrompt: "For a sensitive update: ask for A candid, B reassuring, C balanced — same facts — then note which sentences you'd keep from each.",
+        practiceHint: "Variants inform the decision; HR/comms still approve the send.",
+        choices: [
+          { label: "Pick one tone at random and regenerate until it 'feels right.'", good: false, feedback: "Single-tone roulette hides the trade-offs variants are meant to show." },
+          { label: "Three versions (candid / reassuring / balanced); flag risk differences; blend B opening + A timeline honesty; HR/comms review.", good: true, feedback: "Correct: compare, compose, then human approval." },
+          { label: "Send all three versions to staff for transparency.", good: false, feedback: "Three messages create confusion. One reviewed message is the deliverable." },
+          { label: "Ask the AI which version it would send and use that.", good: false, feedback: "The model's preference is not an approval. Judgement stays with you." },
+        ],
+        steps: [
+          { title: "Request three contrasting versions", body: "Same facts; A candid, B reassuring, C balanced" },
+          { title: "Compare risk sentences", body: "Flag where tone changes meaning or risk" },
+          { title: "Compose + approve", body: "Blend strengths; HR/comms review before send" },
+        ],
+        compare: {
+          badLabel: "One locked tone", bad: "Single draft or 'AI, pick for me.'",
+          goodLabel: "Variants then judge", good: "Three versions → compare → blend → approve.",
+        },
+        insights: ["Variants teach judgement", "Same facts, different risk", "Review still required"],
+      },
+      {
+        id: "finance", name: "Finance", short: "Finance", hint: "Specific structure without real figures",
+        title: "Specific Without Being Sensitive",
+        quote: "I need a sharp budget memo — but the real figures can't leave Finance.",
+        sceneCaption: "Confidential numbers · Uncleared tool",
+        situation: "Wen needs help structuring a budget memo. The real figures are confidential and the AI tool is not cleared for that data class.",
+        challenge: "She needs specificity for quality, but pasting true numbers would violate Module 3. Vague prompts produce vague memos. Placeholders solve both.",
+        recommended: "Ask for a faithful skeleton with placeholders, rounded percentages, and names replaced. Get structure and wording right in the tool, then swap true figures inside the finance system afterward.",
+        explanation: "Specific structure with placeholder values delivers most of the drafting quality at zero data risk. Real numbers stay where they belong — in cleared systems.",
+        takeaway: "Specific structure with placeholder values gets you 90 percent of the quality at zero data risk.",
+        practiceTitle: "Skeleton with placeholders",
+        practicePrompt: "Draft a prompt for a budget memo that uses [AMOUNT], rounded % changes, and Role titles instead of names. State that true figures will be filled in the finance system.",
+        practiceHint: "If a real number appears in the prompt, you've crossed the data boundary.",
+        choices: [
+          { label: "Paste the real budget tables — quality matters more than policy this week.", good: false, feedback: "Deadline pressure doesn't expand tool clearance. Module 3 still holds." },
+          { label: "Faithful skeleton with placeholders and rounded percentages; swap true figures inside finance systems after.", good: true, feedback: "Correct: structure in the tool, secrets in the cleared system." },
+          { label: "Use only empty headings with no sample values at all.", good: false, feedback: "Too little specificity. Placeholders and proportions still teach structure." },
+          { label: "Ask for a memo about 'a typical company budget' with no relation to Wen's case.", good: false, feedback: "Generic memos waste the drafting pass. Faithful skeletons with fake-but-shaped numbers work better." },
+        ],
+        steps: [
+          { title: "Replace sensitive values", body: "Placeholders, rounded %, role titles" },
+          { title: "Draft the skeleton in the tool", body: "Structure, tone, and argument flow" },
+          { title: "Fill true figures inside Finance", body: "Swap placeholders only in cleared systems" },
+        ],
+        compare: {
+          badLabel: "Real figures in", bad: "Confidential tables → uncleared tool for 'better quality.'",
+          goodLabel: "Placeholder specificity", good: "Skeleton + fake-shaped values → real numbers later.",
+        },
+        insights: ["90% quality, 0% data risk", "Placeholders", "Fill figures in cleared systems"],
+      },
+      {
+        id: "general", name: "General Office", short: "General", hint: "Source-only + [VERIFY] flags",
+        title: "The Verify Flag",
+        quote: "The pricing and features look right — I didn't paste any source material though.",
+        sceneCaption: "Plausible numbers · No sources",
+        situation: "Dev drafts a vendor comparison with AI. Pricing and feature claims look plausible, but no source material was pasted into the prompt. Six figures and claims have no trail.",
+        challenge: "Fluent, plausible output is not verified output. Without source constraints, the model invents numbers that look research-ready (Module 1 hallucination).",
+        recommended: "Add a permanent constraint: use only material provided; mark anything unsupported with [VERIFY]; do not invent numbers. When six flags appear, check vendor sites and resolve every flag before circulation.",
+        explanation: "Source-only plus [VERIFY] turns hallucinations into a to-do list. Verification becomes a built-in step of the prompt, not an afterthought.",
+        takeaway: "Build verification into the prompt: source-only + [VERIFY] turns hallucinations into a to-do list.",
+        practiceTitle: "Add the verify constraint",
+        practicePrompt: "Rewrite a research-style prompt to include: use only provided material; mark unsupported claims [VERIFY]; do not invent figures. Then list how you'd clear each flag.",
+        practiceHint: "If nothing is flagged and you provided no sources, the draft is untrustworthy — not complete.",
+        choices: [
+          { label: "Trust the plausible figures — they look research-ready.", good: false, feedback: "Plausible is the hallucination's costume. No sources = no trust." },
+          { label: "Source-only + mark unsupported with [VERIFY]; don't invent numbers; check every flag.", good: true, feedback: "Correct: constraints turn invented claims into an explicit checklist." },
+          { label: "Generate the comparison twice and keep matching sentences.", good: false, feedback: "Self-agreement across runs is circular — the model can't verify itself." },
+          { label: "Ask the AI to confirm at the end that everything is accurate.", good: false, feedback: "Self-certification isn't verification. Humans check sources." },
+        ],
+        steps: [
+          { title: "Ground in provided sources", body: "Paste material; instruct source-only" },
+          { title: "Mandate [VERIFY] flags", body: "No invented numbers or unsupported claims" },
+          { title: "Clear every flag", body: "Check vendor sites; resolve before circulation" },
+        ],
+        compare: {
+          badLabel: "Trust fluency", bad: "No sources pasted → plausible pricing accepted.",
+          goodLabel: "Source-only + flags", good: "Provided material only; [VERIFY] becomes a human checklist.",
+        },
+        insights: ["Source-only", "[VERIFY] = to-do list", "Plausible ≠ verified"],
+      },
+    ];
+
+
+    const deck = document.getElementById("deck");
+    const progressBar = document.getElementById("progressBar");
+    const counter = document.getElementById("counter");
+    const overview = document.getElementById("overview");
+    const overviewGrid = document.getElementById("overviewGrid");
+    const deptGrid = document.getElementById("deptGrid");
+    const pickerNote = document.getElementById("pickerNote");
+
+    let slides = [];
+    let index = 0;
+    let selectedId = null;
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function refreshSlides() {
+      slides = Array.from(deck.querySelectorAll(".slide"));
+    }
+
+    function clearPathSlides() {
+      deck.querySelectorAll(".slide[data-path='1']").forEach((el) => el.remove());
+      selectedId = null;
+      deptGrid.querySelectorAll(".dept-card").forEach((btn) => btn.classList.remove("selected"));
+    }
+
+    function phaseChipsHtml(activeIdx) {
+      return PHASES.map((p, i) => {
+        const cls = i === activeIdx ? "on" : i < activeIdx ? "done" : "";
+        return `<span class="phase-chip ${cls}">${p.label}</span>`;
+      }).join("");
+    }
+
+    function contentForPhase(scenario, phase) {
+      if (phase.key === "situation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.situation)}</p>
+          ${scenario.compare ? `
+            <div class="compare-grid">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      if (phase.key === "challenge") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.challenge)}</p>
+          <div class="choice-prompt">What would you do?</div>
+          <div class="choice-list" data-choice-list>
+            ${(scenario.choices || []).map((c, i) => `
+              <button type="button" class="choice-btn" data-choice="${i}" data-good="${c.good ? "1" : "0"}" data-feedback="${escapeHtml(c.feedback)}">
+                <span class="choice-tag">Option ${String.fromCharCode(65 + i)}</span>
+                ${escapeHtml(c.label)}
+              </button>`).join("")}
+          </div>
+          <div class="choice-feedback" data-choice-feedback></div>`;
+      }
+      if (phase.key === "recommended") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.recommended)}</p>
+          <div class="step-list">
+            ${(scenario.steps || []).map((s, i) => `
+              <div class="step-card">
+                <div class="step-num">${i + 1}</div>
+                <div><strong>${escapeHtml(s.title)}</strong><span>${escapeHtml(s.body)}</span></div>
+              </div>`).join("")}
+          </div>`;
+      }
+      if (phase.key === "explanation") {
+        return `
+          <p class="phase-body">${escapeHtml(scenario.explanation)}</p>
+          <div class="insight-chips">
+            ${(scenario.insights || []).map((t) => `<span class="insight-chip">${escapeHtml(t)}</span>`).join("")}
+          </div>
+          ${scenario.compare ? `
+            <div class="compare-grid" style="margin-top:4px">
+              <div class="compare-card bad"><div class="cmp-label">${escapeHtml(scenario.compare.badLabel)}</div>${escapeHtml(scenario.compare.bad)}</div>
+              <div class="compare-card good"><div class="cmp-label">${escapeHtml(scenario.compare.goodLabel)}</div>${escapeHtml(scenario.compare.good)}</div>
+            </div>` : ""}`;
+      }
+      return `
+          <div class="takeaway-hero"><span>Key takeaway</span>${escapeHtml(scenario.takeaway)}</div>
+          ${scenario.practicePrompt ? `
+            <div class="practice-box">
+              <div class="practice-label">Try it yourself</div>
+              <h3 class="practice-title">${escapeHtml(scenario.practiceTitle || "Practice")}</h3>
+              <p class="practice-prompt">${escapeHtml(scenario.practicePrompt)}</p>
+              ${scenario.practiceHint ? `<p class="practice-hint">${escapeHtml(scenario.practiceHint)}</p>` : ""}
+            </div>` : ""}`;
+    }
+
+    function buildPathSlides(scenario) {
+      clearPathSlides();
+      selectedId = scenario.id;
+      PHASES.forEach((phase, i) => {
+        const section = document.createElement("section");
+        section.className = "slide";
+        section.dataset.title = `${scenario.short}: ${phase.label}`;
+        section.dataset.path = "1";
+        section.innerHTML = `
+          <div class="meta-row">
+            <span class="dept-badge">${escapeHtml(scenario.name)}</span>
+            <button type="button" class="change-dept" data-action="change">Change department</button>
+          </div>
+          <div class="phase-bar">${phaseChipsHtml(i)}</div>
+          <div class="path-layout">
+            <aside class="scene-panel" data-phase="${phase.key}">
+              ${sceneArtHtml(scenario.id, scenario.name, scenario.sceneId)}
+              <div class="scene-caption">${escapeHtml(scenario.sceneCaption || scenario.title)}</div>
+              ${phase.key === "situation" || phase.key === "challenge"
+                ? `<div class="quote-chip">${escapeHtml(scenario.quote || "")}</div>`
+                : ""}
+            </aside>
+            <div class="content-panel" data-phase="${phase.key}">
+              <div class="phase-label">${phase.label}</div>
+              <h2 class="phase-title">${escapeHtml(scenario.title)}</h2>
+              ${contentForPhase(scenario, phase)}
+            </div>
+          </div>
+          <div class="footer">
+            <span>Relanto · ${escapeHtml(scenario.short)} scenario</span>
+            <span>Step ${i + 1} of ${PHASES.length}</span>
+          </div>
+        `;
+        deck.appendChild(section);
+      });
+      refreshSlides();
+      buildOverview();
+      wireChoiceHandlers();
+      const firstPath = slides.findIndex((s) => s.dataset.path === "1");
+      showSlide(firstPath >= 0 ? firstPath : 0);
+    }
+
+    function wireChoiceHandlers() {
+      deck.querySelectorAll("[data-choice-list]").forEach((list) => {
+        const feedback = list.parentElement.querySelector("[data-choice-feedback]");
+        list.querySelectorAll(".choice-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const good = btn.dataset.good === "1";
+            list.querySelectorAll(".choice-btn").forEach((b) => {
+              b.classList.remove("picked-good", "picked-bad");
+              b.disabled = true;
+            });
+            btn.classList.add(good ? "picked-good" : "picked-bad");
+            if (feedback) {
+              feedback.textContent = btn.dataset.feedback || "";
+              feedback.className = `choice-feedback show ${good ? "good" : "bad"}`;
+            }
+            list.querySelectorAll(".choice-btn").forEach((b) => { b.disabled = false; });
+          });
+        });
+      });
+    }
+
+    function renderDeptGrid() {
+      deptGrid.innerHTML = "";
+      SCENARIOS.forEach((s, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "dept-card";
+        btn.setAttribute("role", "listitem");
+        btn.dataset.id = s.id;
+        btn.innerHTML = `
+          <div class="dept-card-top">
+            <span class="dept-icon">${ICONS[s.id] || ICONS.general}</span>
+            <div>
+              <span class="dept-num">0${i + 1}</span>
+              <div class="dept-name">${escapeHtml(s.name)}</div>
+            </div>
+          </div>
+          <span class="dept-hint">${escapeHtml(s.hint)}</span>
+        `;
+        btn.addEventListener("click", () => {
+          deptGrid.querySelectorAll(".dept-card").forEach((el) => el.classList.remove("selected"));
+          btn.classList.add("selected");
+          buildPathSlides(s);
+        });
+        deptGrid.appendChild(btn);
+      });
+    }
+
+    function fitEmbedDeck() {
+      if (!embedMode) return;
+      const shell = document.querySelector(".deck-shell");
+      const deckEl = shell?.querySelector(".deck");
+      if (!shell || !deckEl) return;
+      deckEl.style.transform = "none";
+      slides.forEach((s) => { s.style.zoom = ""; s.style.transform = ""; });
+      const sw = shell.clientWidth;
+      const sh = shell.clientHeight;
+      if (sw < 1 || sh < 1) return;
+      const ASPECT = 16 / 9;
+      let deckW, deckH;
+      if (sw / sh > ASPECT) { deckH = sh; deckW = Math.round(sh * ASPECT); }
+      else { deckW = sw; deckH = Math.round(sw / ASPECT); }
+      deckEl.style.width = `${deckW}px`;
+      deckEl.style.height = `${deckH}px`;
+      deckEl.style.maxWidth = "100%";
+      deckEl.style.maxHeight = "100%";
+      const active = deckEl.querySelector(".slide.active");
+      if (active) {
+        if (active.classList.contains("cover")) {
+          active.style.zoom = "";
+          active.style.overflow = "hidden";
+          return;
+        }
+        const ch = active.clientHeight;
+        const contentH = active.scrollHeight;
+        if (ch > 0 && contentH > ch + 2) {
+          const z = Math.max(0.55, ch / contentH);
+          active.style.zoom = String(z);
+          if (active.scrollHeight > active.clientHeight + 2) active.style.overflow = "auto";
+        }
+      }
+    }
+    window.relantoFitEmbedDeck = fitEmbedDeck;
+
+    
+    const NEXT_SLIDE_COOLDOWN_MS = 800;
+    let nextLockedUntil = 0;
+    let nextCooldownTimer = null;
+    const nextBtnEl = document.getElementById("nextBtn");
+
+    function canAdvanceScenarioSlide() {
+      return !(typeof onPickerSlide === "function" && onPickerSlide() && !selectedId);
+    }
+
+    function updateNextButton() {
+      if (!nextBtnEl) return;
+      const remaining = Math.max(0, nextLockedUntil - Date.now());
+      if (!canAdvanceScenarioSlide()) {
+        nextBtnEl.disabled = false;
+        nextBtnEl.textContent = "Next";
+        return;
+      }
+      if (remaining > 0) {
+        nextBtnEl.disabled = true;
+        nextBtnEl.textContent = "Next slide " + (remaining / 1000).toFixed(1) + "s";
+      } else {
+        nextBtnEl.disabled = false;
+        nextBtnEl.textContent = "Next slide";
+      }
+    }
+
+    function startNextSlideCooldown() {
+      nextLockedUntil = Date.now() + NEXT_SLIDE_COOLDOWN_MS;
+      if (nextCooldownTimer) clearInterval(nextCooldownTimer);
+      updateNextButton();
+      nextCooldownTimer = setInterval(() => {
+        if (Date.now() >= nextLockedUntil) {
+          clearInterval(nextCooldownTimer);
+          nextCooldownTimer = null;
+          nextLockedUntil = 0;
+        }
+        updateNextButton();
+      }, 50);
+    }
+
+    function onPickerSlide() {
+      return slides[index]?.id === "pickerSlide" || slides[index]?.dataset.title === "Choose department";
+    }
+
+    function publishEmbedState() {
+      if (!embedMode) return;
+      const atEnd = Boolean(selectedId) && index >= slides.length - 1;
+      const atStart = index <= 0;
+      window.parent.postMessage({
+        type: EMBED_EVENT,
+        kind: "scenarios",
+        slideIndex: index,
+        slideCount: slides.length,
+        atEnd,
+        atStart,
+        slideComplete: canAdvanceScenarioSlide(),
+      }, "*");
+    }
+
+    function showSlide(next) {
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
+      progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      if (canAdvanceScenarioSlide()) startNextSlideCooldown();
+      else updateNextButton();
+      publishEmbedState();
+      if (embedMode) requestAnimationFrame(fitEmbedDeck);
+    }
+
+    function next() {
+      if (Date.now() < nextLockedUntil) return;
+      if (onPickerSlide() && !selectedId) {
+        pickerNote.classList.remove("pulse");
+        void pickerNote.offsetWidth;
+        pickerNote.classList.add("pulse");
+        pickerNote.textContent = "Select a department above to continue.";
+        updateNextButton();
+        publishEmbedState();
+        return;
+      }
+      showSlide(index + 1);
+    }
+
+    function prev() { showSlide(index - 1); }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = "";
+      slides.forEach((slide, i) => {
+        const item = document.createElement("button");
+        item.className = "thumb";
+        item.innerHTML = `<b>${String(i + 1).padStart(2, "0")}</b>${slide.dataset.title || "Slide"}`;
+        item.addEventListener("click", () => {
+          overview.classList.remove("open");
+          if (slide.dataset.path === "1" && !selectedId) return;
+          showSlide(i);
+        });
+        overviewGrid.appendChild(item);
+      });
+    }
+
+    deck.addEventListener("click", (event) => {
+      const t = event.target;
+      if (t && t.matches && t.matches("[data-action='change']")) {
+        clearPathSlides();
+        refreshSlides();
+        buildOverview();
+        const pickerIdx = slides.findIndex((s) => s.id === "pickerSlide");
+        showSlide(pickerIdx >= 0 ? pickerIdx : 1);
+        pickerNote.classList.remove("pulse");
+        pickerNote.textContent = "Select one path. You’ll get an interactive scenario — about five short slides.";
+      }
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", next);
+    document.getElementById("prevBtn").addEventListener("click", prev);
+    document.getElementById("overviewBtn").addEventListener("click", () => overview.classList.toggle("open"));
+    overview.addEventListener("click", (event) => {
+      if (event.target === overview) overview.classList.remove("open");
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "o") { overview.classList.toggle("open"); return; }
+      if (overview.classList.contains("open") && event.key === "Escape") {
+        overview.classList.remove("open"); return;
+      }
+      if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+        event.preventDefault(); next();
+      }
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        event.preventDefault(); prev();
+      }
+      if (event.key === "Home") showSlide(0);
+      if (event.key === "End") showSlide(slides.length - 1);
+    });
+
+    if (cleanMode) {
+      document.body.classList.add("embed");
+      document.querySelector(".nav").style.display = "none";
+      document.querySelector(".help").style.display = "none";
+    }
+
+    if (embedMode) {
+      document.querySelectorAll(".cover-brand img").forEach((img) => {
+        img.src = "/relanto-logo.png";
+      });
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || data.type !== EMBED_COMMAND) return;
+        if (data.command === "next") next();
+        if (data.command === "prev") prev();
+        if (data.command === "goto" && Number.isFinite(data.index)) showSlide(Number(data.index));
+      });
+      window.addEventListener("resize", fitEmbedDeck);
+      try {
+        const shell = document.querySelector(".deck-shell");
+        if (shell && typeof ResizeObserver !== "undefined") new ResizeObserver(fitEmbedDeck).observe(shell);
+      } catch { /* ignore */ }
+    }
+
+    renderDeptGrid();
+    refreshSlides();
+    buildOverview();
+    const requestedSlide = Number(urlParams.get("slide") || "1");
+    showSlide(Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0);
+    publishEmbedState();
+    if (embedMode) {
+      setTimeout(fitEmbedDeck, 0);
+      setTimeout(fitEmbedDeck, 150);
+    }
+  </script>
+</body>
+</html>

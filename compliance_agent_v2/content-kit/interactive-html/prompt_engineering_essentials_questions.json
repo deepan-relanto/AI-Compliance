@@ -1,0 +1,219 @@
+{
+  "questions": [
+    {
+      "prompt": "A colleague's prompt \"Write a report about our department\" returns generic filler. The most accurate diagnosis is:",
+      "options": [
+        { "id": "a", "label": "The AI model is too weak for report writing." },
+        { "id": "b", "label": "The prompt supplied only a vague task and forced the model to guess the audience, content, format, and purpose, so it produced the statistical average of all reports." },
+        { "id": "c", "label": "Reports cannot be drafted with AI." },
+        { "id": "d", "label": "The prompt was too polite." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Generic output is the signature of missing building blocks. Every unspecified element (audience, content, format, constraints) gets filled with the most typical possibility, which reads as filler. The fix is information, not a different model."
+    },
+    {
+      "prompt": "Which prompt fragment adds the LEAST usable information for the model?",
+      "options": [
+        { "id": "a", "label": "\"The audience is the steering committee, who have 5 minutes to read this.\"" },
+        { "id": "b", "label": "\"Maximum 300 words, three sections: Progress, Risks, Decisions Needed.\"" },
+        { "id": "c", "label": "\"You are the world's most brilliant writer; write something amazing.\"" },
+        { "id": "d", "label": "\"Use only the notes below; mark unclear items 'to be confirmed'.\"" }
+      ],
+      "correctOptionId": "c",
+      "explanation": "Flattery and superlatives specify nothing the model can act on. Audience and reading time (A), format and length (B), and source constraints (D) each remove guesses; 'amazing' removes none."
+    },
+    {
+      "prompt": "True or False: If you mention \"the attached policy\" in your prompt but never actually paste or attach it, the AI will answer based on the real policy anyway.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The model sees only what is in the conversation. Referencing unseen documents invites it to improvise plausible policy details, the company-specific hallucination pattern from Module 1. Paste or attach the material, within Module 3 data rules."
+    },
+    {
+      "prompt": "Your AI-drafted client letter is 70 percent right: good opening and close, but the middle section argues the wrong point. The most efficient next prompt is:",
+      "options": [
+        { "id": "a", "label": "\"Try again.\"" },
+        { "id": "b", "label": "\"Keep the opening and closing exactly as written. Rewrite only the middle section: the goal is to retain the client, not defend our process. Two paragraphs, non-defensive tone.\"" },
+        { "id": "c", "label": "Retype the entire letter yourself." },
+        { "id": "d", "label": "\"Make it better and more persuasive.\"" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Keep-and-fix refinement protects the working parts, names the specific failure, and states what right looks like, typically finishing in one pass. 'Try again' may break the good sections, and vague adjectives (D) repeat the original problem."
+    },
+    {
+      "prompt": "[Select all that apply] Which techniques reliably improve output quality?",
+      "options": [
+        { "id": "a", "label": "Pasting one or two examples of what good looks like" },
+        { "id": "b", "label": "Assigning a relevant role or perspective" },
+        { "id": "c", "label": "Adding 'please' multiple times" },
+        { "id": "d", "label": "Separating instructions into labelled parts (task, context, format, constraints)" },
+        { "id": "e", "label": "Asking the AI to list its clarifying questions before producing a high-stakes document" }
+      ],
+      "correctOptionIds": ["a", "b", "d", "e"],
+      "explanation": "Examples, roles, structure, and clarify-then-produce are the module's core techniques: each transfers real information or surfaces gaps. Repeated politeness, like flattery, adds nothing actionable."
+    },
+    {
+      "prompt": "Why does showing an example beat describing a style with adjectives?",
+      "options": [
+        { "id": "a", "label": "Examples use fewer tokens." },
+        { "id": "b", "label": "Models imitate concrete patterns (sentence length, structure, tone) far more precisely than they interpret subjective adjectives like 'engaging' or 'professional'." },
+        { "id": "c", "label": "Adjectives are forbidden in prompts." },
+        { "id": "d", "label": "Examples prevent all hallucinations." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "'Professional' means a thousand different things; a pasted reference means exactly one. Imitation of shown patterns is a model strength; interpretation of taste words is a guess. Examples affect style, not factual accuracy (D)."
+    },
+    {
+      "prompt": "You must document a process from ambiguous notes, and you don't know the answers to the ambiguities yourself. The safest prompting pattern is:",
+      "options": [
+        { "id": "a", "label": "Ask for the full procedure immediately; the AI will figure out the gaps." },
+        { "id": "b", "label": "Ask the AI to first list every ambiguity and missing step as questions, get real answers from the process owner, then request the procedure." },
+        { "id": "c", "label": "Write the prompt in capital letters to signal importance." },
+        { "id": "d", "label": "Ask for three versions of the procedure and pick the most plausible." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Asked to produce directly, the model fills gaps with plausible inventions. Clarify-then-produce converts that gap-filling instinct into a quality check. Picking the most plausible invented version (D) just selects the best-disguised guesses."
+    },
+    {
+      "prompt": "The constraint \"Use only the material I provide and mark any unsupported claim with [VERIFY]\" primarily protects against:",
+      "options": [
+        { "id": "a", "label": "Overly long outputs." },
+        { "id": "b", "label": "Hallucinated facts, figures, and citations slipping invisibly into factual documents." },
+        { "id": "c", "label": "Tone problems." },
+        { "id": "d", "label": "Slow response times." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Source-only instructions plus an uncertainty flag make the model expose what it cannot support instead of papering over it, turning invisible risk into a visible checklist for human verification (Module 1's habit, built into the prompt)."
+    },
+    {
+      "prompt": "True or False: A sufficiently well-engineered prompt removes the need to review the output before sending it to a client.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Prompting improves drafts; it cannot verify facts, check fairness, or carry accountability. Review scaled to stakes remains mandatory regardless of prompt quality (Modules 1 and 2)."
+    },
+    {
+      "prompt": "A sales rep wants AI feedback on a proposal but the document is confidential and the approved tool is not cleared for it. The best way to keep specificity without breaking data rules is:",
+      "options": [
+        { "id": "a", "label": "Paste the full proposal; quality justifies it." },
+        { "id": "b", "label": "Use a faithful anonymized skeleton: real structure, rounded proportions, placeholder names, then apply insights to the real document internally." },
+        { "id": "c", "label": "Use a free personal AI account so the company tool isn't involved." },
+        { "id": "d", "label": "Skip AI feedback; there is no compliant option." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Structure, argument flow, and tone carry most of the value and need no true sensitive values. Placeholder fidelity preserves quality at zero data risk. A personal account (C) is shadow AI and strictly worse."
+    },
+    {
+      "prompt": "[Select all that apply] Which situations call for starting a NEW conversation rather than continuing the current one?",
+      "options": [
+        { "id": "a", "label": "Switching from drafting an email to planning an event" },
+        { "id": "b", "label": "The assistant starts confusing details from two different projects" },
+        { "id": "c", "label": "Asking a quick follow-up about the same draft" },
+        { "id": "d", "label": "A long session where early instructions seem to be slipping" }
+      ],
+      "correctOptionIds": ["a", "b", "d"],
+      "explanation": "New tasks, cross-task confusion, and context degradation are the signals to reset and restate essentials (Module 1's context-window lesson). A direct follow-up on the same task belongs in the same conversation."
+    },
+    {
+      "prompt": "Your team rewrites the same kind of customer apology weekly, with quality varying by author. The highest-leverage prompting action is:",
+      "options": [
+        { "id": "a", "label": "Everyone keeps improvising; variety is good." },
+        { "id": "b", "label": "Build a shared template encoding structure, constraints, and two anonymized best-example replies, store it in a team prompt library, and keep individual review of each output." },
+        { "id": "c", "label": "Have the best writer personally draft everything forever." },
+        { "id": "d", "label": "Buy a different AI tool." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Templates scale the best performer's judgement (structure), tone (examples), and policy (constraints) across the team while review preserves accountability. Bottlenecking on one person (C) and tool-switching (D) don't transfer the skill."
+    },
+    {
+      "prompt": "What does role-based prompting actually do?",
+      "options": [
+        { "id": "a", "label": "Grants the model real professional credentials for the named role." },
+        { "id": "b", "label": "Compresses a set of priorities, vocabulary, and perspective into one phrase, sharpening style and focus without creating real expertise or authority." },
+        { "id": "c", "label": "Bypasses the model's safety rules." },
+        { "id": "d", "label": "Doubles the context window." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "'Act as a skeptical CFO' efficiently encodes what to care about and how to sound. It produces CFO-flavored perspective, not licensed financial judgement; accountability and professional advice remain human matters."
+    },
+    {
+      "prompt": "Which refinement follow-up best fixes an output whose TONE is wrong?",
+      "options": [
+        { "id": "a", "label": "\"Make it longer.\"" },
+        { "id": "b", "label": "\"Warmer and less formal, like a message from a trusted manager, not a press release.\"" },
+        { "id": "c", "label": "\"You misunderstood everything; start over.\"" },
+        { "id": "d", "label": "\"Add more bullet points.\"" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Naming the target tone with a concrete reference point gives the model a pattern to hit. Length (A) and formatting (D) don't address tone, and unspecific restarts (C) discard working content while repeating the original ambiguity."
+    },
+    {
+      "prompt": "True or False: Longer prompts always produce better answers.",
+      "options": [
+        { "id": "a", "label": "True" },
+        { "id": "b", "label": "False" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Relevant detail helps; padding, repetition, and irrelevant background dilute the instructions and can degrade results. The rule is completeness of the five blocks, not word count."
+    },
+    {
+      "prompt": "A director can't decide between a candid and a reassuring tone for a sensitive announcement. The most useful prompting strategy is:",
+      "options": [
+        { "id": "a", "label": "Ask for one perfect version and send it immediately." },
+        { "id": "b", "label": "Request contrasting versions (candid, reassuring, balanced) with identical facts and flagged risk sentences, compare them to clarify the judgement, then craft the final message and route it through normal review." },
+        { "id": "c", "label": "Let the AI choose the tone, since it is neutral." },
+        { "id": "d", "label": "Average the word counts of two drafts." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Variant prompting makes the trade-off visible and supports the human decision; the choice of tone for sensitive communication is leadership judgement, not a model preference (C). Proper review still applies before sending."
+    },
+    {
+      "prompt": "Which is the best example of the 'context' building block?",
+      "options": [
+        { "id": "a", "label": "\"Maximum 200 words.\"" },
+        { "id": "b", "label": "\"The reader is a long-term client, already refunded, still angry about a missed delivery that delayed their event.\"" },
+        { "id": "c", "label": "\"Use a friendly tone.\"" },
+        { "id": "d", "label": "\"Write an email.\"" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Context is situational background: who the reader is, what has happened, what they feel. Length (A) is a constraint, tone (C) is a constraint/style element, and (D) is the bare task."
+    },
+    {
+      "prompt": "[Select all that apply] Which prompt habits keep prompting aligned with the earlier modules?",
+      "options": [
+        { "id": "a", "label": "Anonymizing identifiers before pasting (Module 3)" },
+        { "id": "b", "label": "Verifying [VERIFY]-flagged claims against real sources before use (Module 1)" },
+        { "id": "c", "label": "Checking outputs about people for fair representation before circulating (Module 2)" },
+        { "id": "d", "label": "Assuming an approved tool makes all pasted content acceptable" }
+      ],
+      "correctOptionIds": ["a", "b", "c"],
+      "explanation": "Prompting operates inside the guardrails: minimized data, verified facts, fair outputs. Tool approval has scope (Module 3); it never converts any content into acceptable content."
+    },
+    {
+      "prompt": "An employee runs the same vague prompt five times hoping for a better answer, then declares the tool useless. The lesson they are missing is:",
+      "options": [
+        { "id": "a", "label": "Six attempts are needed before judging." },
+        { "id": "b", "label": "Regeneration without new information rarely helps; improvement comes from refinement that adds context, constraints, examples, or names the specific failure." },
+        { "id": "c", "label": "The tool requires a paid plan." },
+        { "id": "d", "label": "Vague prompts work if typed faster." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The model can only work with the information given. Re-rolling the dice on the same vague prompt re-samples the same guesses. Each refinement should change what the model knows, not just ask again."
+    },
+    {
+      "prompt": "You're about to send a complex prompt for an important deliverable. The quickest pre-send quality check from this module is:",
+      "options": [
+        { "id": "a", "label": "Count the words; aim for at least 500." },
+        { "id": "b", "label": "Scan for the five blocks: task, context, format, constraints, examples, and add whichever is missing." },
+        { "id": "c", "label": "Add 'this is very important' at the top." },
+        { "id": "d", "label": "Remove all structure so the prompt reads naturally." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The five-block scan is the module's portable checklist; each missing block is a guess you are delegating. Word counts, urgency declarations, and de-structuring add nothing the model can use."
+    }
+  ]
+}

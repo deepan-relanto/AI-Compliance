@@ -11,7 +11,12 @@ export type CourseEmbedState = {
   slideCount: number;
   atEnd: boolean;
   atStart: boolean;
+  /** True when the current slide has no remaining reveal fragments (ready to advance). */
+  slideComplete: boolean;
 };
+
+/** Brief lock after a slide finishes revealing so learners don't skip ahead by accident. */
+export const NEXT_SLIDE_COOLDOWN_MS = 800;
 
 export type CourseEmbedCommand =
   | { type: typeof COURSE_EMBED_COMMAND; command: "next" }
@@ -64,4 +69,21 @@ export function isCourseEmbedState(data: unknown): data is CourseEmbedState & {
     typeof d.atEnd === "boolean" &&
     typeof d.atStart === "boolean"
   );
+}
+
+/** Normalize embed payloads (older HTML may omit slideComplete). */
+export function normalizeCourseEmbedState(
+  data: CourseEmbedState & { type: typeof COURSE_EMBED_EVENT },
+): CourseEmbedState {
+  return {
+    kind: data.kind,
+    slideIndex: data.slideIndex,
+    slideCount: data.slideCount,
+    atEnd: data.atEnd,
+    atStart: data.atStart,
+    slideComplete:
+      typeof (data as { slideComplete?: unknown }).slideComplete === "boolean"
+        ? Boolean((data as { slideComplete: boolean }).slideComplete)
+        : data.atEnd,
+  };
 }

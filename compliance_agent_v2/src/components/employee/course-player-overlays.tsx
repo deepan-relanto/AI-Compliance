@@ -10,7 +10,7 @@ import {
 import type { ModuleStatus, ReviewRequest, WarningHistoryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GraduationCap } from "lucide-react";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 
 export function CourseAcknowledgementPanel({
   signatureName,
@@ -34,6 +34,7 @@ export function CourseAcknowledgementPanel({
   onSubmit: () => void;
 }) {
   return (
+    <LazyMotion features={domAnimation}>
     <motion.div
       key="ack"
       initial={{ opacity: 0, y: 12 }}
@@ -93,6 +94,7 @@ export function CourseAcknowledgementPanel({
         </div>
       </div>
     </motion.div>
+    </LazyMotion>
   );
 }
 

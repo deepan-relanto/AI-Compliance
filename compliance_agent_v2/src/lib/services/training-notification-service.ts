@@ -158,7 +158,20 @@ function reminderHtml(params: {
 </body></html>`;
   }
 
-  return invitationHtml(params);
+  return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Friendly reminder to start your training</h1>
+  <p>Hi ${escapeHtml(displayName)},</p>
+  <p>This is a friendly reminder to begin <strong>${escapeHtml(moduleTitle)}</strong>. It is a proctored compliance assessment (${durationLabel}) waiting in your learning queue.</p>
+  <p style="font-size:13px;color:#52525b">Please start it when you next have a focused stretch of time so you can complete it smoothly in one sitting.</p>
+  ${ctaButtonHtml(loginUrl, "Start training")}
+  <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
+  <p style="font-size:12px;color:#71717a">If you run into access issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+</body></html>`;
 }
 
 function reminderTextBody(params: {
@@ -178,7 +191,13 @@ function reminderTextBody(params: {
       "Sign in with your @relanto.ai Microsoft work account to begin.",
     ].join("\n\n");
   }
-  return invitationTextBody(params);
+  return [
+    `Hi ${displayName},`,
+    `This is a friendly reminder to begin "${moduleTitle}". It is a proctored compliance assessment (${durationLabel}) waiting in your learning queue.`,
+    "Please start it when you next have a focused stretch of time so you can complete it smoothly in one sitting.",
+    `Start training: ${loginUrl}`,
+    "Sign in with your @relanto.ai Microsoft work account to begin.",
+  ].join("\n\n");
 }
 
 function completionHtml(params: {
@@ -370,7 +389,7 @@ export interface SendModuleInvitationOptions {
   forceResend?: boolean;
   /** Restrict sending to one batch when the module is assigned to multiple batches. */
   batchId?: string;
-  /** For course reminders, email only learners who still have not started. */
+  /** Email only learners who still have not started (courses and compliance). */
   reminderOnlyNotStarted?: boolean;
 }
 
@@ -423,16 +442,6 @@ export async function sendModuleInvitationEmails(
   const moduleTitle = moduleRows[0].title as string;
   const loginBase = cfg.baseUrl;
   const isCourse = modules.length > 0;
-  if (reminderOnlyNotStarted && !isCourse) {
-    return {
-      ok: false,
-      sent: 0,
-      skipped: 0,
-      failed: 0,
-      errors: ["Not-started reminders are supported only for course bundles."],
-      message: "Not-started reminders are supported only for course bundles.",
-    };
-  }
   const kind: MailKind = isCourse ? "course" : "compliance";
   const durationLabel = isCourse
     ? courseDurationLabel(Number(moduleRows[0].duration_minutes))
@@ -465,9 +474,21 @@ export async function sendModuleInvitationEmails(
         ORDER BY u.email
       `
     : await sql`
-        SELECT DISTINCT u.email, u.display_name
+        SELECT DISTINCT
+          u.email,
+          u.display_name,
+          ap.status AS progress_status,
+          LEAST(ap.score_percent, 100) AS score_percent,
+          ap.completed_at,
+          ap.last_accessed_at,
+          ap.current_slide,
+          ap.warning_count,
+          ap.mcq_answers
         FROM users u
         INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
+        LEFT JOIN assessment_progress ap
+          ON ap.user_email = u.email
+          AND ap.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
           AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
           AND u.role = 'user'
@@ -485,7 +506,7 @@ export async function sendModuleInvitationEmails(
     const displayName =
       (row.display_name as string | null)?.trim() || firstNameFromEmail(email);
 
-    if (reminderOnlyNotStarted && isCourse) {
+    if (reminderOnlyNotStarted) {
       const rawAnswers =
         row.mcq_answers &&
         typeof row.mcq_answers === "object" &&

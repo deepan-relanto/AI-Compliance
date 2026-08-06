@@ -141,6 +141,10 @@ function mapViolationRows(rows: Record<string, unknown>[]): AssessmentProgress[]
 
 /** Distinct assessments for filter pills (most recent activity first). */
 export async function getMonitoringAssessmentFacets(sql: Sql): Promise<AssessmentFacet[]> {
+  const { cacheGet, cacheSet, CACHE_KEYS } = await import("@/lib/api-cache");
+  const cached = cacheGet<AssessmentFacet[]>(CACHE_KEYS.monitoringFacets);
+  if (cached) return cached;
+
   const rows = await sql`
     SELECT
       module_id,
@@ -150,11 +154,13 @@ export async function getMonitoringAssessmentFacets(sql: Sql): Promise<Assessmen
     GROUP BY module_id, module_title
     ORDER BY MAX(last_accessed_at) DESC NULLS LAST
   `;
-  return rows.map((r) => ({
+  const facets = rows.map((r) => ({
     moduleId: r.module_id as string,
     moduleTitle: r.module_title as string,
     count: Number(r.count ?? 0),
   }));
+  cacheSet(CACHE_KEYS.monitoringFacets, facets, 60);
+  return facets;
 }
 
 /** Paginated violations — default sort: latest activity first. */
@@ -198,7 +204,7 @@ export async function listMonitoringViolationsPaged(
             ap.last_accessed_at, ap.completed_at
           FROM assessment_progress ap
           LEFT JOIN batches b ON b.id = ap.batch_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
+          LEFT JOIN users u ON u.email = ap.user_email
           LEFT JOIN batches ub ON ub.id = u.batch_id
           WHERE
             (
@@ -225,7 +231,7 @@ export async function listMonitoringViolationsPaged(
             ap.last_accessed_at, ap.completed_at
           FROM assessment_progress ap
           LEFT JOIN batches b ON b.id = ap.batch_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(ap.user_email)
+          LEFT JOIN users u ON u.email = ap.user_email
           LEFT JOIN batches ub ON ub.id = u.batch_id
           WHERE
             (

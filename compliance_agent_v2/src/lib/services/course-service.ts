@@ -73,13 +73,11 @@ export async function createCourseModuleDb(
     const batchIds = params.batchIds.includes("all")
       ? (await sql`SELECT id FROM batches`).map((r) => r.id as string)
       : params.batchIds;
-    for (const batchId of batchIds) {
-      await sql`
-        INSERT INTO course_module_batches (module_id, batch_id)
-        VALUES (${id}, ${batchId})
-        ON CONFLICT DO NOTHING
-      `;
-    }
+    await sql`
+      INSERT INTO course_module_batches (module_id, batch_id)
+      SELECT ${id}, unnest(${batchIds}::text[])
+      ON CONFLICT DO NOTHING
+    `;
   }
 
   return { id };
@@ -321,13 +319,11 @@ export async function publishCourseModuleDb(
   `;
 
   await sql`DELETE FROM course_module_batches WHERE module_id = ${moduleId}`;
-  for (const batchId of ids) {
-    await sql`
-      INSERT INTO course_module_batches (module_id, batch_id)
-      VALUES (${moduleId}, ${batchId})
-      ON CONFLICT DO NOTHING
-    `;
-  }
+  await sql`
+    INSERT INTO course_module_batches (module_id, batch_id)
+    SELECT ${moduleId}, unnest(${ids}::text[])
+    ON CONFLICT DO NOTHING
+  `;
 
   const { invalidateLearnerAccessForModule } = await import(
     "@/lib/learner-access-cache"

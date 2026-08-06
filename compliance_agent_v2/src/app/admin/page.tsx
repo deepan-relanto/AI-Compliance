@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useAuthStore } from "@/lib/auth-store";
 import type { AnalyticsPayload, BatchAnalytics } from "@/lib/analytics-types";
-import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
+import { PASS_THRESHOLD_PERCENT, isPassingScore } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -228,7 +228,7 @@ function ActivityItem({
   score: number | null;
   when: string;
 }) {
-  const passed = score != null && score > PASS_THRESHOLD_PERCENT;
+  const passed = score != null && isPassingScore(score);
   const failed = status === "failed" || status === "permanently_failed";
 
   return (
@@ -292,8 +292,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/analytics").then((r) => r.json()),
-      fetch("/api/analytics?track=course").then((r) => r.json()),
+      fetch("/api/analytics?view=home").then((r) => r.json()),
+      fetch("/api/analytics?track=course&view=home").then((r) => r.json()),
     ])
       .then(([compliance, course]) => {
         if (compliance.ok) setComplianceData(compliance as AnalyticsPayload);

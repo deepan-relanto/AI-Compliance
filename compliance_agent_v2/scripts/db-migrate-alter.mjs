@@ -156,6 +156,12 @@ await sql`CREATE INDEX IF NOT EXISTS idx_module_batches_module ON module_batches
 await sql`CREATE INDEX IF NOT EXISTS idx_mcq_questions_module ON mcq_questions(module_id)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_progress_user_module ON assessment_progress(user_email, module_id)`;
 
+await sql`CREATE INDEX IF NOT EXISTS idx_progress_last_accessed ON assessment_progress(last_accessed_at DESC NULLS LAST)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_progress_warning_count ON assessment_progress(warning_count DESC) WHERE warning_count > 0`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_last_accessed ON course_progress(last_accessed_at DESC NULLS LAST)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_warning_count ON course_progress(warning_count DESC) WHERE warning_count > 0`;
+await sql`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (LOWER(email))`;
+
 // Allow Consumed status on proctor retake approvals (one-time use).
 await sql`ALTER TABLE review_requests DROP CONSTRAINT IF EXISTS review_requests_status_check`;
 await sql`

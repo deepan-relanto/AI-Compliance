@@ -16,7 +16,7 @@ import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { ProctorRulesModal } from "@/components/employee/proctor-rules-modal";
 import { ChevronLeft, ChevronRight, Clock, Maximize2, Minimize2, ShieldCheck } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -251,49 +251,56 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     let serverEntry: ServerProgressEntry | undefined;
     let progressFetchOk = false;
 
+    const [progressSettled, reviewSettled] = await Promise.allSettled([
+      fetchUserProgress(user.username),
+      fetchLatestReviewRequest(user.username, module.id),
+    ]);
+
     try {
-      const result = await fetchUserProgress(user.username);
-      progressFetchOk = result.ok;
-      const entries = result.progress;
-      serverEntry = entries.find((e) => e.moduleId === module.id);
+      if (progressSettled.status === "fulfilled") {
+        const result = progressSettled.value;
+        progressFetchOk = result.ok;
+        const entries = result.progress;
+        serverEntry = entries.find((e) => e.moduleId === module.id);
 
-      if (progressFetchOk) {
-        if (serverEntry) {
-          mergeServerProgress(user.username, [
-            {
-              moduleId: serverEntry.moduleId,
-              moduleTitle: serverEntry.moduleTitle,
-              batchId: serverEntry.batchId,
-              currentSlide: serverEntry.currentSlide,
-              totalSlides: serverEntry.totalSlides,
-              status: serverEntry.status,
-              retakeCount: serverEntry.retakeCount,
-              mcqCorrect: serverEntry.mcqCorrect,
-              mcqTotal: serverEntry.mcqTotal,
-              scorePercent: serverEntry.scorePercent,
-              failedReason: serverEntry.failedReason,
-              completedAt: serverEntry.completedAt,
-              warningCount: serverEntry.warningCount,
-            },
-          ]);
-          if (serverEntry.mcqCorrect > 0) {
-            setCorrectAnswers(serverEntry.mcqCorrect);
+        if (progressFetchOk) {
+          if (serverEntry) {
+            mergeServerProgress(user.username, [
+              {
+                moduleId: serverEntry.moduleId,
+                moduleTitle: serverEntry.moduleTitle,
+                batchId: serverEntry.batchId,
+                currentSlide: serverEntry.currentSlide,
+                totalSlides: serverEntry.totalSlides,
+                status: serverEntry.status,
+                retakeCount: serverEntry.retakeCount,
+                mcqCorrect: serverEntry.mcqCorrect,
+                mcqTotal: serverEntry.mcqTotal,
+                scorePercent: serverEntry.scorePercent,
+                failedReason: serverEntry.failedReason,
+                completedAt: serverEntry.completedAt,
+                warningCount: serverEntry.warningCount,
+              },
+            ]);
+            if (serverEntry.mcqCorrect > 0) {
+              setCorrectAnswers(serverEntry.mcqCorrect);
+            }
+          } else {
+            clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
+            setIsFailed(false);
+            proctorHook.hydrateFromProgress(null);
+            setRetakeCount(0);
+            setDbStatus("not_started");
           }
-        } else {
-          clearLocalModuleProgressIfServerAbsent(user.username, module.id, false);
-          setIsFailed(false);
-          proctorHook.hydrateFromProgress(null);
-          setRetakeCount(0);
-          setDbStatus("not_started");
-        }
 
-        if (entries.length === 0) {
-          clearAllLocalProgressForUser(user.username);
-        } else {
-          clearStaleLocalProgress(user.username, {
-            serverModuleIds: entries.map((e) => e.moduleId),
-            assignedModuleIds: [module.id],
-          });
+          if (entries.length === 0) {
+            clearAllLocalProgressForUser(user.username);
+          } else {
+            clearStaleLocalProgress(user.username, {
+              serverModuleIds: entries.map((e) => e.moduleId),
+              assignedModuleIds: [module.id],
+            });
+          }
         }
       }
     } catch {
@@ -301,10 +308,10 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     }
 
     const serverFresh =
-      !progressFetchOk ||
-      !serverEntry ||
-      (serverEntry.status === "not_started" &&
-        (serverEntry.warningCount ?? 0) === 0);
+      progressFetchOk &&
+      (!serverEntry ||
+        (serverEntry.status === "not_started" &&
+          (serverEntry.warningCount ?? 0) === 0));
 
     const prog = getProgress(user.username, module.id);
     if (prog && !serverFresh) {
@@ -349,7 +356,11 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     }
 
     try {
-      const latest = await fetchLatestReviewRequest(user.username, module.id);
+      let latest =
+        reviewSettled.status === "fulfilled" ? reviewSettled.value : null;
+      if (reviewSettled.status === "rejected") {
+        latest = await fetchLatestReviewRequest(user.username, module.id);
+      }
       if (serverFresh && latest?.status === "Pending") {
         setReviewRequest(null);
       } else {
@@ -1224,6 +1235,7 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
   }
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="training-interactive fixed inset-0 z-30 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-900">
       <header className="relative z-[70] flex h-12 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 text-white">
         <RelantoLogo size="sm" showTagline={false} />
@@ -1663,5 +1675,6 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
           document.body,
         )}
     </div>
+    </LazyMotion>
   );
 }

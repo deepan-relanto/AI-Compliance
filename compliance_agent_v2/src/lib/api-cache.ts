@@ -97,6 +97,7 @@ export const CACHE_KEYS = {
   monitoringAudit: (page: number, actionFilter: string) =>
     `monitoring:audit:${page}:${actionFilter}`,
   monitoringSummary: "monitoring:summary",
+  monitoringFacets: "monitoring:facets",
   courseMonitoringViolations: (
     page: number,
     statusFilter: string,
@@ -108,5 +109,6 @@ export const CACHE_KEYS = {
   courseMonitoringAudit: (page: number, actionFilter: string) =>
     `course-monitoring:audit:${page}:${actionFilter}`,
   courseMonitoringSummary: "course-monitoring:summary",
+  courseMonitoringFacets: "course-monitoring:facets",
   batchPerformance: (id: string, track = "compliance") => `batch:perf:${id}:${track}`,
 } as const;

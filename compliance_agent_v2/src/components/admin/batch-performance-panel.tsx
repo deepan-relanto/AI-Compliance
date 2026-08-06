@@ -222,7 +222,7 @@ export function BatchPerformancePanel({
   );
   const reminderLearnerCount = reminderRows.length;
   const canSendReminder =
-    track === "course" && reminderModuleIds.length > 0 && data.modules.length > 0;
+    reminderModuleIds.length > 0 && data.modules.length > 0;
 
   async function handleResendReminder() {
     if (!canSendReminder || reminderSending) return;
@@ -246,7 +246,7 @@ export function BatchPerformancePanel({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             batchId: data.batch.id,
-            mode: "course_not_started_reminder",
+            mode: "not_started_reminder",
             reminderOnlyNotStarted: true,
           }),
         });
@@ -326,23 +326,21 @@ export function BatchPerformancePanel({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {track === "course" && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void handleResendReminder()}
-                  disabled={!canSendReminder || reminderSending}
-                >
-                  {reminderSending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  )}
-                  {reminderSending
-                    ? "Sending reminders…"
-                    : `Resend reminder to not started (${reminderLearnerCount})`}
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void handleResendReminder()}
+                disabled={!canSendReminder || reminderSending}
+              >
+                {reminderSending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                {reminderSending
+                  ? "Sending reminders…"
+                  : `Resend reminder to not started (${reminderLearnerCount})`}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

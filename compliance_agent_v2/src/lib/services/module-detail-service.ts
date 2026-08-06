@@ -62,7 +62,7 @@ export async function loadModuleDetail(
   `;
   const isCourse = courseRows.length > 0;
 
-  const [moduleRows, batchRows, mcqRows, progressRows] = await Promise.all([
+  const [moduleRows, batchRows, mcqRows, progressRows, rawSteps] = await Promise.all([
     isCourse
       ? sql`SELECT * FROM course_modules WHERE id = ${moduleId} LIMIT 1`
       : sql`SELECT * FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
@@ -103,6 +103,7 @@ export async function loadModuleDetail(
             LIMIT 1
           `
       : Promise.resolve([]),
+    isCourse ? getModuleStepsDb(sql, moduleId) : Promise.resolve([]),
   ]);
 
   if (moduleRows.length === 0) return null;
@@ -226,8 +227,7 @@ export async function loadModuleDetail(
 
   let steps: CourseStepRow[] | undefined;
   if (isCourse) {
-    const rawSteps = await getModuleStepsDb(sql, moduleId);
-    steps = rawSteps
+    steps = (rawSteps as Awaited<ReturnType<typeof getModuleStepsDb>>)
       .filter((s) => s.stepType !== "quiz")
       .map((s) => ({
         ...s,

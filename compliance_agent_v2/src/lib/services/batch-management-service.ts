@@ -96,19 +96,27 @@ async function assignEmployeesToBatch(
     employees.map((e) => [(e.work_email as string).toLowerCase(), e.name as string]),
   );
 
-  let assigned = 0;
-  for (const email of normalized) {
-    const displayName = emailToName.get(email) ?? email.split("@")[0];
-    await sql`
-      INSERT INTO users (email, password_hash, role, batch_id, display_name)
-      VALUES (${email}, ${SSO_PLACEHOLDER}, 'user', ${batchId}, ${displayName})
-      ON CONFLICT (email) DO UPDATE SET
-        batch_id = EXCLUDED.batch_id,
-        display_name = COALESCE(EXCLUDED.display_name, users.display_name),
-        updated_at = NOW()
-    `;
-    assigned++;
-  }
+  const emails_arr = normalized;
+  const names_arr = normalized.map((e) => emailToName.get(e) ?? e.split("@")[0]);
+  const passwords_arr = normalized.map(() => SSO_PLACEHOLDER);
+  const roles_arr = normalized.map(() => "user");
+  const batches_arr = normalized.map(() => batchId);
+
+  await sql`
+    INSERT INTO users (email, password_hash, role, batch_id, display_name)
+    SELECT * FROM unnest(
+      ${emails_arr}::text[],
+      ${passwords_arr}::text[],
+      ${roles_arr}::text[],
+      ${batches_arr}::text[],
+      ${names_arr}::text[]
+    ) AS t(email, password_hash, role, batch_id, display_name)
+    ON CONFLICT (email) DO UPDATE SET
+      batch_id = EXCLUDED.batch_id,
+      display_name = COALESCE(EXCLUDED.display_name, users.display_name),
+      updated_at = NOW()
+  `;
+  const assigned = normalized.length;
   await syncProgressBatchForEmails(sql, normalized);
   for (const email of normalized) invalidateLearnerAccess(email);
   invalidateAdminCaches();
@@ -117,14 +125,14 @@ async function assignEmployeesToBatch(
 
 async function uniqueBatchId(sql: Sql, label: string): Promise<string> {
   const base = slugifyBatchId(label);
-  let id = base;
+  const rows = await sql`
+    SELECT id FROM batches WHERE id = ${base} OR id LIKE ${base + "-%"}
+  `;
+  const existing = new Set(rows.map((r) => r.id as string));
+  if (!existing.has(base)) return base;
   let n = 2;
-  while (true) {
-    const rows = await sql`SELECT id FROM batches WHERE id = ${id} LIMIT 1`;
-    if (!rows.length) return id;
-    id = `${base}-${n}`;
-    n++;
-  }
+  while (existing.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
 }
 
 export async function createBatch(

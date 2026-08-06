@@ -26,12 +26,14 @@ import { isHtmlCourseAsset, type CourseStepRow } from "@/lib/course-step-types";
 import {
   COURSE_EMBED_COMMAND,
   COURSE_EMBED_EVENT,
+  NEXT_SLIDE_COOLDOWN_MS,
   isCourseEmbedState,
+  normalizeCourseEmbedState,
   type CourseEmbedState,
 } from "@/lib/course-embed";
 import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { ProctorRulesModal } from "@/components/employee/proctor-rules-modal";
 import { ChevronRight, Clock, GraduationCap, Maximize2, Minimize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -226,6 +228,9 @@ export function CoursePlayer({
 
   const [htmlEmbedState, setHtmlEmbedState] = useState<CourseEmbedState | null>(null);
   const htmlIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [nextSlideCooldownMs, setNextSlideCooldownMs] = useState(0);
+  const [nextSlideCooldownToken, setNextSlideCooldownToken] = useState(0);
+  const prevSlideCompleteKeyRef = useRef<string | null>(null);
 
   const currentContentStep = contentSteps[contentStepIndex];
   const isHtmlLessonStep =
@@ -370,10 +375,10 @@ export function CoursePlayer({
       }
 
       const serverFresh =
-        !progressFetchOk ||
-        !serverEntry ||
-        (serverEntry.status === "not_started" &&
-          (serverEntry.warningCount ?? 0) === 0);
+        progressFetchOk &&
+        (!serverEntry ||
+          (serverEntry.status === "not_started" &&
+            (serverEntry.warningCount ?? 0) === 0));
 
       const prog = getProgress(user.username, module.id);
       const locallyLocked = prog ? isProctorLocked(prog) : false;
@@ -785,8 +790,26 @@ export function CoursePlayer({
     setMcqOpen(true);
   }, [moduleMcqs, handleFinishAttempt]);
 
+  const nextSlideLocked = isHtmlLessonStep && nextSlideCooldownMs > 0;
+  const htmlReadyForNextSlide =
+    Boolean(isHtmlLessonStep && htmlEmbedState?.slideComplete && !htmlEmbedState.atEnd);
+  const nextFooterLabel = (() => {
+    if (isLastContentUnit) {
+      return nextSlideLocked
+        ? `Start quiz ${(nextSlideCooldownMs / 1000).toFixed(1)}s`
+        : "Start quiz";
+    }
+    if (htmlReadyForNextSlide) {
+      return nextSlideLocked
+        ? `Next slide ${(nextSlideCooldownMs / 1000).toFixed(1)}s`
+        : "Next slide";
+    }
+    return "Next";
+  })();
+
   const tryAdvanceContent = useCallback(() => {
     if (phase !== "content" || quizOnlyMode) return;
+    if (nextSlideLocked) return;
     if (isHtmlLessonStep) {
       if (!htmlEmbedState?.atEnd) {
         htmlIframeRef.current?.contentWindow?.postMessage(
@@ -807,6 +830,8 @@ export function CoursePlayer({
         setPdfPage(1);
         setPdfPages(currentContentStep?.config.pageCount ?? 1);
         setHtmlEmbedState(null);
+        setNextSlideCooldownMs(0);
+        prevSlideCompleteKeyRef.current = null;
       }
       return;
     }
@@ -814,6 +839,7 @@ export function CoursePlayer({
   }, [
     phase,
     quizOnlyMode,
+    nextSlideLocked,
     isHtmlLessonStep,
     htmlEmbedState?.atEnd,
     isPdfStep,
@@ -1048,6 +1074,8 @@ export function CoursePlayer({
   useEffect(() => {
     setPdfPage(1);
     setHtmlEmbedState(null);
+    setNextSlideCooldownMs(0);
+    prevSlideCompleteKeyRef.current = null;
     const configuredPages = currentContentStep?.config.pageCount;
     if (isPdfStep) {
       if (configuredPages && configuredPages > 0) {
@@ -1067,17 +1095,34 @@ export function CoursePlayer({
     const onEmbedMessage = (event: MessageEvent) => {
       if (!isCourseEmbedState(event.data) || event.data.type !== COURSE_EMBED_EVENT) return;
       if (event.data.kind !== "lesson" && event.data.kind !== "scenarios") return;
-      setHtmlEmbedState({
-        kind: event.data.kind,
-        slideIndex: event.data.slideIndex,
-        slideCount: event.data.slideCount,
-        atEnd: event.data.atEnd,
-        atStart: event.data.atStart,
-      });
+      const nextState = normalizeCourseEmbedState(event.data);
+      setHtmlEmbedState(nextState);
+
+      if (!nextState.slideComplete) {
+        prevSlideCompleteKeyRef.current = null;
+        return;
+      }
+      const key = `${nextState.kind}:${nextState.slideIndex}:${nextState.slideCount}`;
+      if (prevSlideCompleteKeyRef.current === key) return;
+      prevSlideCompleteKeyRef.current = key;
+      setNextSlideCooldownMs(NEXT_SLIDE_COOLDOWN_MS);
+      setNextSlideCooldownToken((t) => t + 1);
     };
     window.addEventListener("message", onEmbedMessage);
     return () => window.removeEventListener("message", onEmbedMessage);
   }, []);
+
+  useEffect(() => {
+    if (nextSlideCooldownToken === 0) return;
+    const endsAt = Date.now() + NEXT_SLIDE_COOLDOWN_MS;
+    setNextSlideCooldownMs(NEXT_SLIDE_COOLDOWN_MS);
+    const id = window.setInterval(() => {
+      const left = Math.max(0, endsAt - Date.now());
+      setNextSlideCooldownMs(left);
+      if (left <= 0) window.clearInterval(id);
+    }, 50);
+    return () => window.clearInterval(id);
+  }, [nextSlideCooldownToken]);
 
   const handlePdfPagesLoaded = useCallback((pageCount: number) => {
     if (pageCount > 0) {
@@ -1237,6 +1282,7 @@ export function CoursePlayer({
   if (!sessionStarted) {
     if (integrityHydrated && !isNavigatingAway && isFailed && dbStatus !== "not_started") {
       return (
+        <LazyMotion features={domAnimation}>
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
           <CourseProctorFailOverlay
             liveWarningCount={liveWarningCount}
@@ -1267,10 +1313,12 @@ export function CoursePlayer({
             }}
           />
         </div>
+        </LazyMotion>
       );
     }
 
     return (
+      <LazyMotion features={domAnimation}>
       <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-zinc-100 p-4">
         {sessionStartError && (
           <p className="max-w-md rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-center text-sm text-red-700">
@@ -1284,6 +1332,7 @@ export function CoursePlayer({
           onAccept={() => void handleBeginSession()}
         />
       </div>
+      </LazyMotion>
     );
   }
 
@@ -1291,6 +1340,7 @@ export function CoursePlayer({
     showContentOverview && phase === "content" && !quizOnlyMode;
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="training-interactive fixed inset-0 z-30 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-900">
       <header className="relative z-[70] flex h-14 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-4 text-white">
         <div className="flex items-center gap-3">
@@ -1537,12 +1587,16 @@ export function CoursePlayer({
             </div>
             <Button
               size="sm"
-              disabled={navLocked || (isPdfStep && !pdfReady)}
+              disabled={
+                navLocked ||
+                nextSlideLocked ||
+                (isPdfStep && !pdfReady)
+              }
               onClick={tryAdvanceContent}
-              className="cursor-pointer bg-[#f15a24] text-white hover:bg-[#d94e1f] disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-w-[7.5rem] cursor-pointer bg-[#f15a24] text-white hover:bg-[#d94e1f] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {isLastContentUnit ? "Start quiz" : "Next"}
-              <ChevronRight className="h-4 w-4" />
+              {nextFooterLabel}
+              {!nextSlideLocked && <ChevronRight className="h-4 w-4" />}
             </Button>
           </footer>
         )}
@@ -1690,5 +1744,6 @@ export function CoursePlayer({
         />
       )}
     </div>
+    </LazyMotion>
   );
 }

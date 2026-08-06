@@ -2,7 +2,7 @@
 
 import { POINTS_PER_MCQ } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Target } from "lucide-react";
 
 interface ScoreDisplayProps {
@@ -20,6 +20,7 @@ export function ScoreDisplay({
   const totalScore = totalQuestions * POINTS_PER_MCQ;
 
   return (
+    <LazyMotion features={domAnimation}>
     <div
       className={cn(
         "flex min-w-[132px] items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-white",
@@ -41,5 +42,6 @@ export function ScoreDisplay({
         </motion.p>
       </div>
     </div>
+    </LazyMotion>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Flame } from "lucide-react";
 
 interface StreakCounterProps {
@@ -29,6 +29,7 @@ export function StreakCounter({
   const isLight = tone === "light";
 
   return (
+    <LazyMotion features={domAnimation}>
     <div
       className={cn(
         "flex min-w-[132px] items-center gap-2 rounded-md border px-3 py-2",
@@ -68,5 +69,6 @@ export function StreakCounter({
         </p>
       </div>
     </div>
+    </LazyMotion>
   );
 }

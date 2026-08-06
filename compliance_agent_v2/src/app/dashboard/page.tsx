@@ -29,7 +29,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type AssessmentFilter = "all" | "completed" | "not_started";
 
@@ -44,8 +44,7 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const isHydrated = useAuthStore((s) => s.isHydrated);
-  const { data: session, status: sessionStatus, update: updateSession } =
-    useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [modules, setModules] = useState<TrainingModule[]>([]);
   const [statusByModule, setStatusByModule] = useState<Record<string, ModuleStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -53,7 +52,6 @@ export default function DashboardPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [inProgressCount, setInProgressCount] = useState(0);
   const [filter, setFilter] = useState<AssessmentFilter>("all");
-  const sessionRefreshedRef = useRef(false);
 
   const sessionEmail = session?.user?.email ?? null;
 
@@ -63,12 +61,6 @@ export default function DashboardPage() {
     !!sessionEmail &&
     !!user?.username &&
     emailsMatch(sessionEmail, user.username);
-
-  useEffect(() => {
-    if (sessionStatus !== "authenticated" || sessionRefreshedRef.current) return;
-    sessionRefreshedRef.current = true;
-    void updateSession();
-  }, [sessionStatus, updateSession]);
 
   const loadModules = useCallback(async () => {
     if (!authReady || !user?.username) return;
@@ -91,8 +83,7 @@ export default function DashboardPage() {
       ) {
         setUser({
           username: profile.email,
-          // Role comes only from NextAuth — never from learner profile API.
-          role: user?.role ?? "user",
+          role: session?.user?.role ?? user?.role ?? "user",
           batchId: profile.batchId,
           displayName: profile.displayName,
         });
@@ -163,7 +154,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [authReady, user, setUser]);
+  }, [authReady, user, setUser, session?.user?.role]);
 
   useEffect(() => {
     if (!authReady) {
@@ -177,12 +168,13 @@ export default function DashboardPage() {
     if (!authReady) return;
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        void updateSession().then(() => loadModules());
+        // Refresh dashboard data only — avoid JWT→DB round-trips on every tab focus.
+        void loadModules();
       }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [authReady, loadModules, updateSession]);
+  }, [authReady, loadModules]);
 
   const batchId = user?.batchId ?? "";
   const totalMinutes = modules.reduce((acc, m) => acc + m.durationMinutes, 0);

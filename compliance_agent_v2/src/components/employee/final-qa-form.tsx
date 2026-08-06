@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { submitCourseFeedback, submitFeedback } from "@/lib/feedback-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Check, MessageSquare, Star } from "lucide-react";
 import { useState } from "react";
 
@@ -64,6 +64,7 @@ export function FinalQaForm({
 
   if (submitted && !deferSuccessToParent) {
     return (
+      <LazyMotion features={domAnimation}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -84,6 +85,7 @@ export function FinalQaForm({
           <span className="font-medium">{moduleTitle}</span>.
         </p>
       </motion.div>
+      </LazyMotion>
     );
   }
 

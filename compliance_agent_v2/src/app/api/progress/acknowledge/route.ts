@@ -1,5 +1,6 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { saveAcknowledgementDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
       signatureName: String(signatureName),
       digitalSignature: String(digitalSignature),
     });
+
+    invalidateAdminCachesAsync();
 
     return NextResponse.json({
       ok: true,

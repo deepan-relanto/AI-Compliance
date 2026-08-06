@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { CheckCircle2, Lock, ShieldCheck } from "lucide-react";
 
 type SignalState = "active" | "success" | "warning";
@@ -40,6 +40,7 @@ export function CheckpointSignal({
   const Icon = state === "success" ? CheckCircle2 : state === "warning" ? Lock : ShieldCheck;
 
   return (
+    <LazyMotion features={domAnimation}>
     <div
       className={cn(
         "relative shrink-0 flex-shrink-0 overflow-hidden rounded-lg border border-zinc-200 bg-white",
@@ -133,5 +134,6 @@ export function CheckpointSignal({
         </div>
       </div>
     </div>
+    </LazyMotion>
   );
 }

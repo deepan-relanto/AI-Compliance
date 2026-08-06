@@ -439,6 +439,22 @@
     }
 
     .nav button:hover { background: rgba(255,255,255,.24); }
+    .nav button#nextBtn.wide {
+      width: auto;
+      min-width: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .nav button#nextBtn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     .counter { min-width: 64px; text-align: center; font-size: 12px; font-weight: 750; }
     .progress {
       position: fixed;
@@ -1562,6 +1578,56 @@
     const overview = document.getElementById("overview");
     const overviewGrid = document.getElementById("overviewGrid");
     let index = 0;
+    const NEXT_SLIDE_COOLDOWN_MS = 800;
+    let nextLockedUntil = 0;
+    let nextCooldownTimer = null;
+    const nextBtnEl = document.getElementById("nextBtn");
+    const nextBtnDefaultHtml = nextBtnEl ? nextBtnEl.innerHTML : "";
+
+    function isSlideComplete() {
+      return !hasHiddenFragments();
+    }
+
+    function updateNextButton() {
+      if (!nextBtnEl) return;
+      const complete = isSlideComplete();
+      const remaining = Math.max(0, nextLockedUntil - Date.now());
+      if (!complete) {
+        nextBtnEl.classList.remove("wide");
+        nextBtnEl.disabled = false;
+        nextBtnEl.innerHTML = nextBtnDefaultHtml;
+        nextBtnEl.title = "Next / reveal";
+        nextBtnEl.setAttribute("aria-label", "Next");
+        return;
+      }
+      nextBtnEl.classList.add("wide");
+      if (remaining > 0) {
+        nextBtnEl.disabled = true;
+        nextBtnEl.textContent = "Next slide " + (remaining / 1000).toFixed(1) + "s";
+        nextBtnEl.title = "Please wait before advancing";
+        nextBtnEl.setAttribute("aria-label", "Next slide locked");
+      } else {
+        nextBtnEl.disabled = false;
+        nextBtnEl.textContent = "Next slide";
+        nextBtnEl.title = "Next slide";
+        nextBtnEl.setAttribute("aria-label", "Next slide");
+      }
+    }
+
+    function startNextSlideCooldown() {
+      nextLockedUntil = Date.now() + NEXT_SLIDE_COOLDOWN_MS;
+      if (nextCooldownTimer) clearInterval(nextCooldownTimer);
+      updateNextButton();
+      nextCooldownTimer = setInterval(() => {
+        if (Date.now() >= nextLockedUntil) {
+          clearInterval(nextCooldownTimer);
+          nextCooldownTimer = null;
+          nextLockedUntil = 0;
+        }
+        updateNextButton();
+      }, 50);
+    }
+
 
     function resetFragments(slide) {
       slide.querySelectorAll(".fragment").forEach(el => el.classList.remove("visible"));
@@ -1632,6 +1698,7 @@
           slideCount: slides.length,
           atEnd,
           atStart,
+          slideComplete: isSlideComplete(),
         },
         "*",
       );
@@ -1650,6 +1717,8 @@
       } else {
         revealNext(true);
       }
+      if (isSlideComplete()) startNextSlideCooldown();
+      else updateNextButton();
       publishEmbedState();
       if (embedMode) requestAnimationFrame(fitEmbedDeck);
     }
@@ -1662,11 +1731,14 @@
       if (!firstOnly && hidden.length > 1 && hidden[0].dataset.group) {
         hidden.filter(el => el.dataset.group === hidden[0].dataset.group).forEach(el => el.classList.add("visible"));
       }
+      if (isSlideComplete()) startNextSlideCooldown();
+      else updateNextButton();
       publishEmbedState();
       return true;
     }
 
     function next() {
+      if (Date.now() < nextLockedUntil) return;
       if (!revealNext()) showSlide(index + 1);
       else publishEmbedState();
     }
@@ -1713,6 +1785,7 @@
       }
       if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
         event.preventDefault();
+        if (Date.now() < nextLockedUntil) return;
         next();
       }
       if (event.key === "ArrowLeft" || event.key === "PageUp") {

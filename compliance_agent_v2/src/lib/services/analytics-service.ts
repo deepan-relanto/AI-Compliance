@@ -69,16 +69,17 @@ function fillTimeSeries(
 export async function getAnalytics(
   sql: Sql,
   track: "compliance" | "course" = "compliance",
+  options?: { view?: "full" | "home" },
 ): Promise<AnalyticsPayload> {
+  const view = options?.view === "home" ? "home" : "full";
   if (track === "course") {
-    return getCourseAnalytics(sql);
+    return view === "home" ? getCourseHomeAnalytics(sql) : getCourseAnalytics(sql);
   }
-  return getComplianceAnalytics(sql);
+  return view === "home" ? getComplianceHomeAnalytics(sql) : getComplianceAnalytics(sql);
 }
 
-async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
-  // One Neon HTTP round-trip — Promise.all of 6 queries was ~9s due to
-  // serverless HTTP serialization / connection overhead.
+/** Admin home KPIs — summary + batches + short recent history (skips series/modules/status). */
+async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
   const rows = await sql`
     WITH
     summary AS (
@@ -92,7 +93,10 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
         ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE score_percent IS NOT NULL
+              AND LEAST(score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
         )::int AS pass_rate,
         COALESCE(SUM(warning_count), 0)::int AS total_warnings,
@@ -111,7 +115,175 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
         ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
+          / NULLIF(COUNT(ap.id), 0)
+        )::int AS compliance
+      FROM batches b
+      LEFT JOIN assessment_progress ap ON ap.batch_id = b.id
+      GROUP BY b.id, b.label, b.member_count
+    ),
+    history AS (
+      SELECT
+        ap.user_email,
+        ap.module_id,
+        ap.module_title,
+        ap.batch_id,
+        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.status,
+        LEAST(ap.score_percent, 100) AS score_percent,
+        ap.mcq_correct,
+        ap.mcq_total,
+        ap.retake_count,
+        ap.acknowledgement,
+        ap.completed_at,
+        ap.updated_at,
+        ap.last_accessed_at,
+        ap.current_slide,
+        ap.warning_count
+      FROM assessment_progress ap
+      LEFT JOIN batches b ON b.id = ap.batch_id
+      ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
+      LIMIT 8
+    )
+    SELECT
+      (SELECT row_to_json(summary.*) FROM summary) AS summary,
+      (SELECT COALESCE(json_agg(batch_stats.* ORDER BY label), '[]'::json) FROM batch_stats) AS batches,
+      (SELECT COALESCE(json_agg(history.*), '[]'::json) FROM history) AS history
+  `;
+
+  const row = rows[0] ?? {};
+  return mapAnalyticsRows(
+    [row.summary as Record<string, unknown>].filter(Boolean),
+    (row.batches as Record<string, unknown>[]) ?? [],
+    [],
+    [],
+    [],
+    (row.history as Record<string, unknown>[]) ?? [],
+  );
+}
+
+async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+  const rows = await sql`
+    WITH
+    summary AS (
+      SELECT
+        (SELECT COUNT(*)::int
+         FROM users u
+         WHERE u.role = 'user'
+           AND u.batch_id IS NOT NULL
+           AND EXISTS (
+             SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = u.batch_id
+           )) AS total_learners,
+        (SELECT COUNT(DISTINCT cmb.batch_id)::int FROM course_module_batches cmb) AS total_batches,
+        (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
+        COUNT(*)::int AS total_attempts,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
+        COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
+        COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
+        ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (
+            WHERE score_percent IS NOT NULL
+              AND LEAST(score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
+          / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        COALESCE(SUM(warning_count), 0)::int AS total_warnings,
+        COALESCE(SUM(retake_count), 0)::int AS total_retakes
+      FROM course_progress
+    ),
+    batch_stats AS (
+      SELECT
+        b.id,
+        b.label,
+        b.member_count,
+        COUNT(ap.id)::int AS total_attempts,
+        COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
+        COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
+        COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
+          / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        ROUND(
+          100.0 * COUNT(*) FILTER (WHERE ap.status = 'completed')
+          / NULLIF(COUNT(ap.id), 0)
+        )::int AS compliance
+      FROM batches b
+      LEFT JOIN course_progress ap ON ap.batch_id = b.id
+      WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
+      GROUP BY b.id, b.label, b.member_count
+    )
+    SELECT
+      (SELECT row_to_json(summary.*) FROM summary) AS summary,
+      (SELECT COALESCE(json_agg(batch_stats.* ORDER BY label), '[]'::json) FROM batch_stats) AS batches
+  `;
+
+  const row = rows[0] ?? {};
+  return mapAnalyticsRows(
+    [row.summary as Record<string, unknown>].filter(Boolean),
+    (row.batches as Record<string, unknown>[]) ?? [],
+    [],
+    [],
+    [],
+    [],
+  );
+}
+
+async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
+  // One Neon HTTP round-trip — Promise.all of 6 queries was ~9s due to
+  // serverless HTTP serialization / connection overhead.
+  const rows = await sql`
+    WITH
+    summary AS (
+      SELECT
+        (SELECT COUNT(*)::int FROM users WHERE role = 'user') AS total_learners,
+        (SELECT COUNT(*)::int FROM batches) AS total_batches,
+        (SELECT COUNT(*)::int FROM training_modules WHERE mcq_generation_status = 'completed') AS published_modules,
+        COUNT(*)::int AS total_attempts,
+        COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
+        COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
+        COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
+        ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (
+            WHERE score_percent IS NOT NULL
+              AND LEAST(score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
+          / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
+        )::int AS pass_rate,
+        COALESCE(SUM(warning_count), 0)::int AS total_warnings,
+        COALESCE(SUM(retake_count), 0)::int AS total_retakes
+      FROM assessment_progress
+    ),
+    batch_stats AS (
+      SELECT
+        b.id,
+        b.label,
+        b.member_count,
+        COUNT(ap.id)::int AS total_attempts,
+        COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
+        COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
+        COUNT(*) FILTER (WHERE ap.status IN ('failed', 'permanently_failed'))::int AS failed,
+        COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
+        ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
+        ROUND(
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
         )::int AS pass_rate,
         ROUND(
@@ -147,7 +319,10 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
         ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
         )::int AS pass_rate
       FROM assessment_progress ap
@@ -221,7 +396,10 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
         ROUND(AVG(LEAST(score_percent, 100)) FILTER (WHERE score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE score_percent IS NOT NULL
+              AND LEAST(score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE score_percent IS NOT NULL), 0)
         )::int AS pass_rate,
         COALESCE(SUM(warning_count), 0)::int AS total_warnings,
@@ -240,7 +418,10 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE ap.status = 'in_progress')::int AS in_progress,
         ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
         )::int AS pass_rate,
         ROUND(
@@ -276,7 +457,10 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed_count,
         ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (WHERE ap.score_percent IS NOT NULL))::int AS avg_score,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE LEAST(ap.score_percent, 100) > ${PASS_THRESHOLD_PERCENT})
+          100.0 * COUNT(*) FILTER (
+            WHERE ap.score_percent IS NOT NULL
+              AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
+          )
           / NULLIF(COUNT(*) FILTER (WHERE ap.score_percent IS NOT NULL), 0)
         )::int AS pass_rate
       FROM course_progress ap
