@@ -1,11 +1,31 @@
-import type { getSql } from "@/lib/db";
-import type {
-  OutreachLearnerRow,
-  OutreachSummary,
-} from "@/lib/analytics-types";
 import type { AnalyticsTrack } from "@/lib/services/batch-performance-service";
+import type { getSql } from "@/lib/db";
 
 type Sql = ReturnType<typeof getSql>;
+
+export interface OutreachSummary {
+  reminderEmailsSent: number;
+  uniqueLearnersReminded: number;
+  avgRemindersPerLearner: number | null;
+  failedGuidanceEmailsSent: number;
+  uniqueLearnersGuided: number;
+  inviteEmailsLogged: number;
+  completionEmailsLogged: number;
+}
+
+export interface OutreachLearnerRow {
+  userEmail: string;
+  moduleId: string;
+  moduleTitle: string;
+  batchId: string | null;
+  batchLabel: string;
+  reminderCount: number;
+  lastRemindedAt: string | null;
+  failedGuidanceCount: number;
+  lastFailedGuidanceAt: string | null;
+  inviteCount: number;
+  lastInvitedAt: string | null;
+}
 
 const EMPTY_SUMMARY: OutreachSummary = {
   reminderEmailsSent: 0,
