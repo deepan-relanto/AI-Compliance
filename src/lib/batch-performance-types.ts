@@ -9,6 +9,10 @@ export interface BatchAssessmentResult {
   completedAt: string | null;
   updatedAt: string | null;
   lastAccessedAt: string | null;
+  reminderCount: number;
+  lastRemindedAt: string | null;
+  failedGuidanceCount: number;
+  lastFailedGuidanceAt: string | null;
 }
 
 export interface BatchLearnerPerformance {

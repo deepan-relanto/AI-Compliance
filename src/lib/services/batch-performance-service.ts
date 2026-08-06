@@ -9,6 +9,10 @@ import {
   countMcqAnswers,
   resolveDisplayScorePercent,
 } from "@/lib/progress-score";
+import {
+  getBatchOutreachCounts,
+  outreachCountKey,
+} from "@/lib/services/notification-events-service";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 type Sql = ReturnType<typeof getSql>;
@@ -296,8 +300,29 @@ export async function getBatchPerformance(
       completedAt: (row.completed_at as string) ?? null,
       updatedAt: (row.updated_at as string) ?? null,
       lastAccessedAt: (row.last_accessed_at as string) ?? null,
+      reminderCount: 0,
+      lastRemindedAt: null,
+      failedGuidanceCount: 0,
+      lastFailedGuidanceAt: null,
     };
     learner.assessments.push(assessment);
+  }
+
+  const outreachCounts = await getBatchOutreachCounts(
+    sql,
+    batchId,
+    modules.map((m) => m.id),
+    track,
+  );
+  for (const learner of learnerMap.values()) {
+    for (const a of learner.assessments) {
+      const counts = outreachCounts.get(outreachCountKey(learner.email, a.moduleId));
+      if (!counts) continue;
+      a.reminderCount = counts.reminderCount;
+      a.lastRemindedAt = counts.lastRemindedAt;
+      a.failedGuidanceCount = counts.failedGuidanceCount;
+      a.lastFailedGuidanceAt = counts.lastFailedGuidanceAt;
+    }
   }
 
   const s = summaryRows[0] ?? {};

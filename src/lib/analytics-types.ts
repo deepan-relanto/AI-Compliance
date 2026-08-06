@@ -70,6 +70,30 @@ export interface AnalyticsExportOptions {
   filterSummary?: string;
 }
 
+export interface OutreachSummary {
+  reminderEmailsSent: number;
+  uniqueLearnersReminded: number;
+  avgRemindersPerLearner: number | null;
+  failedGuidanceEmailsSent: number;
+  uniqueLearnersGuided: number;
+  inviteEmailsLogged: number;
+  completionEmailsLogged: number;
+}
+
+export interface OutreachLearnerRow {
+  userEmail: string;
+  moduleId: string;
+  moduleTitle: string;
+  batchId: string | null;
+  batchLabel: string;
+  reminderCount: number;
+  lastRemindedAt: string | null;
+  failedGuidanceCount: number;
+  lastFailedGuidanceAt: string | null;
+  inviteCount: number;
+  lastInvitedAt: string | null;
+}
+
 export interface AnalyticsPayload {
   summary: AnalyticsSummary;
   batches: BatchAnalytics[];
@@ -77,5 +101,9 @@ export interface AnalyticsPayload {
   modules: ModuleAnalytics[];
   statusBreakdown: StatusBreakdown[];
   history: HistoricalRecord[];
+  outreach: {
+    summary: OutreachSummary;
+    learners: OutreachLearnerRow[];
+  };
   generatedAt: string;
 }

@@ -161,3 +161,23 @@ CREATE TABLE IF NOT EXISTS course_notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_course_notifications_module ON course_notifications(module_id);
+
+-- Append-only log for every outbound course email (invites, reminders, guidance).
+CREATE TABLE IF NOT EXISTS course_notification_events (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id         TEXT NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,
+  user_email        TEXT NOT NULL,
+  notification_type TEXT NOT NULL CHECK (
+    notification_type IN ('invited', 'completed', 'reminder', 'failed_review_guidance', 'retake_approved')
+  ),
+  batch_id          TEXT REFERENCES batches(id) ON DELETE SET NULL,
+  triggered_by      TEXT,
+  sent_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_course_notification_events_module
+  ON course_notification_events(module_id);
+CREATE INDEX IF NOT EXISTS idx_course_notification_events_user
+  ON course_notification_events(LOWER(user_email));
+CREATE INDEX IF NOT EXISTS idx_course_notification_events_type_sent
+  ON course_notification_events(notification_type, sent_at DESC);

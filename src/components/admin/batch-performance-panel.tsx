@@ -10,10 +10,12 @@ import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { cn } from "@/lib/utils";
 import {
+  AlertTriangle,
   CheckCircle2,
   Download,
   FileSpreadsheet,
   Loader2,
+  Mail,
   Search,
   Users,
 } from "lucide-react";
@@ -104,6 +106,9 @@ export function BatchPerformancePanel({
   const [reminderSending, setReminderSending] = useState(false);
   const [reminderResult, setReminderResult] = useState<InviteSendResult | null>(null);
   const [reminderError, setReminderError] = useState<string | null>(null);
+  const [failedSending, setFailedSending] = useState(false);
+  const [failedResult, setFailedResult] = useState<InviteSendResult | null>(null);
+  const [failedError, setFailedError] = useState<string | null>(null);
 
   const flatRows = useMemo(() => {
     const rows: {
@@ -118,6 +123,10 @@ export function BatchPerformancePanel({
       mcqTotal: number;
       retakeCount: number;
       lastActivity: string | null;
+      reminderCount: number;
+      lastRemindedAt: string | null;
+      failedGuidanceCount: number;
+      lastFailedGuidanceAt: string | null;
     }[] = [];
 
     for (const learner of data.learners) {
@@ -134,6 +143,10 @@ export function BatchPerformancePanel({
           mcqTotal: 0,
           retakeCount: 0,
           lastActivity: null,
+          reminderCount: 0,
+          lastRemindedAt: null,
+          failedGuidanceCount: 0,
+          lastFailedGuidanceAt: null,
         });
         continue;
       }
@@ -156,6 +169,10 @@ export function BatchPerformancePanel({
             a.updatedAt,
             a.lastAccessedAt,
           ),
+          reminderCount: a.reminderCount ?? 0,
+          lastRemindedAt: a.lastRemindedAt ?? null,
+          failedGuidanceCount: a.failedGuidanceCount ?? 0,
+          lastFailedGuidanceAt: a.lastFailedGuidanceAt ?? null,
         });
       }
     }
@@ -224,6 +241,23 @@ export function BatchPerformancePanel({
   const canSendReminder =
     reminderModuleIds.length > 0 && data.modules.length > 0;
 
+  const failedRows = useMemo(
+    () =>
+      filtered.filter(
+        (r) =>
+          (r.status === "failed" || r.status === "permanently_failed") &&
+          r.moduleId !== "none",
+      ),
+    [filtered],
+  );
+  const failedModuleIds = useMemo(
+    () => [...new Set(failedRows.map((r) => r.moduleId))],
+    [failedRows],
+  );
+  const failedLearnerCount = failedRows.length;
+  const canSendFailedGuidance =
+    failedModuleIds.length > 0 && data.modules.length > 0;
+
   async function handleResendReminder() {
     if (!canSendReminder || reminderSending) return;
     setReminderSending(true);
@@ -271,6 +305,55 @@ export function BatchPerformancePanel({
       setReminderError("Could not reach the server.");
     } finally {
       setReminderSending(false);
+    }
+  }
+
+  async function handleFailedGuidance() {
+    if (!canSendFailedGuidance || failedSending) return;
+    setFailedSending(true);
+    setFailedError(null);
+    setFailedResult(null);
+
+    const aggregate: InviteSendResult = {
+      ok: true,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: [],
+      message: "",
+    };
+
+    try {
+      for (const moduleId of failedModuleIds) {
+        const res = await fetch(`/api/modules/${encodeURIComponent(moduleId)}/send-invites`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchId: data.batch.id,
+            mode: "failed_review_guidance",
+          }),
+        });
+        const result = (await res.json()) as InviteSendResult;
+        if (!res.ok || !result.ok) {
+          aggregate.ok = false;
+        }
+        aggregate.sent += Number(result.sent ?? 0);
+        aggregate.skipped += Number(result.skipped ?? 0);
+        aggregate.failed += Number(result.failed ?? 0);
+        aggregate.errors.push(...(Array.isArray(result.errors) ? result.errors : []));
+      }
+
+      aggregate.message =
+        aggregate.sent > 0
+          ? `Review-guidance emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}.`
+          : aggregate.failed > 0
+            ? `Failed to send ${aggregate.failed} review-guidance email(s).`
+            : "No eligible failed learners matched this outreach.";
+      setFailedResult(aggregate);
+    } catch {
+      setFailedError("Could not reach the server.");
+    } finally {
+      setFailedSending(false);
     }
   }
 
@@ -335,11 +418,26 @@ export function BatchPerformancePanel({
                 {reminderSending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <Mail className="h-3.5 w-3.5" />
                 )}
                 {reminderSending
                   ? "Sending reminders…"
-                  : `Resend reminder to not started (${reminderLearnerCount})`}
+                  : `Remind not started (${reminderLearnerCount})`}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleFailedGuidance()}
+                disabled={!canSendFailedGuidance || failedSending}
+              >
+                {failedSending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+                {failedSending
+                  ? "Sending guidance…"
+                  : `Email failed learners (${failedLearnerCount})`}
               </Button>
               <Button
                 variant="outline"
@@ -424,8 +522,8 @@ export function BatchPerformancePanel({
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {(reminderResult || reminderError) && (
-            <div className="border-b border-zinc-100 px-6 py-4">
+          {(reminderResult || reminderError || failedResult || failedError) && (
+            <div className="space-y-3 border-b border-zinc-100 px-6 py-4">
               {reminderError ? (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
                   <p className="font-semibold">Reminder send failed</p>
@@ -452,19 +550,40 @@ export function BatchPerformancePanel({
                   <p className="mt-1 text-xs leading-relaxed opacity-90">
                     {reminderResult.message}
                     {reminderResult.skipped > 0
-                      ? ` ${reminderResult.skipped} learner${reminderResult.skipped === 1 ? "" : "s"} were skipped because they were no longer not started.`
-                      : ""}
-                    {reminderResult.failed > 0
-                      ? ` ${reminderResult.failed} learner${reminderResult.failed === 1 ? "" : "s"} failed.`
+                      ? ` ${reminderResult.skipped} learner${reminderResult.skipped === 1 ? "" : "s"} were skipped.`
                       : ""}
                   </p>
-                  {reminderResult.errors.length > 0 && (
-                    <ul className="mt-2 list-inside list-disc text-xs opacity-80">
-                      {reminderResult.errors.slice(0, 5).map((err) => (
-                        <li key={err}>{err}</li>
-                      ))}
-                    </ul>
+                </div>
+              ) : null}
+              {failedError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
+                  <p className="font-semibold">Failed-learner email failed</p>
+                  <p className="mt-1 text-xs opacity-90">{failedError}</p>
+                </div>
+              ) : failedResult ? (
+                <div
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-sm",
+                    failedResult.failed > 0
+                      ? "border-amber-200 bg-amber-50 text-amber-950"
+                      : failedResult.sent > 0
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-700",
                   )}
+                >
+                  <p className="font-semibold">
+                    {failedResult.sent > 0
+                      ? `Review-guidance emails sent to ${failedResult.sent} learner${failedResult.sent === 1 ? "" : "s"}`
+                      : failedResult.failed > 0
+                        ? "Failed-learner send completed with failures"
+                        : "No failed learners needed guidance"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed opacity-90">
+                    {failedResult.message}
+                    {failedResult.skipped > 0
+                      ? ` ${failedResult.skipped} learner${failedResult.skipped === 1 ? "" : "s"} were skipped (already contacted today or not failed).`
+                      : ""}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -490,13 +609,15 @@ export function BatchPerformancePanel({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-left text-sm">
+              <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   <tr>
                     <th className="px-6 py-3">Learner</th>
                     <th className="px-6 py-3">Assessment</th>
                     <th className="px-6 py-3">Score</th>
                     <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">Reminders</th>
+                    <th className="px-6 py-3">Guidance</th>
                     <th className="px-6 py-3">Retakes</th>
                     <th className="px-6 py-3">Last activity</th>
                   </tr>
@@ -544,6 +665,26 @@ export function BatchPerformancePanel({
                         </td>
                         <td className="px-6 py-3">
                           <StatusPill status={row.status} />
+                        </td>
+                        <td className="px-6 py-3">
+                          <p className="tabular-nums font-semibold text-zinc-900">
+                            {row.reminderCount}
+                          </p>
+                          {row.lastRemindedAt && (
+                            <p className="mt-0.5 text-[10px] text-zinc-400">
+                              {formatActivityDate(row.lastRemindedAt)}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-6 py-3">
+                          <p className="tabular-nums font-semibold text-zinc-900">
+                            {row.failedGuidanceCount}
+                          </p>
+                          {row.lastFailedGuidanceAt && (
+                            <p className="mt-0.5 text-[10px] text-zinc-400">
+                              {formatActivityDate(row.lastFailedGuidanceAt)}
+                            </p>
+                          )}
                         </td>
                         <td className="px-6 py-3 tabular-nums text-zinc-600">
                           {row.retakeCount} / {MAX_SCORE_RETAKES}
