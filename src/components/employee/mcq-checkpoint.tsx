@@ -8,7 +8,7 @@ import { formatExplanationLines, normalizeMcqExplanation } from "@/lib/mcq-expla
 import { parseCorrectOptionIds } from "@/lib/mcq-multi-select";
 import type { McqQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import {
   BarChart3,
   CheckCircle2,
@@ -736,6 +736,7 @@ export function MCQCheckpoint({
     ) : null;
 
   return (
+    <LazyMotion features={domAnimation}>
     <>
       <AnimatePresence>
         {open && panelMode && (
@@ -755,5 +756,6 @@ export function MCQCheckpoint({
         ? createPortal(modalLayer, document.body)
         : null}
     </>
+    </LazyMotion>
   );
 }

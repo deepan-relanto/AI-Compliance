@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Award, Flame, Target, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -99,5 +99,5 @@ export function BadgeUnlock({ badge, onClose }: BadgeUnlockProps) {
   );
 
   if (typeof document === "undefined") return null;
-  return createPortal(toast, document.body);
+  return createPortal(<LazyMotion features={domAnimation}>{toast}</LazyMotion>, document.body);
 }

@@ -1195,7 +1195,8 @@ export async function syncProctorWarningDb(
     UPDATE course_progress
     SET warning_count = GREATEST(
           warning_count,
-          COALESCE(${reported}, warning_count)
+          jsonb_array_length(${historyJson}::jsonb),
+          COALESCE(${reported}, 0)
         ),
         warning_history = CASE
           WHEN jsonb_array_length(COALESCE(warning_history, '[]'::jsonb))
@@ -1205,27 +1206,43 @@ export async function syncProctorWarningDb(
         END,
         status = CASE
           WHEN status IN ('completed', 'permanently_failed', 'failed') THEN status
-          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+          WHEN GREATEST(
+            warning_count,
+            jsonb_array_length(${historyJson}::jsonb),
+            COALESCE(${reported}, 0)
+          ) >= 3
             THEN 'failed'
           ELSE status
         END,
         failed_reason = CASE
           WHEN status IN ('completed', 'permanently_failed') THEN failed_reason
           WHEN status = 'failed' THEN COALESCE(failed_reason, ${reason})
-          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+          WHEN GREATEST(
+            warning_count,
+            jsonb_array_length(${historyJson}::jsonb),
+            COALESCE(${reported}, 0)
+          ) >= 3
             THEN ${reason}
           ELSE failed_reason
         END,
         last_failure_at = CASE
           WHEN status IN ('completed', 'permanently_failed', 'failed') THEN last_failure_at
-          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+          WHEN GREATEST(
+            warning_count,
+            jsonb_array_length(${historyJson}::jsonb),
+            COALESCE(${reported}, 0)
+          ) >= 3
             THEN NOW()
           ELSE last_failure_at
         END,
         last_failure_reason = CASE
           WHEN status IN ('completed', 'permanently_failed') THEN last_failure_reason
           WHEN status = 'failed' THEN COALESCE(last_failure_reason, ${reason})
-          WHEN GREATEST(warning_count, COALESCE(${reported}, warning_count)) >= 3
+          WHEN GREATEST(
+            warning_count,
+            jsonb_array_length(${historyJson}::jsonb),
+            COALESCE(${reported}, 0)
+          ) >= 3
             THEN ${reason}
           ELSE last_failure_reason
         END,

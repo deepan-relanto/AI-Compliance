@@ -14,20 +14,22 @@ export async function GET(req: NextRequest) {
   try {
     const trackParam = req.nextUrl.searchParams.get("track");
     const track = trackParam === "course" ? "course" : "compliance";
-    const cacheKey = `${CACHE_KEYS.analytics}:${track}`;
+    const view = req.nextUrl.searchParams.get("view") === "home" ? "home" : "full";
+    const cacheKey = `${CACHE_KEYS.analytics}:${track}:${view}`;
     const cached = cacheGet<object>(cacheKey);
     if (cached) {
       return NextResponse.json(
-        { ok: true, ...cached, track, _cached: true },
+        { ok: true, ...cached, track, view, _cached: true },
         { headers: { "X-Cache": "HIT" } },
       );
     }
 
     const sql = getSql();
-    const data = await getAnalytics(sql, track);
-    cacheSet(cacheKey, data, 120);
+    const data = await getAnalytics(sql, track, { view });
+    // Home KPIs change less often than full analytics drill-downs.
+    cacheSet(cacheKey, data, view === "home" ? 90 : 120);
     return NextResponse.json(
-      { ok: true, ...data, track },
+      { ok: true, ...data, track, view },
       { headers: { "X-Cache": "MISS" } },
     );
   } catch (err) {

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import type { McqQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { CheckCircle2, Loader2, Lock, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -97,6 +97,7 @@ export function McqModal({
   };
 
   return (
+    <LazyMotion features={domAnimation}>
     <AnimatePresence>
       {open && (
         <>
@@ -226,5 +227,6 @@ export function McqModal({
         </>
       )}
     </AnimatePresence>
+    </LazyMotion>
   );
 }

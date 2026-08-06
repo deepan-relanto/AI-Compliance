@@ -3,7 +3,7 @@
 import { BrandPanelHeader } from "@/components/employee/brand-panel-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import {
   Ban,
   Clock,
@@ -36,6 +36,7 @@ export function ProctorRulesModal({
   eyebrow = "Proctored compliance training",
 }: ProctorRulesModalProps) {
   return (
+    <LazyMotion features={domAnimation}>
     <AnimatePresence>
       {open && (
         <>
@@ -98,5 +99,6 @@ export function ProctorRulesModal({
         </>
       )}
     </AnimatePresence>
+    </LazyMotion>
   );
 }

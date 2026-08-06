@@ -1,0 +1,114 @@
+{
+  "questions": [
+    {
+      "prompt": "An HR partner must produce an inclusive job advert, fast. Which prompt design best combines this module with Modules 2 and 3?",
+      "options": [
+        { "id": "a", "label": "\"Write a job ad for a manager.\"" },
+        { "id": "b", "label": "Structured prompt with the role's real responsibilities and must-haves, the company's JD format, a 350-word limit, an instruction to use inclusive plain language and avoid gendered or age-coded wording, plus a liked previous advert as a style example; no candidate or employee personal data included." },
+        { "id": "c", "label": "Paste three rejected candidates' CVs so the AI knows what to avoid." },
+        { "id": "d", "label": "Ask for 'an amazing advert' and refine the adjectives until it works." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Option B uses all five blocks, embeds the fairness constraint (Module 2) and keeps personal data out (Module 3). Pasting CVs (C) injects personal data for no drafting benefit, and adjective roulette (D) is the anti-pattern the module corrects."
+    },
+    {
+      "prompt": "A bid team wants AI stress-testing of a confidential proposal before submission. The best-designed approach is:",
+      "options": [
+        { "id": "a", "label": "Paste the full confidential proposal into a free chatbot for the toughest critique." },
+        { "id": "b", "label": "On the approved tool, give the AI the role of the client's hard-nosed procurement director, provide an anonymized version of the proposal, and ask for ranked objections and the weakest sections; fix findings in the real document internally." },
+        { "id": "c", "label": "Skip the stress test; the team has read it many times." },
+        { "id": "d", "label": "Ask the AI generically: 'Is this proposal good?' without providing it." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Role-based adversarial review is the right technique, and anonymization on the approved tool keeps it compliant. Free chatbots with full confidential text (A) repeat Module 3's leak pattern; team blindness (C) is exactly why the technique exists; (D) gives the model nothing to critique."
+    },
+    {
+      "prompt": "An analyst's research brief must contain only verifiable claims. Which prompt-and-workflow design delivers that most reliably?",
+      "options": [
+        { "id": "a", "label": "\"Write a thorough brief on vendor pricing\" with no sources, then trust the confident output." },
+        { "id": "b", "label": "Provide the gathered source documents, instruct 'use only this material; mark anything unsupported [VERIFY]; do not invent figures', then humanly check every flag and every number before circulation." },
+        { "id": "c", "label": "Generate the brief twice and keep matching sentences." },
+        { "id": "d", "label": "Ask the AI to confirm at the end that everything is accurate." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Grounding in provided sources plus mandatory uncertainty flags plus human verification is the full chain. Self-agreement across runs (C) and self-certification (D) are circular: the model cannot verify its own claims."
+    },
+    {
+      "prompt": "A support lead's shared reply template works well, but a new agent pastes complaints containing names, account numbers, and health references straight into the tool, which is cleared for internal data only. The correct correction preserves the template's value by:",
+      "options": [
+        { "id": "a", "label": "Abandoning the template; it caused the problem." },
+        { "id": "b", "label": "Adding an explicit first step to the template: anonymize identifiers and remove sensitive details before pasting, since sensitive personal data exceeds the tool's clearance regardless of how good the prompt is." },
+        { "id": "c", "label": "Telling the agent to add 'ignore the personal data' to the prompt." },
+        { "id": "d", "label": "Letting it continue; templates override data policy." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "The flaw is a missing minimization step, not the template concept. 'Ignore the data' (C) still transmits the data (Module 3), and no prompt quality or template status (D) expands a tool's data clearance."
+    },
+    {
+      "prompt": "A program manager needs a procedure documented from ambiguous notes by tomorrow, for a safety-relevant process. Ranked by risk control, the best sequence is:",
+      "options": [
+        { "id": "a", "label": "Generate the procedure now; polish the language; publish." },
+        { "id": "b", "label": "Prompt the AI to list all ambiguities as questions; obtain answers from the process owner; provide them and generate the procedure with a Common Mistakes section; have the process owner review before publication." },
+        { "id": "c", "label": "Generate three versions and merge the overlapping steps." },
+        { "id": "d", "label": "Publish the notes as-is with a disclaimer." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "For safety-relevant content, invented gap-filling is the dominant risk, so clarify-then-produce plus owner review is non-negotiable. Merging plausible versions (C) launders guesses into consensus; a disclaimer (D) doesn't make ambiguous notes followable."
+    },
+    {
+      "prompt": "Marketing's AI copy keeps drifting off brand voice. The team has three approved posts everyone agrees nail the voice. The highest-impact fix is:",
+      "options": [
+        { "id": "a", "label": "Write a longer description of the brand using richer adjectives." },
+        { "id": "b", "label": "Build the three approved posts into the standing prompt as style examples with an instruction to match their sentence length, humor level, and structure." },
+        { "id": "c", "label": "Ask the AI to 'be more on-brand' after each draft." },
+        { "id": "d", "label": "Rotate AI tools monthly until one guesses the voice." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Example-driven prompting converts the team's existing agreement (the three posts) into a precise, imitable pattern. More adjectives (A) and post-hoc nagging (C) keep relying on interpretation, which is the failing mechanism."
+    },
+    {
+      "prompt": "A finance manager wants weekly AI-drafted variance commentary. Which division of labor is correctly matched to tool strengths (Module 1) and prompting practice?",
+      "options": [
+        { "id": "a", "label": "AI computes the variances and writes the commentary unreviewed." },
+        { "id": "b", "label": "Verified figures come from the spreadsheet; the prompt supplies them with 'do not invent causes; mark unknowns \"under review\"'; AI drafts plain-language commentary; the manager reviews numbers and claims before circulation." },
+        { "id": "c", "label": "AI computes everything but the manager rounds the results." },
+        { "id": "d", "label": "The manager writes everything; AI is banned from finance." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Deterministic tools produce the numbers (LLM arithmetic is unreliable), the prompt constrains invention, and human review closes the loop. Options A and C trust text generation with calculation; D forfeits a legitimate drafting gain."
+    },
+    {
+      "prompt": "A director uses variant prompting for a sensitive reorganization message and prefers the boldest version. Before sending, the step this module's guardrails still require is:",
+      "options": [
+        { "id": "a", "label": "None; variant comparison is the final control." },
+        { "id": "b", "label": "Human review of facts, tone risk, and fairness, plus the normal HR/communications approval chain, because prompting techniques never replace verification, fairness checks, or accountability." },
+        { "id": "c", "label": "Asking the AI which version it would send." },
+        { "id": "d", "label": "Sending all three versions to staff for transparency." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Variants support judgement; they don't discharge it. Sensitive people-affecting communication carries Module 2 obligations (review, accountability) regardless of how well the drafts were produced. The model's preference (C) is not an approval."
+    },
+    {
+      "prompt": "Two teams adopt AI assistants. Team A shares a library of ten proven five-block templates with built-in [VERIFY] and anonymization steps. Team B's members each improvise prompts privately. Six months later, the most likely and most instructive difference is:",
+      "options": [
+        { "id": "a", "label": "No difference; tools determine everything." },
+        { "id": "b", "label": "Team A shows more consistent quality, faster onboarding, and fewer data and accuracy incidents, because templates encode structure, guardrails, and the best performers' judgement into a shared, repeatable practice." },
+        { "id": "c", "label": "Team B is better off, since improvisation builds character." },
+        { "id": "d", "label": "Team A's templates make review unnecessary." }
+      ],
+      "correctOptionId": "b",
+      "explanation": "Templates institutionalize skill and safety: structure (five blocks), accuracy habits ([VERIFY]), and data care (anonymization) stop depending on individual memory. Review remains necessary (D); templates raise the floor, not remove accountability."
+    },
+    {
+      "prompt": "Leadership asks for one sentence that captures effective prompting for the whole organization. The strongest candidate is:",
+      "options": [
+        { "id": "a", "label": "\"Find the secret phrases that unlock the model.\"" },
+        { "id": "b", "label": "\"Brief the AI like a capable new colleague: clear task, real context within data rules, the format and constraints that define success, an example where style matters, then refine and verify before anything leaves you.\"" },
+        { "id": "c", "label": "\"Longer prompts, better answers.\"" },
+        { "id": "d", "label": "\"Prompt well enough and review becomes optional.\"" }
+      ],
+      "correctOptionId": "b",
+      "explanation": "It compresses the module: five blocks, the colleague mental model, Module 3's data boundary, iteration as the normal workflow, and the unbroken verification duty. Secret phrases (A), length worship (C), and review-free fantasies (D) are the module's named misconceptions."
+    }
+  ]
+}

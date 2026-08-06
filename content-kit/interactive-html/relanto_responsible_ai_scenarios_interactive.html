@@ -363,6 +363,7 @@
       border: 0; border-radius: 999px; padding: 10px 14px; background: #fff; color: var(--navy);
       font: inherit; font-size: 12px; font-weight: 700; box-shadow: var(--shadow); cursor: pointer;
     }
+    .nav button#nextBtn:disabled { opacity: 0.55; cursor: not-allowed; }
     .help { position: fixed; left: 24px; bottom: 24px; z-index: 20; opacity: 0.85; }
     .progress { position: fixed; left: 0; top: 0; height: 3px; width: 100%; background: rgba(46,49,146,0.12); z-index: 30; }
     .progress > span {
@@ -987,6 +988,47 @@
     }
     window.relantoFitEmbedDeck = fitEmbedDeck;
 
+    
+    const NEXT_SLIDE_COOLDOWN_MS = 800;
+    let nextLockedUntil = 0;
+    let nextCooldownTimer = null;
+    const nextBtnEl = document.getElementById("nextBtn");
+
+    function canAdvanceScenarioSlide() {
+      return !(typeof onPickerSlide === "function" && onPickerSlide() && !selectedId);
+    }
+
+    function updateNextButton() {
+      if (!nextBtnEl) return;
+      const remaining = Math.max(0, nextLockedUntil - Date.now());
+      if (!canAdvanceScenarioSlide()) {
+        nextBtnEl.disabled = false;
+        nextBtnEl.textContent = "Next";
+        return;
+      }
+      if (remaining > 0) {
+        nextBtnEl.disabled = true;
+        nextBtnEl.textContent = "Next slide " + (remaining / 1000).toFixed(1) + "s";
+      } else {
+        nextBtnEl.disabled = false;
+        nextBtnEl.textContent = "Next slide";
+      }
+    }
+
+    function startNextSlideCooldown() {
+      nextLockedUntil = Date.now() + NEXT_SLIDE_COOLDOWN_MS;
+      if (nextCooldownTimer) clearInterval(nextCooldownTimer);
+      updateNextButton();
+      nextCooldownTimer = setInterval(() => {
+        if (Date.now() >= nextLockedUntil) {
+          clearInterval(nextCooldownTimer);
+          nextCooldownTimer = null;
+          nextLockedUntil = 0;
+        }
+        updateNextButton();
+      }, 50);
+    }
+
     function onPickerSlide() {
       return slides[index]?.id === "pickerSlide" || slides[index]?.dataset.title === "Choose department";
     }
@@ -1002,6 +1044,7 @@
         slideCount: slides.length,
         atEnd,
         atStart,
+        slideComplete: canAdvanceScenarioSlide(),
       }, "*");
     }
 
@@ -1010,16 +1053,20 @@
       slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
       if (counter) counter.textContent = `${index + 1} / ${slides.length}`;
       progressBar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      if (canAdvanceScenarioSlide()) startNextSlideCooldown();
+      else updateNextButton();
       publishEmbedState();
       if (embedMode) requestAnimationFrame(fitEmbedDeck);
     }
 
     function next() {
+      if (Date.now() < nextLockedUntil) return;
       if (onPickerSlide() && !selectedId) {
         pickerNote.classList.remove("pulse");
         void pickerNote.offsetWidth;
         pickerNote.classList.add("pulse");
         pickerNote.textContent = "Select a department above to continue.";
+        updateNextButton();
         publishEmbedState();
         return;
       }

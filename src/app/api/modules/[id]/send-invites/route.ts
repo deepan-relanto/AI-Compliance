@@ -24,6 +24,7 @@ export async function POST(
       : undefined;
   const reminderOnlyNotStarted =
     body?.mode === "course_not_started_reminder" ||
+    body?.mode === "not_started_reminder" ||
     body?.reminderOnlyNotStarted === true;
   const sql = getSql();
   const result = await sendModuleInvitationEmails(sql, id, {

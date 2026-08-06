@@ -2,9 +2,12 @@ import { requireAdminSession } from "@/lib/api-admin";
 import { requireSessionEmail } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { clientPdfUrl } from "@/lib/pdf-url";
+import { cachedFetch } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+const MODULES_CACHE_TTL_MS = 45_000;
 
 function mapModule(row: Record<string, unknown>, batchIds: string[]) {
   return {
@@ -56,22 +59,27 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sql = getSql();
-    const rows = await sql`
-      SELECT
-        m.*,
-        ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
-      FROM training_modules m
-      INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
-      LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
-      WHERE mb_filter.batch_id = ${batchId}
-        AND m.mcq_generation_status = 'completed'
-      GROUP BY m.id
-      ORDER BY m.created_at DESC
-    `;
-
-    const modules = rows.map((row) =>
-      mapModule(row, ((row.batch_ids as string[] | null) ?? []).filter(Boolean)),
+    const modules = await cachedFetch(
+      `modules:list:${batchId}`,
+      MODULES_CACHE_TTL_MS,
+      async () => {
+        const sql = getSql();
+        const rows = await sql`
+          SELECT
+            m.*,
+            ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
+          FROM training_modules m
+          INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
+          LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
+          WHERE mb_filter.batch_id = ${batchId}
+            AND m.mcq_generation_status = 'completed'
+          GROUP BY m.id
+          ORDER BY m.created_at DESC
+        `;
+        return rows.map((row) =>
+          mapModule(row, ((row.batch_ids as string[] | null) ?? []).filter(Boolean)),
+        );
+      },
     );
 
     return NextResponse.json({ ok: true, modules });

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 
 interface ProgressBarProps {
   value: number;
@@ -12,6 +12,7 @@ export function ProgressBar({ value, className }: ProgressBarProps) {
   const percent = Math.min(100, Math.max(0, Math.round(value)));
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className={cn("min-w-0 flex-1", className)}>
       <div className="mb-1 flex items-center justify-between gap-3">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
@@ -37,5 +38,6 @@ export function ProgressBar({ value, className }: ProgressBarProps) {
         </motion.div>
       </div>
     </div>
+    </LazyMotion>
   );
 }

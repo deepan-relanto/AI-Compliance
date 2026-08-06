@@ -1,5 +1,6 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { syncProctorWarningDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
       reportedReason:
         typeof failedReason === "string" ? failedReason : null,
     });
+
+    invalidateAdminCachesAsync();
 
     return NextResponse.json({
       ok: true,

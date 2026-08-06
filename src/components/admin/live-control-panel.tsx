@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Radio, RefreshCw, Send, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
@@ -32,6 +32,7 @@ export function LiveControlPanel() {
   const [pulse, setPulse] = useState(false);
 
   return (
+    <LazyMotion features={domAnimation}>
     <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
@@ -85,5 +86,6 @@ export function LiveControlPanel() {
         )}
       </CardContent>
     </Card>
+    </LazyMotion>
   );
 }

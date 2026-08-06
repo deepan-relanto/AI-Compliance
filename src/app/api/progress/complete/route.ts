@@ -1,5 +1,6 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { markAssessmentCompletedDb } from "@/lib/services/progress-db-service";
 import { sendModuleCompletionEmail } from "@/lib/services/training-notification-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
     if (!emailResult.ok) {
       console.error("[progress complete email]", access.email, moduleId, emailResult.message);
     }
+
+    invalidateAdminCachesAsync();
 
     return NextResponse.json({
       ok: true,

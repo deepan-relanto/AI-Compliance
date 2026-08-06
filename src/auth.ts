@@ -65,13 +65,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const sql = getSql();
           await ensureUserForSignIn(sql, email, user.name ?? user.email);
           token.email = email;
+          // Force a role/batch sync right after sign-in.
+          token.dbSyncedAt = 0;
         } catch {
           /* keep token without email claim */
         }
       }
 
       const email = (token.email as string | undefined)?.trim().toLowerCase();
-      if (email) {
+      // Avoid hitting Neon on every JWT refresh — sync claims at most every 10 minutes
+      // (or immediately when role is missing / after a fresh sign-in).
+      const DB_SYNC_MS = 10 * 60 * 1000;
+      const ADMIN_SYNC_MS = 60 * 1000;
+      const lastSync =
+        typeof token.dbSyncedAt === "number" ? token.dbSyncedAt : 0;
+      const syncInterval = token.role === "admin" ? ADMIN_SYNC_MS : DB_SYNC_MS;
+      const needsDbSync =
+        Boolean(email) &&
+        (!token.role || Date.now() - lastSync > syncInterval);
+
+      if (email && needsDbSync) {
         try {
           const sql = getSql();
           const dbUser = await getUserByEmail(sql, email);
@@ -81,6 +94,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.role = authUser.role;
             token.batchId = authUser.batchId;
             token.displayName = authUser.displayName;
+            token.dbSyncedAt = Date.now();
           }
         } catch {
           /* keep existing token claims */

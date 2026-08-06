@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { m as motion, LazyMotion, domAnimation } from "@/lib/motion";
 import { Bot, Sparkles } from "lucide-react";
 
 function renderLine(line: string, key: number) {
@@ -50,6 +50,7 @@ export function AiReportPanel({ content }: AiReportPanelProps) {
   const lines = content.split("\n");
 
   return (
+    <LazyMotion features={domAnimation}>
     <Card className="h-full">
       <CardHeader>
         <div className="flex items-center gap-3">
@@ -75,5 +76,6 @@ export function AiReportPanel({ content }: AiReportPanelProps) {
         </motion.div>
       </CardContent>
     </Card>
+    </LazyMotion>
   );
 }
