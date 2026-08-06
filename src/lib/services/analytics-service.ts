@@ -5,14 +5,11 @@ import type {
   BatchAnalytics,
   HistoricalRecord,
   ModuleAnalytics,
-  OutreachLearnerRow,
-  OutreachSummary,
   StatusBreakdown,
   TimeSeriesPoint,
 } from "@/lib/analytics-types";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
-import { getOutreachAnalytics } from "@/lib/services/notification-events-service";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 // NOTE: reconcileInvalidProgressScores / reconcilePassedProgressStatus are
@@ -75,19 +72,10 @@ export async function getAnalytics(
   options?: { view?: "full" | "home" },
 ): Promise<AnalyticsPayload> {
   const view = options?.view === "home" ? "home" : "full";
-  const payload =
-    track === "course"
-      ? view === "home"
-        ? await getCourseHomeAnalytics(sql)
-        : await getCourseAnalytics(sql)
-      : view === "home"
-        ? await getComplianceHomeAnalytics(sql)
-        : await getComplianceAnalytics(sql);
-
-  if (view === "home") return payload;
-
-  const outreach = await getOutreachAnalytics(sql, track);
-  return { ...payload, outreach };
+  if (track === "course") {
+    return view === "home" ? getCourseHomeAnalytics(sql) : getCourseAnalytics(sql);
+  }
+  return view === "home" ? getComplianceHomeAnalytics(sql) : getComplianceAnalytics(sql);
 }
 
 /** Admin home KPIs — summary + batches + short recent history (skips series/modules/status). */
@@ -637,18 +625,6 @@ function mapAnalyticsRows(
     modules,
     statusBreakdown,
     history,
-    outreach: {
-      summary: {
-        reminderEmailsSent: 0,
-        uniqueLearnersReminded: 0,
-        avgRemindersPerLearner: null,
-        failedGuidanceEmailsSent: 0,
-        uniqueLearnersGuided: 0,
-        inviteEmailsLogged: 0,
-        completionEmailsLogged: 0,
-      } satisfies OutreachSummary,
-      learners: [] as OutreachLearnerRow[],
-    },
     generatedAt: new Date().toISOString(),
   };
 }

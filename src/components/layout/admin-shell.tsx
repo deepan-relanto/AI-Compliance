@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Mail,
   MessageSquare,
   ShieldAlert,
   Library,
@@ -57,6 +58,12 @@ const navItems = [
     label: "Analytics",
     icon: BarChart3,
     isActive: (path: string) => path.startsWith("/admin/analytics"),
+  },
+  {
+    href: "/admin/email-monitoring",
+    label: "Email monitoring",
+    icon: Mail,
+    isActive: (path: string) => path.startsWith("/admin/email-monitoring"),
   },
   {
     href: "/admin/feedback",

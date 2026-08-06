@@ -1,0 +1,528 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import type {
+  EmailEventRow,
+  EmailEventType,
+  EmailLearnerAggregate,
+  EmailMonitoringPayload,
+  EmailMonitoringTrack,
+} from "@/lib/services/email-monitoring-service";
+import {
+  GraduationCap,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type ViewMode = "events" | "learners";
+
+const TYPE_LABELS: Record<EmailEventType, string> = {
+  invited: "Invite",
+  reminder: "Not-started reminder",
+  failed_review_guidance: "Failed guidance",
+  completed: "Completion",
+  retake_approved: "Retake approved",
+};
+
+function formatSentAt(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function TypePill({ type }: { type: EmailEventType }) {
+  const tones: Record<EmailEventType, string> = {
+    invited: "bg-[#2e3192]/10 text-[#2e3192]",
+    reminder: "bg-amber-50 text-amber-800",
+    failed_review_guidance: "bg-red-50 text-red-700",
+    completed: "bg-emerald-50 text-emerald-700",
+    retake_approved: "bg-sky-50 text-sky-800",
+  };
+  return (
+    <span
+      className={cn(
+        "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        tones[type],
+      )}
+    >
+      {TYPE_LABELS[type]}
+    </span>
+  );
+}
+
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+        active
+          ? "border-[#2e3192] bg-[#2e3192] text-white"
+          : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TrackControl({
+  value,
+  onChange,
+}: {
+  value: EmailMonitoringTrack;
+  onChange: (v: EmailMonitoringTrack) => void;
+}) {
+  const items: { id: EmailMonitoringTrack; label: string; icon?: typeof ShieldCheck }[] = [
+    { id: "all", label: "All" },
+    { id: "compliance", label: "Compliance", icon: ShieldCheck },
+    { id: "course", label: "Courses", icon: GraduationCap },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Email track"
+      className="inline-flex items-center gap-1 rounded-full border border-zinc-200/90 bg-zinc-100/90 p-1"
+    >
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={value === item.id}
+            onClick={() => onChange(item.id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all",
+              value === item.id
+                ? "bg-white text-[#2e3192] shadow-sm ring-1 ring-zinc-200/80"
+                : "text-zinc-500 hover:text-zinc-700",
+            )}
+          >
+            {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} /> : null}
+            {item.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function EmailMonitoringPanel() {
+  const [track, setTrack] = useState<EmailMonitoringTrack>("all");
+  const [batchId, setBatchId] = useState<string>("all");
+  const [type, setType] = useState<EmailEventType | "all">("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [view, setView] = useState<ViewMode>("events");
+  const [data, setData] = useState<EmailMonitoringPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set("track", track);
+        if (batchId !== "all") params.set("batchId", batchId);
+        if (type !== "all") params.set("type", type);
+        if (debouncedSearch) params.set("q", debouncedSearch);
+        const res = await fetch(`/api/email-monitoring?${params.toString()}`);
+        const json = (await res.json()) as EmailMonitoringPayload & {
+          ok?: boolean;
+          error?: string;
+        };
+        if (!res.ok || json.ok === false) {
+          throw new Error(json.error || "Failed to load email monitoring");
+        }
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [track, batchId, type, debouncedSearch],
+  );
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const summary = data?.summary;
+  const events = data?.events ?? [];
+  const learners = data?.learners ?? [];
+  const batches = data?.batches ?? [];
+
+  const typeCounts = useMemo(() => {
+    if (!summary) {
+      return {
+        all: 0,
+        invited: 0,
+        reminder: 0,
+        failed_review_guidance: 0,
+        completed: 0,
+        retake_approved: 0,
+      };
+    }
+    return {
+      all: summary.totalEvents,
+      invited: summary.inviteCount,
+      reminder: summary.reminderCount,
+      failed_review_guidance: summary.failedGuidanceCount,
+      completed: summary.completedCount,
+      retake_approved: summary.retakeApprovedCount,
+    };
+  }, [summary]);
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-24 text-sm text-zinc-500">
+        <Loader2 className="h-5 w-5 animate-spin text-[#2e3192]" />
+        Loading email monitoring…
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-sm font-medium text-red-700">{error}</p>
+          <Button className="mt-4" size="sm" onClick={() => void load()}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TrackControl value={track} onChange={setTrack} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void load(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          {refreshing ? "Updating…" : "Refresh"}
+        </Button>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile
+          label="Total emails logged"
+          value={summary?.totalEvents ?? 0}
+          hint={`${summary?.uniqueLearners ?? 0} unique learners`}
+        />
+        <MetricTile
+          label="Not-started reminders"
+          value={summary?.reminderCount ?? 0}
+          hint="Resend outreach"
+        />
+        <MetricTile
+          label="Failed guidance"
+          value={summary?.failedGuidanceCount ?? 0}
+          hint="Request-review emails"
+        />
+        <MetricTile
+          label="Invites + completions"
+          value={(summary?.inviteCount ?? 0) + (summary?.completedCount ?? 0)}
+          hint={`${summary?.inviteCount ?? 0} invites · ${summary?.completedCount ?? 0} completions`}
+        />
+      </section>
+
+      <Card>
+        <CardHeader className="border-b border-zinc-100 pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="section-label">Email monitoring</p>
+              <h2 className="mt-1 text-sm font-semibold text-zinc-900">
+                Logged outreach activity
+              </h2>
+              <p className="mt-1 max-w-2xl text-xs text-zinc-500">
+                Every invitation, not-started reminder, failed-learner guidance,
+                completion, and retake approval email is recorded. Filter by track,
+                batch, and email type. Send outreach from batch analytics.
+              </p>
+              {data?.generatedAt && (
+                <p className="mt-1 text-[11px] text-zinc-400">
+                  Updated {formatSentAt(data.generatedAt)}
+                </p>
+              )}
+            </div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
+              <Mail className="h-3.5 w-3.5 text-[#2e3192]" />
+              Event log
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                Type
+              </span>
+              {(
+                [
+                  "all",
+                  "reminder",
+                  "failed_review_guidance",
+                  "invited",
+                  "completed",
+                  "retake_approved",
+                ] as const
+              ).map((key) => (
+                <FilterPill
+                  key={key}
+                  active={type === key}
+                  onClick={() => setType(key)}
+                >
+                  {key === "all"
+                    ? `All (${typeCounts.all})`
+                    : `${TYPE_LABELS[key]} (${typeCounts[key]})`}
+                </FilterPill>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                  Batch
+                </span>
+                <select
+                  value={batchId}
+                  onChange={(e) => setBatchId(e.target.value)}
+                  className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-700 focus:border-[#2e3192]/40 focus:outline-none focus:ring-2 focus:ring-[#2e3192]/15"
+                >
+                  <option value="all">All batches</option>
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="ml-1 inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setView("events")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[11px] font-semibold",
+                      view === "events"
+                        ? "bg-white text-[#2e3192] shadow-sm"
+                        : "text-zinc-500",
+                    )}
+                  >
+                    Event log
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView("learners")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[11px] font-semibold",
+                      view === "learners"
+                        ? "bg-white text-[#2e3192] shadow-sm"
+                        : "text-zinc-500",
+                    )}
+                  >
+                    By learner
+                  </button>
+                </div>
+              </div>
+              <div className="relative w-full sm:max-w-xs">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search email, module, batch…"
+                  className="h-9 w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-3 text-sm text-zinc-700 placeholder:text-zinc-400 focus:border-[#2e3192]/40 focus:outline-none focus:ring-2 focus:ring-[#2e3192]/15"
+                />
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {view === "events" ? (
+            <EventLogTable events={events} />
+          ) : (
+            <LearnerTable learners={learners} />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-100 bg-white px-4 py-3 shadow-[var(--shadow-card)]">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{value}</p>
+      <p className="mt-0.5 text-[11px] text-zinc-500">{hint}</p>
+    </div>
+  );
+}
+
+function EventLogTable({ events }: { events: EmailEventRow[] }) {
+  if (events.length === 0) {
+    return (
+      <div className="empty-state mx-6 my-10 border-dashed py-12">
+        <p className="text-sm font-medium text-zinc-600">No emails logged yet</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Send not-started reminders or failed-learner guidance from a batch
+          analytics page to populate this log.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[980px] text-left text-sm">
+        <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <tr>
+            <th className="px-6 py-3">Sent</th>
+            <th className="px-6 py-3">Type</th>
+            <th className="px-6 py-3">Track</th>
+            <th className="px-6 py-3">Learner</th>
+            <th className="px-6 py-3">Module</th>
+            <th className="px-6 py-3">Batch</th>
+            <th className="px-6 py-3">Triggered by</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-50">
+          {events.map((row) => (
+            <tr key={`${row.track}-${row.id}`} className="hover:bg-zinc-50/50">
+              <td className="px-6 py-3 text-xs tabular-nums text-zinc-500">
+                {formatSentAt(row.sentAt)}
+              </td>
+              <td className="px-6 py-3">
+                <TypePill type={row.notificationType} />
+              </td>
+              <td className="px-6 py-3">
+                <span className="text-xs font-medium text-zinc-600">
+                  {row.track === "course" ? "Courses" : "Compliance"}
+                </span>
+              </td>
+              <td className="px-6 py-3 font-mono text-[11px] text-zinc-700">
+                {row.userEmail}
+              </td>
+              <td className="px-6 py-3 text-zinc-800">{row.moduleTitle}</td>
+              <td className="px-6 py-3 text-zinc-600">{row.batchLabel}</td>
+              <td className="px-6 py-3 font-mono text-[11px] text-zinc-500">
+                {row.triggeredBy ?? "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LearnerTable({ learners }: { learners: EmailLearnerAggregate[] }) {
+  if (learners.length === 0) {
+    return (
+      <div className="empty-state mx-6 my-10 border-dashed py-12">
+        <p className="text-sm font-medium text-zinc-600">No learner outreach yet</p>
+        <p className="mt-1 text-xs text-zinc-400">
+          Aggregated resend counts appear here after emails are sent.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1040px] text-left text-sm">
+        <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <tr>
+            <th className="px-6 py-3">Learner</th>
+            <th className="px-6 py-3">Track</th>
+            <th className="px-6 py-3">Module</th>
+            <th className="px-6 py-3">Batch</th>
+            <th className="px-6 py-3">Reminders</th>
+            <th className="px-6 py-3">Failed guidance</th>
+            <th className="px-6 py-3">Invites</th>
+            <th className="px-6 py-3">Total</th>
+            <th className="px-6 py-3">Last sent</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-50">
+          {learners.map((row) => (
+            <tr
+              key={`${row.track}-${row.userEmail}-${row.moduleId}-${row.batchId ?? "none"}`}
+              className="hover:bg-zinc-50/50"
+            >
+              <td className="px-6 py-3 font-mono text-[11px] text-zinc-700">
+                {row.userEmail}
+              </td>
+              <td className="px-6 py-3 text-xs font-medium text-zinc-600">
+                {row.track === "course" ? "Courses" : "Compliance"}
+              </td>
+              <td className="px-6 py-3 text-zinc-800">{row.moduleTitle}</td>
+              <td className="px-6 py-3 text-zinc-600">{row.batchLabel}</td>
+              <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
+                {row.reminderCount}
+              </td>
+              <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
+                {row.failedGuidanceCount}
+              </td>
+              <td className="px-6 py-3 tabular-nums text-zinc-700">
+                {row.inviteCount}
+              </td>
+              <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
+                {row.totalSends}
+              </td>
+              <td className="px-6 py-3 text-xs text-zinc-500">
+                {formatSentAt(row.lastSentAt)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
