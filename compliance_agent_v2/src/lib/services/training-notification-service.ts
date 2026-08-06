@@ -328,6 +328,264 @@ function retakeTextBody(params: {
   ].join("\n\n");
 }
 
+function failedReviewGuidanceHtml(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind } = params;
+  const brand =
+    kind === "course" ? "Relanto AI Course" : "Relanto Compliance Agent";
+  const noun = kind === "course" ? "course assessment" : "compliance assessment";
+  const footer =
+    kind === "course" ? "© Relanto — AI Course" : "© Relanto — Compliance Agent";
+  return `
+<!DOCTYPE html>
+<html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
+  <div style="height:4px;background:linear-gradient(90deg,#2e3192,#f15a24);border-radius:2px;margin-bottom:24px"></div>
+  <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">${brand}</p>
+  <h1 style="font-size:22px;margin:8px 0 16px">Action required: request a review</h1>
+  <p>Dear ${escapeHtml(displayName)},</p>
+  <p>We noted that you were unable to complete <strong>${escapeHtml(moduleTitle)}</strong> under the proctoring requirements for this ${noun}.</p>
+  <p>To proceed, please sign in using the link below and submit a <strong>Request Review</strong>. An administrator will assess your request and, where appropriate, authorize a further attempt.</p>
+  ${ctaButtonHtml(loginUrl, "Open training &amp; request review")}
+  <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to continue.</p>
+  <p style="font-size:12px;color:#71717a">For technical assistance, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a>.</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">${footer}</p>
+</body></html>`;
+}
+
+function failedReviewGuidanceTextBody(params: {
+  displayName: string;
+  moduleTitle: string;
+  loginUrl: string;
+  kind: MailKind;
+}): string {
+  const { displayName, moduleTitle, loginUrl, kind } = params;
+  const noun = kind === "course" ? "course assessment" : "compliance assessment";
+  return [
+    `Dear ${displayName},`,
+    `We noted that you were unable to complete "${moduleTitle}" under the proctoring requirements for this ${noun}.`,
+    "To proceed, please sign in using the link below and submit a Request Review. An administrator will assess your request and, where appropriate, authorize a further attempt.",
+    `Open training and request review: ${loginUrl}`,
+    "Sign in with your @relanto.ai Microsoft work account to continue.",
+    "For technical assistance, please contact Relanto Academy at relanto.academy@relanto.ai.",
+  ].join("\n\n");
+}
+
+export interface SendFailedReviewGuidanceOptions {
+  forceResend?: boolean;
+  batchId?: string;
+  triggeredBy?: string;
+}
+
+/**
+ * Email integrity-failed learners (failed / permanently_failed) with formal
+ * guidance to sign in and submit a Request Review.
+ */
+export async function sendFailedReviewGuidanceEmails(
+  sql: Sql,
+  moduleId: string,
+  options?: SendFailedReviewGuidanceOptions,
+): Promise<InvitationSendResult> {
+  const forceResend = options?.forceResend === true;
+  const batchId = options?.batchId?.trim() || null;
+  const triggeredBy = options?.triggeredBy?.trim().toLowerCase() || null;
+  const cfg = getGraphMailConfig();
+  if (!cfg.isConfigured) {
+    return {
+      ok: false,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: cfg.issues,
+      message:
+        "Mail not configured — set MAIL_FROM_ADDRESS and ensure Graph Mail.Send consent.",
+    };
+  }
+
+  const modules = await sql`
+    SELECT title, duration_minutes, mcq_generation_status
+    FROM course_modules WHERE id = ${moduleId} LIMIT 1
+  `;
+  const moduleRows =
+    modules.length > 0
+      ? modules
+      : await sql`
+          SELECT title, duration_minutes, mcq_generation_status
+          FROM training_modules WHERE id = ${moduleId} LIMIT 1
+        `;
+  if (moduleRows.length === 0) {
+    return {
+      ok: false,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: ["Module not found"],
+      message: "Module not found",
+    };
+  }
+  if (moduleRows[0].mcq_generation_status !== "completed") {
+    return {
+      ok: false,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+      errors: ["Module not ready"],
+      message: "Module MCQs are not ready yet.",
+    };
+  }
+
+  const moduleTitle = moduleRows[0].title as string;
+  const loginBase = cfg.baseUrl;
+  const isCourse = modules.length > 0;
+  const kind: MailKind = isCourse ? "course" : "compliance";
+  const subjectBrand = isCourse
+    ? "Relanto AI Course"
+    : "Relanto Compliance Training";
+
+  const learners = isCourse
+    ? await sql`
+        SELECT DISTINCT
+          u.email,
+          u.display_name,
+          cp.status AS progress_status,
+          LEAST(cp.score_percent, 100) AS score_percent,
+          cp.completed_at,
+          cp.last_accessed_at,
+          cp.current_slide,
+          cp.warning_count,
+          cp.mcq_answers
+        FROM users u
+        INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
+        LEFT JOIN course_progress cp
+          ON cp.user_email = u.email
+          AND cp.module_id = ${moduleId}
+        WHERE mb.module_id = ${moduleId}
+          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND u.role = 'user'
+          AND u.email IS NOT NULL
+        ORDER BY u.email
+      `
+    : await sql`
+        SELECT DISTINCT
+          u.email,
+          u.display_name,
+          ap.status AS progress_status,
+          LEAST(ap.score_percent, 100) AS score_percent,
+          ap.completed_at,
+          ap.last_accessed_at,
+          ap.current_slide,
+          ap.warning_count,
+          ap.mcq_answers
+        FROM users u
+        INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
+        LEFT JOIN assessment_progress ap
+          ON ap.user_email = u.email
+          AND ap.module_id = ${moduleId}
+        WHERE mb.module_id = ${moduleId}
+          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND u.role = 'user'
+          AND u.email IS NOT NULL
+        ORDER BY u.email
+      `;
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const row of learners) {
+    const email = (row.email as string).trim().toLowerCase();
+    const displayName =
+      (row.display_name as string | null)?.trim() || firstNameFromEmail(email);
+
+    const rawAnswers =
+      row.mcq_answers &&
+      typeof row.mcq_answers === "object" &&
+      !Array.isArray(row.mcq_answers)
+        ? (row.mcq_answers as Record<string, boolean>)
+        : {};
+    const answerCount = Object.keys(rawAnswers).length;
+    const status = normalizeProgressStatus(
+      (row.progress_status as string | null) ?? null,
+      row.score_percent != null ? Number(row.score_percent) : null,
+      (row.completed_at as string | null) ?? null,
+      {
+        lastAccessedAt: (row.last_accessed_at as string | null) ?? null,
+        currentSlide: Number(row.current_slide ?? 0),
+        answerCount,
+        warningCount: Number(row.warning_count ?? 0),
+      },
+    );
+
+    if (status !== "failed" && status !== "permanently_failed") {
+      skipped++;
+      continue;
+    }
+
+    if (
+      !forceResend &&
+      (await wasEventSentToday(sql, moduleId, email, "failed_review_guidance"))
+    ) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
+      await sendGraphMail({
+        to: email,
+        subject: `Action required: complete your review request — ${moduleTitle} — ${subjectBrand}`,
+        htmlBody: failedReviewGuidanceHtml({
+          displayName,
+          moduleTitle,
+          loginUrl,
+          kind,
+        }),
+        textBody: failedReviewGuidanceTextBody({
+          displayName,
+          moduleTitle,
+          loginUrl,
+          kind,
+        }),
+      });
+      await recordNotificationEvent(
+        sql,
+        moduleId,
+        email,
+        "failed_review_guidance",
+        { batchId, triggeredBy },
+      );
+      sent++;
+    } catch (err) {
+      failed++;
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`${email}: ${msg}`);
+      console.error("[training-notification failed-guidance]", email, err);
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    sent,
+    skipped,
+    failed,
+    errors,
+    message:
+      sent > 0
+        ? `Review-guidance emails sent to ${sent} learner${sent === 1 ? "" : "s"}.`
+        : failed > 0
+          ? `Failed to send ${failed} review-guidance email(s).`
+          : skipped > 0
+            ? "No eligible failed learners matched this outreach (or already contacted today)."
+            : batchId
+              ? "No learners found in the selected batch."
+              : "No learners found in assigned batches.",
+  };
+}
+
 async function wasNotificationSent(
   sql: Sql,
   moduleId: string,
@@ -353,6 +611,13 @@ async function wasNotificationSent(
   return rows.length > 0;
 }
 
+export type NotificationEventType =
+  | "invited"
+  | "completed"
+  | "reminder"
+  | "failed_review_guidance"
+  | "retake_approved";
+
 async function recordNotification(
   sql: Sql,
   moduleId: string,
@@ -375,6 +640,63 @@ async function recordNotification(
   `;
 }
 
+/** Append-only send log — every outbound training/course email. */
+export async function recordNotificationEvent(
+  sql: Sql,
+  moduleId: string,
+  userEmail: string,
+  type: NotificationEventType,
+  meta?: { batchId?: string | null; triggeredBy?: string | null },
+): Promise<void> {
+  const email = userEmail.trim().toLowerCase();
+  const batchId = meta?.batchId?.trim() || null;
+  const triggeredBy = meta?.triggeredBy?.trim().toLowerCase() || null;
+  const isCourse = await isCourseModule(sql, moduleId);
+  if (isCourse) {
+    await sql`
+      INSERT INTO course_notification_events
+        (module_id, user_email, notification_type, batch_id, triggered_by)
+      VALUES (${moduleId}, ${email}, ${type}, ${batchId}, ${triggeredBy})
+    `;
+    return;
+  }
+  await sql`
+    INSERT INTO training_notification_events
+      (module_id, user_email, notification_type, batch_id, triggered_by)
+    VALUES (${moduleId}, ${email}, ${type}, ${batchId}, ${triggeredBy})
+  `;
+}
+
+async function wasEventSentToday(
+  sql: Sql,
+  moduleId: string,
+  userEmail: string,
+  type: NotificationEventType,
+): Promise<boolean> {
+  const email = userEmail.trim().toLowerCase();
+  const isCourse = await isCourseModule(sql, moduleId);
+  const rows = isCourse
+    ? await sql`
+        SELECT 1
+        FROM course_notification_events
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = ${email}
+          AND notification_type = ${type}
+          AND sent_at >= date_trunc('day', NOW())
+        LIMIT 1
+      `
+    : await sql`
+        SELECT 1
+        FROM training_notification_events
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = ${email}
+          AND notification_type = ${type}
+          AND sent_at >= date_trunc('day', NOW())
+        LIMIT 1
+      `;
+  return rows.length > 0;
+}
+
 export interface InvitationSendResult {
   ok: boolean;
   sent: number;
@@ -391,6 +713,8 @@ export interface SendModuleInvitationOptions {
   batchId?: string;
   /** Email only learners who still have not started (courses and compliance). */
   reminderOnlyNotStarted?: boolean;
+  /** Admin email that triggered the send (stored on event log). */
+  triggeredBy?: string;
 }
 
 /** Email all learners in assigned batches when a module is ready. */
@@ -402,6 +726,7 @@ export async function sendModuleInvitationEmails(
   const forceResend = options?.forceResend === true;
   const batchId = options?.batchId?.trim() || null;
   const reminderOnlyNotStarted = options?.reminderOnlyNotStarted === true;
+  const triggeredBy = options?.triggeredBy?.trim().toLowerCase() || null;
   const cfg = getGraphMailConfig();
   if (!cfg.isConfigured) {
     return {
@@ -582,6 +907,13 @@ export async function sendModuleInvitationEmails(
       if (!reminderOnlyNotStarted) {
         await recordNotification(sql, moduleId, email, "invited");
       }
+      await recordNotificationEvent(
+        sql,
+        moduleId,
+        email,
+        reminderOnlyNotStarted ? "reminder" : "invited",
+        { batchId, triggeredBy },
+      );
       sent++;
     } catch (err) {
       failed++;
@@ -675,6 +1007,7 @@ export async function sendRetakeApprovalEmail(
         durationLabel,
       }),
     });
+    await recordNotificationEvent(sql, moduleId, email, "retake_approved");
     return { ok: true, message: "Retake approval email sent." };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";
@@ -793,6 +1126,7 @@ export async function sendModuleCompletionEmail(
       inlineAttachments,
     });
     await recordNotification(sql, moduleId, email, "completed");
+    await recordNotificationEvent(sql, moduleId, email, "completed");
     return { ok: true, message: "Completion email sent.", emailSent: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";

@@ -1,16 +1,19 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
-import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
+import {
+  sendFailedReviewGuidanceEmails,
+  sendModuleInvitationEmails,
+} from "@/lib/services/training-notification-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** POST — resend invitation emails for a published module (admin). */
+/** POST — invitation / reminder / failed-review guidance emails (admin). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireAdminSession();
+  const { session, error } = await requireAdminSession();
   if (error) return error;
 
   const { id } = await params;
@@ -22,15 +25,35 @@ export async function POST(
     typeof body?.batchId === "string" && body.batchId.trim()
       ? body.batchId.trim()
       : undefined;
+  const mode = typeof body?.mode === "string" ? body.mode : "";
   const reminderOnlyNotStarted =
-    body?.mode === "course_not_started_reminder" ||
-    body?.mode === "not_started_reminder" ||
+    mode === "course_not_started_reminder" ||
+    mode === "not_started_reminder" ||
     body?.reminderOnlyNotStarted === true;
+  const failedReviewGuidance =
+    mode === "failed_review_guidance" ||
+    mode === "course_failed_review_guidance";
+  const triggeredBy =
+    typeof session?.user?.email === "string"
+      ? session.user.email
+      : undefined;
+
   const sql = getSql();
+
+  if (failedReviewGuidance) {
+    const result = await sendFailedReviewGuidanceEmails(sql, id, {
+      forceResend,
+      batchId,
+      triggeredBy,
+    });
+    return NextResponse.json(result);
+  }
+
   const result = await sendModuleInvitationEmails(sql, id, {
     forceResend,
     batchId,
     reminderOnlyNotStarted,
+    triggeredBy,
   });
   return NextResponse.json(result);
 }

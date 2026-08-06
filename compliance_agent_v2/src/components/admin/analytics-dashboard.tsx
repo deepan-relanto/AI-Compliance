@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   Filter,
   Loader2,
+  Mail,
   RefreshCw,
   Search,
   TrendingUp,
@@ -553,6 +554,23 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
         />
       </section>
 
+      {/* Outreach monitoring */}
+      <OutreachMonitorSection
+        track={track}
+        outreach={data.outreach ?? {
+          summary: {
+            reminderEmailsSent: 0,
+            uniqueLearnersReminded: 0,
+            avgRemindersPerLearner: null,
+            failedGuidanceEmailsSent: 0,
+            uniqueLearnersGuided: 0,
+            inviteEmailsLogged: 0,
+            completionEmailsLogged: 0,
+          },
+          learners: [],
+        }}
+      />
+
       {/* Charts row */}
       <section className="grid gap-5 lg:grid-cols-2">
         <Card className="flex flex-col h-[490px]">
@@ -1002,6 +1020,195 @@ function BatchStat({
         {value}
       </p>
     </div>
+  );
+}
+
+function formatOutreachDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function OutreachMonitorSection({
+  track,
+  outreach,
+}: {
+  track: "compliance" | "course";
+  outreach: AnalyticsPayload["outreach"];
+}) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "reminded" | "failed_guided">(
+    "all",
+  );
+  const { summary, learners } = outreach;
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return learners.filter((row) => {
+      if (filter === "reminded" && row.reminderCount < 1) return false;
+      if (filter === "failed_guided" && row.failedGuidanceCount < 1) return false;
+      if (!term) return true;
+      return (
+        row.userEmail.toLowerCase().includes(term) ||
+        row.moduleTitle.toLowerCase().includes(term) ||
+        row.batchLabel.toLowerCase().includes(term)
+      );
+    });
+  }, [learners, search, filter]);
+
+  return (
+    <Card>
+      <CardHeader className="border-b border-zinc-100 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="section-label">Outreach</p>
+            <h2 className="mt-1 text-sm font-semibold text-zinc-900">
+              Email monitoring — {track === "course" ? "Courses" : "Compliance"}
+            </h2>
+            <p className="mt-1 max-w-2xl text-xs text-zinc-500">
+              Every invitation, not-started reminder, and failed-learner review
+              guidance email is logged. Use batch analytics to send outreach;
+              this view tracks how many times each learner was contacted.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
+            <Mail className="h-3.5 w-3.5 text-[#2e3192]" />
+            Event log
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 px-3.5 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              Reminders sent
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+              {summary.reminderEmailsSent}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">
+              {summary.uniqueLearnersReminded} learner
+              {summary.uniqueLearnersReminded === 1 ? "" : "s"} · avg{" "}
+              {summary.avgRemindersPerLearner ?? "—"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 px-3.5 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              Failed guidance
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+              {summary.failedGuidanceEmailsSent}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">
+              {summary.uniqueLearnersGuided} learner
+              {summary.uniqueLearnersGuided === 1 ? "" : "s"} guided
+            </p>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 px-3.5 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              Invites logged
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+              {summary.inviteEmailsLogged}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">Initial assignments</p>
+          </div>
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/70 px-3.5 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              Completions logged
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
+              {summary.completionEmailsLogged}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-500">Pass confirmation mail</p>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>
+              All ({learners.length})
+            </FilterPill>
+            <FilterPill
+              active={filter === "reminded"}
+              onClick={() => setFilter("reminded")}
+              tone="brand"
+            >
+              Reminded
+            </FilterPill>
+            <FilterPill
+              active={filter === "failed_guided"}
+              onClick={() => setFilter("failed_guided")}
+              tone="danger"
+            >
+              Failed guidance
+            </FilterPill>
+          </div>
+          <div className="relative w-full sm:max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search email, module, batch…"
+              className="h-9 w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-3 text-sm text-zinc-700 placeholder:text-zinc-400 focus:border-[#2e3192]/40 focus:outline-none focus:ring-2 focus:ring-[#2e3192]/15"
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {filtered.length === 0 ? (
+          <div className="empty-state mx-6 my-10 border-dashed py-12">
+            <p className="text-sm font-medium text-zinc-600">No outreach logged yet</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              Send not-started reminders or failed-learner guidance from a batch
+              analytics page to populate this log.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-left text-sm">
+              <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <tr>
+                  <th className="px-6 py-3">Learner</th>
+                  <th className="px-6 py-3">Module</th>
+                  <th className="px-6 py-3">Batch</th>
+                  <th className="px-6 py-3">Reminders</th>
+                  <th className="px-6 py-3">Last reminded</th>
+                  <th className="px-6 py-3">Failed guidance</th>
+                  <th className="px-6 py-3">Last guided</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50">
+                {filtered.map((row) => (
+                  <tr
+                    key={`${row.userEmail}-${row.moduleId}-${row.batchId ?? "none"}`}
+                    className="hover:bg-zinc-50/50"
+                  >
+                    <td className="px-6 py-3 font-mono text-[11px] text-zinc-700">
+                      {row.userEmail}
+                    </td>
+                    <td className="px-6 py-3 text-zinc-800">{row.moduleTitle}</td>
+                    <td className="px-6 py-3 text-zinc-600">{row.batchLabel}</td>
+                    <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
+                      {row.reminderCount}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-zinc-500">
+                      {formatOutreachDate(row.lastRemindedAt)}
+                    </td>
+                    <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
+                      {row.failedGuidanceCount}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-zinc-500">
+                      {formatOutreachDate(row.lastFailedGuidanceAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

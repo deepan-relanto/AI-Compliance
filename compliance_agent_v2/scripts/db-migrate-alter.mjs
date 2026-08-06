@@ -170,4 +170,39 @@ await sql`
   CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Consumed'))
 `;
 
+// Append-only email event logs (reminders + failed-review guidance + invite/completion history).
+await sql`
+  CREATE TABLE IF NOT EXISTS training_notification_events (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    module_id         TEXT NOT NULL REFERENCES training_modules(id) ON DELETE CASCADE,
+    user_email        TEXT NOT NULL,
+    notification_type TEXT NOT NULL CHECK (
+      notification_type IN ('invited', 'completed', 'reminder', 'failed_review_guidance', 'retake_approved')
+    ),
+    batch_id          TEXT REFERENCES batches(id) ON DELETE SET NULL,
+    triggered_by      TEXT,
+    sent_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`;
+await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_module ON training_notification_events(module_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_user ON training_notification_events(LOWER(user_email))`;
+await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_type_sent ON training_notification_events(notification_type, sent_at DESC)`;
+
+await sql`
+  CREATE TABLE IF NOT EXISTS course_notification_events (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    module_id         TEXT NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,
+    user_email        TEXT NOT NULL,
+    notification_type TEXT NOT NULL CHECK (
+      notification_type IN ('invited', 'completed', 'reminder', 'failed_review_guidance', 'retake_approved')
+    ),
+    batch_id          TEXT REFERENCES batches(id) ON DELETE SET NULL,
+    triggered_by      TEXT,
+    sent_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )
+`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_module ON course_notification_events(module_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_user ON course_notification_events(LOWER(user_email))`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_type_sent ON course_notification_events(notification_type, sent_at DESC)`;
+
 console.log("✅ Schema alterations applied.");
