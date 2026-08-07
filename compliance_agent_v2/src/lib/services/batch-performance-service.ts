@@ -54,7 +54,8 @@ export async function getBatchPerformance(
   const b = batchRows[0];
   const isCourse = track === "course";
 
-  const [moduleRows, memberRows, gridRows, summaryRows] = await Promise.all([
+  const [moduleRows, memberRows, gridRows, summaryRows, outreachCounts] =
+    await Promise.all([
     isCourse
       ? sql`
           SELECT m.id, m.title
@@ -229,6 +230,8 @@ export async function getBatchPerformance(
             ON ap.user_email = u.email AND ap.module_id = m.id
           WHERE u.batch_id = ${batchId}
         `,
+    // Parallel with grid — batch-scoped outreach (no module-id dependency).
+    getBatchOutreachCounts(sql, batchId, [], track),
   ]);
 
   const modules = moduleRows.map((m) => ({
@@ -308,12 +311,6 @@ export async function getBatchPerformance(
     learner.assessments.push(assessment);
   }
 
-  const outreachCounts = await getBatchOutreachCounts(
-    sql,
-    batchId,
-    modules.map((m) => m.id),
-    track,
-  );
   for (const learner of learnerMap.values()) {
     for (const a of learner.assessments) {
       const counts = outreachCounts.get(outreachCountKey(learner.email, a.moduleId));

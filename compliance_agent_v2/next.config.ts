@@ -3,24 +3,61 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   compress: true,
+  poweredByHeader: false,
   async headers() {
     return [
       {
         source: "/uploads/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
         ],
       },
       {
         source: "/_next/static/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
       {
         source: "/avatars/:path*",
         headers: [
-          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=43200" },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=43200",
+          },
+        ],
+      },
+      {
+        source: "/course-assets/:path*.mp4",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/course-assets/:path*.png",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/course-assets/:path*.jpg",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=86400",
+          },
         ],
       },
     ];
@@ -30,6 +67,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "100mb",
     },
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
   },
   serverExternalPackages: ["pdfjs-dist"],
   webpack: (config, { dev }) => {

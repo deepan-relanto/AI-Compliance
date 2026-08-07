@@ -4,10 +4,19 @@ import {
   getBatchPerformance,
   type AnalyticsTrack,
 } from "@/lib/services/batch-performance-service";
-import { cacheGet, cacheSet, CACHE_KEYS } from "@/lib/api-cache";
+import { cacheGetSWR, cacheSet, CACHE_KEYS } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+async function loadAndCache(batchId: string, track: AnalyticsTrack) {
+  const sql = getSql();
+  const payload = await getBatchPerformance(sql, batchId, track);
+  if (payload) {
+    cacheSet(CACHE_KEYS.batchPerformance(batchId, track), payload, 90, 270);
+  }
+  return payload;
+}
 
 export async function GET(
   req: NextRequest,
@@ -23,26 +32,35 @@ export async function GET(
       trackParam === "course" ? "course" : "compliance";
 
     const cacheKey = CACHE_KEYS.batchPerformance(batchId, track);
-    const cached = cacheGet<object>(cacheKey);
+    const cached = cacheGetSWR<object>(cacheKey);
     if (cached) {
+      if (!cached.fresh) {
+        queueMicrotask(() => {
+          void loadAndCache(batchId, track).catch(() => undefined);
+        });
+      }
       return NextResponse.json(
-        { ok: true, ...cached, track, _cached: true },
-        { headers: { "X-Cache": "HIT" } },
+        { ok: true, ...cached.data, track, _cached: true },
+        {
+          headers: {
+            "X-Cache": cached.fresh ? "HIT" : "STALE",
+            "Cache-Control": "private, no-cache",
+          },
+        },
       );
     }
 
-    const sql = getSql();
-    const payload = await getBatchPerformance(sql, batchId, track);
+    const payload = await loadAndCache(batchId, track);
     if (!payload) {
       return NextResponse.json({ ok: false, error: "Batch not found" }, { status: 404 });
     }
-    cacheSet(cacheKey, payload, 60);
     return NextResponse.json(
       { ok: true, ...payload, track },
-      { headers: { "X-Cache": "MISS" } },
+      { headers: { "X-Cache": "MISS", "Cache-Control": "private, no-cache" } },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to load batch performance";
+    const message =
+      err instanceof Error ? err.message : "Failed to load batch performance";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -29,7 +29,12 @@ export default function BatchDetailPage() {
 
   const { data, isLoading, mutate } = useSWR(
     batchId ? `/api/batches/${encodeURIComponent(batchId)}` : null,
-    fetcher
+    fetcher,
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      dedupingInterval: 15_000,
+    },
   );
 
   const batch = data?.ok && data.batch ? {
@@ -87,7 +92,9 @@ export default function BatchDetailPage() {
               <UserPlus className="h-3.5 w-3.5" />
               {showAdd ? "Close" : "Add members"}
             </Button>
-            <Link href={`/admin/analytics/batch/${encodeURIComponent(batchId)}`}>
+            <Link
+              href={`/admin/analytics/batch/${encodeURIComponent(batchId)}?track=compliance`}
+            >
               <Button variant="outline" size="sm">
                 <BarChart3 className="h-3.5 w-3.5" />
                 Analytics
@@ -123,7 +130,7 @@ export default function BatchDetailPage() {
           members={members}
           batchLabel={batch.label}
           batchId={batchId}
-          analyticsHref={`/admin/analytics/batch/${encodeURIComponent(batchId)}`}
+          analyticsHref={`/admin/analytics/batch/${encodeURIComponent(batchId)}?track=compliance`}
           onMemberRemoved={() => void mutate()}
         />
       </AdminShell>

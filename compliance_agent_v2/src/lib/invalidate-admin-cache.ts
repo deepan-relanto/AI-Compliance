@@ -10,6 +10,8 @@ export function invalidateAdminCaches(): void {
   invalidateCache("monitoring:");
   invalidateCache("course-monitoring:");
   invalidateCache("learner-dashboard:");
+  invalidateCache("email-monitoring");
+  invalidateCache("module:detail:");
 }
 
 /** Non-blocking cache bust — use on hot learner paths (MCQ submit, etc.). */

@@ -179,7 +179,7 @@ export function EmailMonitoringPanel() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Keep URL in sync so batch pages can deep-link here.
+  // Keep URL in sync so batch pages can deep-link here (skip no-op replaces).
   useEffect(() => {
     const params = new URLSearchParams();
     if (track !== "all") params.set("track", track);
@@ -189,11 +189,14 @@ export function EmailMonitoringPanel() {
     if (debouncedSearch) params.set("q", debouncedSearch);
     const qs = params.toString();
     const next = qs ? `/admin/email-monitoring?${qs}` : "/admin/email-monitoring";
-    router.replace(next, { scroll: false });
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current !== next) {
+      router.replace(next, { scroll: false });
+    }
   }, [track, batchId, moduleId, type, debouncedSearch, router]);
 
   const load = useCallback(
-    async (isRefresh = false) => {
+    async (isRefresh = false, signal?: AbortSignal) => {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
@@ -204,7 +207,10 @@ export function EmailMonitoringPanel() {
         if (moduleId !== "all") params.set("moduleId", moduleId);
         if (type !== "all") params.set("type", type);
         if (debouncedSearch) params.set("q", debouncedSearch);
-        const res = await fetch(`/api/email-monitoring?${params.toString()}`);
+        const res = await fetch(`/api/email-monitoring?${params.toString()}`, {
+          signal,
+        });
+        if (signal?.aborted) return;
         const json = (await res.json()) as EmailMonitoringPayload & {
           ok?: boolean;
           error?: string;
@@ -214,17 +220,24 @@ export function EmailMonitoringPanel() {
         }
         setData(json);
       } catch (err) {
+        if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
+          return;
+        }
         setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (!signal?.aborted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [track, batchId, moduleId, type, debouncedSearch],
   );
 
   useEffect(() => {
-    void load();
+    const ac = new AbortController();
+    void load(false, ac.signal);
+    return () => ac.abort();
   }, [load]);
 
   const summary = data?.summary;

@@ -153,6 +153,8 @@ await sql`CREATE INDEX IF NOT EXISTS idx_progress_completed_at ON assessment_pro
 await sql`CREATE INDEX IF NOT EXISTS idx_progress_updated_at ON assessment_progress(updated_at)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_module_batches_batch ON module_batches(batch_id)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_module_batches_module ON module_batches(module_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_module_batches_batch ON course_module_batches(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_module_batches_module ON course_module_batches(module_id)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_mcq_questions_module ON mcq_questions(module_id)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_progress_user_module ON assessment_progress(user_email, module_id)`;
 
@@ -214,5 +216,16 @@ await sql`
   ALTER TABLE course_progress
   ADD COLUMN IF NOT EXISTS resume_checkpoint JSONB
 `;
+
+// Hot-path indexes for analytics / batch marks / email monitoring
+await sql`CREATE INDEX IF NOT EXISTS idx_assessment_progress_batch ON assessment_progress(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_batch ON course_progress(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_assessment_progress_batch_status ON assessment_progress(batch_id, status)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_progress_batch_status ON course_progress(batch_id, status)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_batch ON training_notification_events(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_batch ON course_notification_events(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_batch_type ON training_notification_events(batch_id, notification_type)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_batch_type ON course_notification_events(batch_id, notification_type)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_users_batch_role ON users(batch_id) WHERE role = 'user'`;
 
 console.log("✅ Schema alterations applied.");

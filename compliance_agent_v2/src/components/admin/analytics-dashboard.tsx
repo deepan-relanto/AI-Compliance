@@ -61,7 +61,13 @@ function clamp(v: number) {
   return Math.min(100, Math.max(0, v));
 }
 
-function BatchComparisonChart({ batches }: { batches: BatchAnalytics[] }) {
+function BatchComparisonChart({
+  batches,
+  track,
+}: {
+  batches: BatchAnalytics[];
+  track: "compliance" | "course";
+}) {
   if (batches.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-zinc-500">
@@ -76,7 +82,7 @@ function BatchComparisonChart({ batches }: { batches: BatchAnalytics[] }) {
         <div key={batch.id}>
           <div className="mb-2 flex items-center justify-between gap-2">
             <Link
-              href={`/admin/analytics/batch/${batch.id}`}
+              href={`/admin/analytics/batch/${batch.id}?track=${track}`}
               className="text-sm font-medium text-zinc-800 hover:text-[#2e3192]"
             >
               {batch.label}
@@ -348,10 +354,31 @@ type StatusFilter =
 
 export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) {
   const [track, setTrack] = useState<"compliance" | "course">("compliance");
-  const { data: rawData, error: rawError, isLoading, mutate, isValidating } = useSWR(
-    `/api/analytics?track=${track}`,
+  // Paint quickly from the lightweight home payload, then upgrade to full.
+  const { data: homeRaw, isLoading: homeLoading } = useSWR(
+    `/api/analytics?track=${track}&view=home`,
     fetcher,
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      dedupingInterval: 30_000,
+    },
   );
+  const { data: fullRaw, error: rawError, isLoading: fullLoading, mutate, isValidating } =
+    useSWR(`/api/analytics?track=${track}`, fetcher, {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      dedupingInterval: 30_000,
+    });
+
+  // Warm the opposite track so Compliance ↔ Courses switches hit cache.
+  useEffect(() => {
+    const other = track === "course" ? "compliance" : "course";
+    void fetch(`/api/analytics?track=${other}&view=home`).catch(() => undefined);
+    void fetch(`/api/analytics?track=${other}`).catch(() => undefined);
+  }, [track]);
+
+  const rawData = fullRaw?.ok ? fullRaw : homeRaw;
   
   const [batchFilter, setBatchFilter] = useState<string>(initialBatchId ?? "all");
   const [moduleFilter, setModuleFilter] = useState<string>("all");
@@ -361,11 +388,15 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
   const HISTORY_PAGE_SIZE = 25;
 
   const data = rawData?.ok ? (rawData as AnalyticsPayload) : null;
-  const error = rawError ? "Network error loading analytics." : (!rawData?.ok && rawData?.error ? rawData.error : "");
-  const loading = isLoading;
+  const error = rawError
+    ? "Network error loading analytics."
+    : !rawData?.ok && rawData?.error
+      ? rawData.error
+      : "";
+  const loading = homeLoading && fullLoading && !data;
   const refreshing = isValidating;
-  
-  const load = async (isRefresh = false) => {
+
+  const load = async () => {
     await mutate();
   };
 
@@ -511,7 +542,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
               <Download className="h-3.5 w-3.5" />
               Export PDF
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => void load(true)} disabled={refreshing}>
+            <Button variant="ghost" size="sm" onClick={() => void load()} disabled={refreshing}>
               <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
               {refreshing ? "Updating…" : "Refresh"}
             </Button>
@@ -563,7 +594,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
             </p>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto min-h-0 pr-4 pb-4 scrollbar-thin">
-            <BatchComparisonChart batches={data.batches} />
+            <BatchComparisonChart batches={data.batches} track={track} />
           </CardContent>
         </Card>
 
@@ -692,7 +723,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
               {data.batches.map((b) => (
                 <Link
                   key={b.id}
-                  href={`/admin/analytics/batch/${b.id}`}
+                  href={`/admin/analytics/batch/${b.id}?track=${track}`}
                   className="surface-card-interactive group flex flex-col gap-3 p-4"
                 >
                   <div className="flex items-start justify-between">

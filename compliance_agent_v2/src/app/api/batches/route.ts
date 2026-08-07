@@ -1,7 +1,7 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { createBatch } from "@/lib/services/batch-management-service";
-import { cacheGet, cacheSet, cacheInvalidate, CACHE_KEYS } from "@/lib/api-cache";
+import { cacheGetSWR, cacheSet, cacheInvalidate, CACHE_KEYS } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -11,11 +11,28 @@ export async function GET() {
   if (error) return error;
 
   try {
-    const cached = cacheGet<object[]>(CACHE_KEYS.batches);
+    const cached = cacheGetSWR<object[]>(CACHE_KEYS.batches);
     if (cached) {
+      if (!cached.fresh) {
+        queueMicrotask(() => {
+          void (async () => {
+            try {
+              const sql = getSql();
+              const rows = await sql`
+                SELECT id, label, description, member_count, compliance, pass_rate, fail_rate, active_sessions
+                FROM batches
+                ORDER BY label
+              `;
+              cacheSet(CACHE_KEYS.batches, rows, 90, 270);
+            } catch {
+              /* ignore */
+            }
+          })();
+        });
+      }
       return NextResponse.json(
-        { ok: true, batches: cached },
-        { headers: { "X-Cache": "HIT" } },
+        { ok: true, batches: cached.data },
+        { headers: { "X-Cache": cached.fresh ? "HIT" : "STALE" } },
       );
     }
 
@@ -25,7 +42,7 @@ export async function GET() {
       FROM batches
       ORDER BY label
     `;
-    cacheSet(CACHE_KEYS.batches, rows, 60);
+    cacheSet(CACHE_KEYS.batches, rows, 90, 270);
     return NextResponse.json(
       { ok: true, batches: rows },
       { headers: { "X-Cache": "MISS" } },

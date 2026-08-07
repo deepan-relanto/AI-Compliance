@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS module_batches (
   PRIMARY KEY (module_id, batch_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_module_batches_batch ON module_batches(batch_id);
+CREATE INDEX IF NOT EXISTS idx_module_batches_module ON module_batches(module_id);
+
 CREATE TABLE IF NOT EXISTS upload_files (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   original_name   TEXT NOT NULL,
