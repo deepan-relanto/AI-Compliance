@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS course_modules (
   status_default    TEXT NOT NULL DEFAULT 'not_started',
   content_hash          TEXT,
   mcq_generation_status TEXT NOT NULL DEFAULT 'pending',
+  -- Future course modules only: Save & Exit / resume. Existing modules stay false.
+  allow_save_exit   BOOLEAN NOT NULL DEFAULT FALSE,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -86,6 +88,7 @@ CREATE TABLE IF NOT EXISTS course_progress (
   mcq_total           INTEGER NOT NULL DEFAULT 0,
   score_percent       INTEGER,
   mcq_answers         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  resume_checkpoint   JSONB,
   last_accessed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at        TIMESTAMPTZ,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),

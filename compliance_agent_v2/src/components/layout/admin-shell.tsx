@@ -42,7 +42,7 @@ const navItems = [
   },
   {
     href: "/admin/monitoring",
-    label: "Monitoring",
+    label: "Compliance monitoring",
     icon: ShieldAlert,
     isActive: (path: string) =>
       path.startsWith("/admin/monitoring") && !path.startsWith("/admin/course-monitoring"),
@@ -54,16 +54,16 @@ const navItems = [
     isActive: (path: string) => path.startsWith("/admin/course-monitoring"),
   },
   {
-    href: "/admin/analytics",
-    label: "Analytics",
-    icon: BarChart3,
-    isActive: (path: string) => path.startsWith("/admin/analytics"),
-  },
-  {
     href: "/admin/email-monitoring",
     label: "Email monitoring",
     icon: Mail,
     isActive: (path: string) => path.startsWith("/admin/email-monitoring"),
+  },
+  {
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    isActive: (path: string) => path.startsWith("/admin/analytics"),
   },
   {
     href: "/admin/feedback",

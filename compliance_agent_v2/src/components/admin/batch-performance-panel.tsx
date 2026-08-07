@@ -439,6 +439,13 @@ export function BatchPerformancePanel({
                   ? "Sending guidance…"
                   : `Email failed learners (${failedLearnerCount})`}
               </Button>
+              <Link
+                href={`/admin/email-monitoring?batchId=${encodeURIComponent(batch.id)}&track=${track === "course" ? "course" : "compliance"}`}
+                className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium tracking-tight text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                Email monitoring
+              </Link>
               <Button
                 variant="outline"
                 size="sm"

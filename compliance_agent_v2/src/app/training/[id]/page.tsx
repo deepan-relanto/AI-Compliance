@@ -3,6 +3,7 @@
 import { RouteGuard } from "@/components/auth/route-guard";
 import { TrainingCompletedGate } from "@/components/employee/training-completed-gate";
 import type { CourseStepRow } from "@/lib/course-step-types";
+import type { CourseResumeCheckpoint } from "@/lib/course-resume";
 import type { McqQuestion, TrainingModule } from "@/lib/types";
 import { useAuthStore } from "@/lib/auth-store";
 import dynamic from "next/dynamic";
@@ -33,6 +34,9 @@ export default function TrainingPage() {
   const [trainingModule, setTrainingModule] = useState<TrainingModule | undefined>();
   const [mcqs, setMcqs] = useState<McqQuestion[]>([]);
   const [steps, setSteps] = useState<CourseStepRow[]>([]);
+  const [resumeCheckpoint, setResumeCheckpoint] = useState<CourseResumeCheckpoint | null>(
+    null,
+  );
   const [ready, setReady] = useState(false);
 
   const authReady =
@@ -63,6 +67,9 @@ export default function TrainingPage() {
           setTrainingModule(data.module);
           setMcqs(data.mcqs ?? []);
           setSteps(data.steps ?? []);
+          setResumeCheckpoint(
+            (data.resumeCheckpoint as CourseResumeCheckpoint | null) ?? null,
+          );
           const pdf = data.module?.pdfUrl as string | undefined;
           if (pdf && typeof window !== "undefined") {
             const link = document.createElement("link");
@@ -83,12 +90,14 @@ export default function TrainingPage() {
           }
         } else {
           setTrainingModule(undefined);
+          setResumeCheckpoint(null);
         }
         setReady(true);
       })
       .catch(() => {
         if (!controller.signal.aborted) {
           setTrainingModule(undefined);
+          setResumeCheckpoint(null);
           setReady(true);
         }
       });
@@ -130,6 +139,7 @@ export default function TrainingPage() {
           steps={steps}
           mcqs={mcqs}
           freshStart={freshStart}
+          resumeCheckpoint={resumeCheckpoint}
         />
       </RouteGuard>
     );

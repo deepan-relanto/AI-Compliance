@@ -215,10 +215,18 @@ export function ModuleCard({ module }: ModuleCardProps) {
                   }
                   return;
                 }
+                // Gated courses: Continue resumes without wiping / fresh=1.
+                const resumeInPlace =
+                  Boolean(module.allowSaveExit) &&
+                  status === "in_progress" &&
+                  !proctorLocked &&
+                  !canScoreRetake &&
+                  !isFullAssessmentRetake;
                 const needsFreshStart =
-                  isFullAssessmentRetake ||
-                  status === "not_started" ||
-                  (status === "in_progress" && !proctorLocked);
+                  !resumeInPlace &&
+                  (isFullAssessmentRetake ||
+                    status === "not_started" ||
+                    (status === "in_progress" && !proctorLocked));
                 if (proctorLocked) {
                   router.push(`/training/${module.id}`);
                   return;

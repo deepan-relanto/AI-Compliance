@@ -205,4 +205,14 @@ await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_module ON co
 await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_user ON course_notification_events(LOWER(user_email))`;
 await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_type_sent ON course_notification_events(notification_type, sent_at DESC)`;
 
+// Course Save & Exit — additive only; do NOT backfill existing modules to true.
+await sql`
+  ALTER TABLE course_modules
+  ADD COLUMN IF NOT EXISTS allow_save_exit BOOLEAN NOT NULL DEFAULT FALSE
+`;
+await sql`
+  ALTER TABLE course_progress
+  ADD COLUMN IF NOT EXISTS resume_checkpoint JSONB
+`;
+
 console.log("✅ Schema alterations applied.");

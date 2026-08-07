@@ -55,7 +55,7 @@ export async function createCourseModuleDb(
   await sql`
     INSERT INTO course_modules (
       id, title, description, slide_count, duration_minutes,
-      content_type, feedback_required, mcq_generation_status
+      content_type, feedback_required, mcq_generation_status, allow_save_exit
     )
     VALUES (
       ${id},
@@ -65,7 +65,8 @@ export async function createCourseModuleDb(
       ${params.durationMinutes ?? 30},
       'text',
       ${Boolean(params.feedbackRequired)},
-      'pending'
+      'pending',
+      TRUE
     )
   `;
 

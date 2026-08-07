@@ -1,5 +1,10 @@
 import type { getSql } from "@/lib/db";
 import { PASS_THRESHOLD_PERCENT, isPassingScore, SCORE_QUIZ_RETAKE_MARKER } from "@/lib/constants";
+import {
+  buildCourseResumeCheckpoint,
+  parseCourseResumeCheckpoint,
+  type CourseResumeCheckpoint,
+} from "@/lib/course-resume";
 import { consumeApprovedRetakeDb } from "@/lib/services/course-review-db-service";
 import {
   computeScoreFromAnswers,
@@ -295,6 +300,7 @@ export async function startTrainingSessionDb(
             failed_reason = NULL,
             last_failure_reason = NULL,
             completed_at = NULL,
+            resume_checkpoint = NULL,
             last_accessed_at = NOW(),
             updated_at = NOW()
         WHERE user_email = ${params.userEmail}
@@ -696,6 +702,107 @@ export async function saveSlideProgressDb(
   `;
 }
 
+export async function moduleAllowsSaveExit(
+  sql: Sql,
+  moduleId: string,
+): Promise<boolean> {
+  const rows = await sql`
+    SELECT allow_save_exit
+    FROM course_modules
+    WHERE id = ${moduleId}
+    LIMIT 1
+  `;
+  return Boolean(rows[0]?.allow_save_exit);
+}
+
+/**
+ * Persist Save & Exit / autosave checkpoint. Keeps status in_progress (never fails).
+ * Only succeeds when the course module has allow_save_exit = true.
+ */
+export async function saveResumeCheckpointDb(
+  sql: Sql,
+  params: {
+    userEmail: string;
+    moduleId: string;
+    moduleTitle: string;
+    batchId: string;
+    totalSlides: number;
+    checkpoint: Omit<CourseResumeCheckpoint, "savedAt"> & { savedAt?: string };
+  },
+): Promise<{ ok: boolean; checkpoint: CourseResumeCheckpoint | null; message?: string }> {
+  const allowed = await moduleAllowsSaveExit(sql, params.moduleId);
+  if (!allowed) {
+    return {
+      ok: false,
+      checkpoint: null,
+      message: "Save & Exit is not enabled for this course.",
+    };
+  }
+
+  const checkpoint = buildCourseResumeCheckpoint(params.checkpoint);
+  const linearSlide = Math.max(
+    1,
+    checkpoint.phase === "quiz"
+      ? params.totalSlides
+      : checkpoint.contentStepIndex + 1,
+  );
+
+  const userRows = await sql`
+    SELECT batch_id FROM users
+    WHERE LOWER(email) = LOWER(${params.userEmail})
+    LIMIT 1
+  `;
+  const resolvedBatchId =
+    (userRows[0]?.batch_id as string | null)?.trim() || params.batchId;
+
+  const rows = await sql`
+    INSERT INTO course_progress (
+      user_email, module_id, module_title, batch_id, current_slide, total_slides,
+      status, resume_checkpoint, last_accessed_at
+    )
+    VALUES (
+      ${params.userEmail},
+      ${params.moduleId},
+      ${params.moduleTitle},
+      ${resolvedBatchId},
+      ${linearSlide},
+      ${params.totalSlides},
+      'in_progress',
+      ${JSON.stringify(checkpoint)}::jsonb,
+      NOW()
+    )
+    ON CONFLICT (user_email, module_id) DO UPDATE SET
+      module_title = EXCLUDED.module_title,
+      batch_id = EXCLUDED.batch_id,
+      total_slides = EXCLUDED.total_slides,
+      current_slide = EXCLUDED.current_slide,
+      resume_checkpoint = EXCLUDED.resume_checkpoint,
+      status = CASE
+        WHEN course_progress.status IN ('completed', 'permanently_failed', 'failed')
+          THEN course_progress.status
+        ELSE 'in_progress'
+      END,
+      last_accessed_at = NOW(),
+      updated_at = NOW()
+    WHERE course_progress.status IN ('not_started', 'in_progress')
+    RETURNING resume_checkpoint
+  `;
+
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      checkpoint: null,
+      message: "Progress could not be saved for this attempt.",
+    };
+  }
+
+  invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+  return {
+    ok: true,
+    checkpoint: parseCourseResumeCheckpoint(rows[0].resume_checkpoint) ?? checkpoint,
+  };
+}
+
 export async function recordMcqAnswerDb(
   sql: Sql,
   params: {
@@ -1069,7 +1176,7 @@ export async function listProgressForUser(sql: Sql, userEmail: string) {
   const rows = await sql`
     SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
            status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
-           mcq_answers, failed_reason, completed_at, last_accessed_at
+           mcq_answers, failed_reason, completed_at, last_accessed_at, resume_checkpoint
     FROM course_progress
     WHERE user_email = ${userEmail}
     ORDER BY last_accessed_at DESC
@@ -1080,6 +1187,7 @@ export async function listProgressForUser(sql: Sql, userEmail: string) {
     const storedScorePercent =
       r.score_percent != null ? Number(r.score_percent) : null;
     const answers = parseMcqAnswers(r.mcq_answers);
+    const checkpoint = parseCourseResumeCheckpoint(r.resume_checkpoint);
     const displayStatus = normalizeProgressStatus(
       r.status as string,
       storedScorePercent,
@@ -1112,6 +1220,8 @@ export async function listProgressForUser(sql: Sql, userEmail: string) {
       }),
       failedReason: (r.failed_reason as string) ?? null,
       completedAt: (r.completed_at as string) ?? null,
+      resumeCheckpoint: checkpoint,
+      mcqAnswers: answers,
     };
   });
 }

@@ -76,6 +76,7 @@ export async function GET() {
             SELECT
               m.id, m.title, m.description, m.slide_count, m.duration_minutes,
               m.pdf_url, m.content_type, m.created_at, m.feedback_required,
+              m.allow_save_exit,
               ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
             FROM course_modules m
             INNER JOIN course_module_batches mb_filter ON mb_filter.module_id = m.id
