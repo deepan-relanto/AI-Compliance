@@ -132,7 +132,8 @@ function mapSummary(row: Record<string, unknown> | undefined): EmailMonitoringSu
 
 /**
  * Full email outreach monitoring — event log + per-learner aggregates.
- * Supports Compliance / Courses / All with batch + module + type filters.
+ * Resolves batch from users.batch_id when the event row has a null batch_id
+ * (legacy publish invites), so batch filters and labels stay accurate.
  */
 export async function getEmailMonitoring(
   sql: Sql,
@@ -155,44 +156,46 @@ export async function getEmailMonitoring(
             'compliance'::text AS track,
             e.user_email,
             e.notification_type,
-            e.batch_id,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(b.label, e.batch_id, '') AS batch_label
+            COALESCE(b.label, e.batch_id, u.batch_id, '') AS batch_label
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
           UNION ALL
           SELECT
             'course'::text AS track,
             e.user_email,
             e.notification_type,
-            e.batch_id,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(b.label, e.batch_id, '') AS batch_label
+            COALESCE(b.label, e.batch_id, u.batch_id, '') AS batch_label
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         SELECT
@@ -214,22 +217,23 @@ export async function getEmailMonitoring(
             COALESCE(m.title, e.module_id) AS module_title,
             LOWER(e.user_email) AS user_email,
             e.notification_type,
-            e.batch_id,
-            COALESCE(b.label, e.batch_id, '—') AS batch_label,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(b.label, '—') AS batch_label,
             e.triggered_by,
             e.sent_at
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         UNION ALL
@@ -241,22 +245,23 @@ export async function getEmailMonitoring(
             COALESCE(m.title, e.module_id) AS module_title,
             LOWER(e.user_email) AS user_email,
             e.notification_type,
-            e.batch_id,
-            COALESCE(b.label, e.batch_id, '—') AS batch_label,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(b.label, '—') AS batch_label,
             e.triggered_by,
             e.sent_at
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         ORDER BY sent_at DESC
@@ -269,22 +274,23 @@ export async function getEmailMonitoring(
             LOWER(e.user_email) AS user_email,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            e.batch_id,
-            COALESCE(b.label, e.batch_id, '—') AS batch_label,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(b.label, '—') AS batch_label,
             e.notification_type,
             e.sent_at
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
           UNION ALL
           SELECT
@@ -292,22 +298,23 @@ export async function getEmailMonitoring(
             LOWER(e.user_email) AS user_email,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            e.batch_id,
-            COALESCE(b.label, e.batch_id, '—') AS batch_label,
+            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(b.label, '—') AS batch_label,
             e.notification_type,
             e.sent_at
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN batches b ON b.id = e.batch_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
+          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         SELECT
@@ -334,8 +341,6 @@ export async function getEmailMonitoring(
         FROM batches
         ORDER BY label ASC
       `,
-      // Assigned modules for the selected batch; when no batch, modules that
-      // already appear in the notification log for the selected track.
       sql`
         (
           SELECT DISTINCT
@@ -368,8 +373,12 @@ export async function getEmailMonitoring(
             'compliance'::text AS track
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND ${batchId}::text IS NULL
+            AND (
+              ${batchId}::text IS NULL
+              OR COALESCE(e.batch_id, u.batch_id) = ${batchId}
+            )
         )
         UNION
         (
@@ -379,8 +388,12 @@ export async function getEmailMonitoring(
             'course'::text AS track
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND ${batchId}::text IS NULL
+            AND (
+              ${batchId}::text IS NULL
+              OR COALESCE(e.batch_id, u.batch_id) = ${batchId}
+            )
         )
         ORDER BY title ASC
       `,

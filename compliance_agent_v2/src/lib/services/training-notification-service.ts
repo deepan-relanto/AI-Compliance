@@ -450,6 +450,7 @@ export async function sendFailedReviewGuidanceEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
+          u.batch_id AS learner_batch_id,
           cp.status AS progress_status,
           LEAST(cp.score_percent, 100) AS score_percent,
           cp.completed_at,
@@ -472,6 +473,7 @@ export async function sendFailedReviewGuidanceEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
+          u.batch_id AS learner_batch_id,
           ap.status AS progress_status,
           LEAST(ap.score_percent, 100) AS score_percent,
           ap.completed_at,
@@ -556,7 +558,15 @@ export async function sendFailedReviewGuidanceEmails(
         moduleId,
         email,
         "failed_review_guidance",
-        { batchId, triggeredBy },
+        {
+          batchId:
+            batchId ||
+            (typeof row.learner_batch_id === "string"
+              ? row.learner_batch_id.trim()
+              : "") ||
+            null,
+          triggeredBy,
+        },
       );
       sent++;
     } catch (err) {
@@ -780,6 +790,7 @@ export async function sendModuleInvitationEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
+          u.batch_id AS learner_batch_id,
           cp.status AS progress_status,
           LEAST(cp.score_percent, 100) AS score_percent,
           cp.completed_at,
@@ -802,6 +813,7 @@ export async function sendModuleInvitationEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
+          u.batch_id AS learner_batch_id,
           ap.status AS progress_status,
           LEAST(ap.score_percent, 100) AS score_percent,
           ap.completed_at,
@@ -907,12 +919,18 @@ export async function sendModuleInvitationEmails(
       if (!reminderOnlyNotStarted) {
         await recordNotification(sql, moduleId, email, "invited");
       }
+      const eventBatchId =
+        batchId ||
+        (typeof row.learner_batch_id === "string"
+          ? row.learner_batch_id.trim()
+          : "") ||
+        null;
       await recordNotificationEvent(
         sql,
         moduleId,
         email,
         reminderOnlyNotStarted ? "reminder" : "invited",
-        { batchId, triggeredBy },
+        { batchId: eventBatchId, triggeredBy },
       );
       sent++;
     } catch (err) {

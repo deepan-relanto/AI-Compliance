@@ -9,12 +9,14 @@ export const dynamic = "force-dynamic";
 
 /** POST — clone a published course bundle to new batches and email learners */
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdminSession();
+  const { session, error } = await requireAdminSession();
   if (error) return error;
 
   try {
     const body = await req.json();
     const { sourceModuleId, title, description, batchIds } = body;
+    const triggeredBy =
+      typeof session?.user?.email === "string" ? session.user.email : undefined;
 
     if (!sourceModuleId || !title?.trim()) {
       return NextResponse.json(
@@ -63,7 +65,9 @@ export async function POST(req: NextRequest) {
     });
 
     invalidateAdminCaches();
-    const invites = await sendModuleInvitationEmails(sql, result.id);
+    const invites = await sendModuleInvitationEmails(sql, result.id, {
+      triggeredBy,
+    });
 
     const emailWarning =
       invites.sent === 0

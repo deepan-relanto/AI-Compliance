@@ -41,19 +41,21 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { error } = await requireAdminSession();
+  const { session, error } = await requireAdminSession();
   if (error) return error;
 
   try {
     const { id } = await params;
     const body = await req.json();
     const batchIds = Array.isArray(body.batchIds) ? body.batchIds : [];
+    const triggeredBy =
+      typeof session?.user?.email === "string" ? session.user.email : undefined;
 
     const sql = getSql();
     await publishCourseModuleDb(sql, id, batchIds);
     invalidateAdminCaches();
 
-    const invites = await sendModuleInvitationEmails(sql, id);
+    const invites = await sendModuleInvitationEmails(sql, id, { triggeredBy });
     return NextResponse.json(
       buildPublishResponse(invites, "Course assigned to selected batches."),
     );
