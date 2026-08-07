@@ -138,7 +138,11 @@ export function MonitoringPanel({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const { data: summaryData, mutate: mutateSummary } = useSWR(`${apiBase}?summary=1`, fetcher);
+  const { data: summaryData, mutate: mutateSummary } = useSWR(`${apiBase}?summary=1`, fetcher, {
+    keepPreviousData: true,
+    revalidateOnFocus: false,
+    dedupingInterval: 20_000,
+  });
   const summary = summaryData?.ok ? (summaryData as Summary) : null;
 
   const activeFilter =
@@ -151,6 +155,11 @@ export function MonitoringPanel({
   const { data: tabData, isLoading: tabLoading, isValidating: tabRefreshing, mutate: mutateTab } = useSWR(
     buildMonitoringUrl(apiBase, activeTab, page, activeFilter, assessmentFilter, sortMode),
     fetcher,
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: false,
+      dedupingInterval: 20_000,
+    },
   );
 
   const records: AssessmentProgress[] = activeTab === "violations" && tabData?.ok && Array.isArray(tabData.records) ? tabData.records : [];

@@ -5,6 +5,7 @@ import {
   type EmailEventType,
   type EmailMonitoringTrack,
 } from "@/lib/services/email-monitoring-service";
+import { cacheGetSWR, cacheSet } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,51 @@ export async function GET(req: NextRequest) {
     const limitRaw = Number(req.nextUrl.searchParams.get("limit") ?? 300);
     const limit = Number.isFinite(limitRaw) ? limitRaw : 300;
 
+    const cacheKey = [
+      "email-monitoring",
+      track,
+      batchId ?? "all",
+      moduleId ?? "all",
+      type,
+      (search ?? "").trim().toLowerCase(),
+      String(limit),
+    ].join(":");
+
+    const cached = cacheGetSWR<Awaited<ReturnType<typeof getEmailMonitoring>>>(
+      cacheKey,
+    );
+    if (cached) {
+      if (!cached.fresh) {
+        queueMicrotask(() => {
+          void (async () => {
+            try {
+              const sql = getSql();
+              const data = await getEmailMonitoring(sql, {
+                track,
+                batchId,
+                moduleId,
+                type,
+                search,
+                limit,
+              });
+              cacheSet(cacheKey, data, 60, 180);
+            } catch {
+              /* ignore background refresh errors */
+            }
+          })();
+        });
+      }
+      return NextResponse.json(
+        { ok: true, ...cached.data },
+        {
+          headers: {
+            "X-Cache": cached.fresh ? "HIT" : "STALE",
+            "Cache-Control": "private, no-cache",
+          },
+        },
+      );
+    }
+
     const sql = getSql();
     const data = await getEmailMonitoring(sql, {
       track,
@@ -48,8 +94,12 @@ export async function GET(req: NextRequest) {
       search,
       limit,
     });
+    cacheSet(cacheKey, data, 60, 180);
 
-    return NextResponse.json({ ok: true, ...data });
+    return NextResponse.json(
+      { ok: true, ...data },
+      { headers: { "X-Cache": "MISS", "Cache-Control": "private, no-cache" } },
+    );
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to load email monitoring";

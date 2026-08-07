@@ -4,12 +4,10 @@ import { firstNameFromEmail } from "@/lib/auth-env";
 import { mapTrainingModuleRow } from "@/lib/map-training-module";
 import { listProgressForUser as listCourseProgressForUser } from "@/lib/services/course-progress-db-service";
 import { listProgressForUser as listComplianceProgressForUser } from "@/lib/services/progress-db-service";
-import { cachedFetch } from "@/lib/api-cache";
+import { cachedFetch, CACHE_TTL } from "@/lib/api-cache";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-
-const DASHBOARD_TTL_MS = 30_000;
 
 /** GET — compliance + course modules and progress for the signed-in learner. */
 export async function GET() {
@@ -20,7 +18,7 @@ export async function GET() {
     const userEmail = access.email;
     const cacheKey = `learner-dashboard:${userEmail.toLowerCase()}`;
 
-    const data = await cachedFetch(cacheKey, DASHBOARD_TTL_MS, async () => {
+    const data = await cachedFetch(cacheKey, CACHE_TTL.learnerDashboard, async () => {
       const sql = getSql();
 
       const users = await sql`
@@ -130,7 +128,9 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { "Cache-Control": "private, no-cache" },
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load dashboard";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

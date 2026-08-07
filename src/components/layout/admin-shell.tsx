@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 const navItems = [
   {
@@ -92,6 +93,21 @@ export function AdminShell({
 }: AdminShellProps) {
   const user = useAuthStore((s) => s.user);
   const pathname = usePathname();
+
+  // Warm hot admin API caches on first shell mount (SWR serves later navigations instantly).
+  useEffect(() => {
+    const warm = [
+      "/api/analytics?track=compliance&view=home",
+      "/api/analytics?track=course&view=home",
+      "/api/batches",
+      "/api/monitoring?summary=1",
+      "/api/course-monitoring?summary=1",
+      "/api/email-monitoring",
+    ];
+    for (const url of warm) {
+      void fetch(url).catch(() => undefined);
+    }
+  }, []);
 
   return (
     <div className="flex min-h-screen page-bg">

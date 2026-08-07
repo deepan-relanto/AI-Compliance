@@ -64,8 +64,24 @@ export type FetchLearnerDashboardResult =
   | { ok: false; error: string };
 
 /** Load dashboard data — batch and profile are resolved on the server from the session. */
+const LEARNER_DASH_CLIENT_TTL_MS = 20_000;
+let learnerDashCache:
+  | { at: number; result: Extract<FetchLearnerDashboardResult, { ok: true }> }
+  | null = null;
+
+export function invalidateLearnerDashboardClientCache(): void {
+  learnerDashCache = null;
+}
+
 export async function fetchLearnerDashboard(): Promise<FetchLearnerDashboardResult> {
   try {
+    if (
+      learnerDashCache &&
+      Date.now() - learnerDashCache.at < LEARNER_DASH_CLIENT_TTL_MS
+    ) {
+      return learnerDashCache.result;
+    }
+
     const res = await fetch("/api/learner/dashboard", {
       cache: "no-store",
       credentials: "same-origin",
@@ -81,7 +97,7 @@ export async function fetchLearnerDashboard(): Promise<FetchLearnerDashboardResu
       };
     }
     const email = String(data.email ?? "").trim().toLowerCase();
-    return {
+    const result: Extract<FetchLearnerDashboardResult, { ok: true }> = {
       ok: true,
       modules: Array.isArray(data.modules) ? data.modules : [],
       progress: Array.isArray(data.progress) ? data.progress : [],
@@ -92,6 +108,8 @@ export async function fetchLearnerDashboard(): Promise<FetchLearnerDashboardResu
         role: data.role === "admin" ? "admin" : "user",
       },
     };
+    learnerDashCache = { at: Date.now(), result };
+    return result;
   } catch {
     return { ok: false, error: "Network error while loading assessments." };
   }
@@ -106,6 +124,7 @@ export async function syncProgressStart(params: {
   assignedMcqCount?: number;
   freshStart?: boolean;
 }): Promise<{ ok: boolean; message?: string }> {
+  invalidateLearnerDashboardClientCache();
   const res = await fetch("/api/progress", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -58,15 +58,16 @@ export async function loadModuleDetail(
   moduleId: string,
   userEmail: string,
 ) {
-  const courseRows = await sql`
-    SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1
-  `;
-  const isCourse = courseRows.length > 0;
+  // Probe both tables in parallel (avoids a sequential existence round-trip).
+  const [courseModRows, trainingModRows] = await Promise.all([
+    sql`SELECT * FROM course_modules WHERE id = ${moduleId} LIMIT 1`,
+    sql`SELECT * FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
+  ]);
+  const isCourse = courseModRows.length > 0;
+  const moduleRows = isCourse ? courseModRows : trainingModRows;
+  if (moduleRows.length === 0) return null;
 
-  const [moduleRows, batchRows, mcqRows, progressRows, rawSteps] = await Promise.all([
-    isCourse
-      ? sql`SELECT * FROM course_modules WHERE id = ${moduleId} LIMIT 1`
-      : sql`SELECT * FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
+  const [batchRows, mcqRows, progressRows, rawSteps] = await Promise.all([
     isCourse
       ? sql`SELECT batch_id FROM course_module_batches WHERE module_id = ${moduleId}`
       : sql`SELECT batch_id FROM module_batches WHERE module_id = ${moduleId}`,
@@ -106,8 +107,6 @@ export async function loadModuleDetail(
       : Promise.resolve([]),
     isCourse ? getModuleStepsDb(sql, moduleId) : Promise.resolve([]),
   ]);
-
-  if (moduleRows.length === 0) return null;
 
   const row = moduleRows[0];
 

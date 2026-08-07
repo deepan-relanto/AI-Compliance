@@ -10,12 +10,14 @@ import {
   type ReviewStatusFilter,
   type ViolationStatusFilter,
 } from "@/lib/services/monitoring-db-service";
-import { cacheGet, cacheSet, CACHE_KEYS } from "@/lib/api-cache";
+import { swrLoad, CACHE_KEYS } from "@/lib/api-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
+const SOFT = 45;
+const HARD = 135;
 
 const VIOLATION_FILTERS = new Set<ViolationStatusFilter>([
   "all",
@@ -76,13 +78,16 @@ export async function GET(req: NextRequest) {
     const sql = getSql();
 
     if (summaryOnly) {
-      const cacheKey = CACHE_KEYS.monitoringSummary;
-      const cached = cacheGet<object>(cacheKey);
-      if (cached) return NextResponse.json({ ok: true, ...cached });
-
-      const summary = await getMonitoringSummary(sql);
-      cacheSet(cacheKey, summary, 30);
-      return NextResponse.json({ ok: true, ...summary });
+      const { data, status } = await swrLoad(
+        CACHE_KEYS.monitoringSummary,
+        SOFT,
+        HARD,
+        () => getMonitoringSummary(sql),
+      );
+      return NextResponse.json(
+        { ok: true, ...data },
+        { headers: { "X-Cache": status } },
+      );
     }
 
     if (tab === "violations") {
@@ -96,24 +101,25 @@ export async function GET(req: NextRequest) {
         moduleId,
         sort,
       );
-      const cached = cacheGet<object>(cacheKey);
-      if (cached) return NextResponse.json({ ok: true, ...cached });
-
-      const data = await listMonitoringViolationsPaged(sql, page, pageSize, {
-        statusFilter,
-        moduleId: moduleId || undefined,
-        sort,
-      });
-      cacheSet(cacheKey, data, 30);
-      return NextResponse.json({
-        ok: true,
-        ...data,
-        page,
-        pageSize,
-        filter: statusFilter,
-        moduleId: moduleId || null,
-        sort,
-      });
+      const { data, status } = await swrLoad(cacheKey, SOFT, HARD, () =>
+        listMonitoringViolationsPaged(sql, page, pageSize, {
+          statusFilter,
+          moduleId: moduleId || undefined,
+          sort,
+        }),
+      );
+      return NextResponse.json(
+        {
+          ok: true,
+          ...data,
+          page,
+          pageSize,
+          filter: statusFilter,
+          moduleId: moduleId || null,
+          sort,
+        },
+        { headers: { "X-Cache": status } },
+      );
     }
 
     if (tab === "reviews") {
@@ -121,18 +127,19 @@ export async function GET(req: NextRequest) {
         ? (filterParam as ReviewStatusFilter)
         : "all";
       const cacheKey = CACHE_KEYS.monitoringReviews(page, statusFilter);
-      const cached = cacheGet<object>(cacheKey);
-      if (cached) return NextResponse.json({ ok: true, ...cached });
-
-      const data = await listMonitoringReviewsPaged(sql, page, pageSize, statusFilter);
-      cacheSet(cacheKey, data, 30);
-      return NextResponse.json({
-        ok: true,
-        ...data,
-        page,
-        pageSize,
-        filter: statusFilter,
-      });
+      const { data, status } = await swrLoad(cacheKey, SOFT, HARD, () =>
+        listMonitoringReviewsPaged(sql, page, pageSize, statusFilter),
+      );
+      return NextResponse.json(
+        {
+          ok: true,
+          ...data,
+          page,
+          pageSize,
+          filter: statusFilter,
+        },
+        { headers: { "X-Cache": status } },
+      );
     }
 
     if (tab === "audit") {
@@ -140,18 +147,19 @@ export async function GET(req: NextRequest) {
         ? (filterParam as AuditActionFilter)
         : "all";
       const cacheKey = CACHE_KEYS.monitoringAudit(page, actionFilter);
-      const cached = cacheGet<object>(cacheKey);
-      if (cached) return NextResponse.json({ ok: true, ...cached });
-
-      const data = await listMonitoringAuditLogsPaged(sql, page, pageSize, actionFilter);
-      cacheSet(cacheKey, data, 30);
-      return NextResponse.json({
-        ok: true,
-        ...data,
-        page,
-        pageSize,
-        filter: actionFilter,
-      });
+      const { data, status } = await swrLoad(cacheKey, SOFT, HARD, () =>
+        listMonitoringAuditLogsPaged(sql, page, pageSize, actionFilter),
+      );
+      return NextResponse.json(
+        {
+          ok: true,
+          ...data,
+          page,
+          pageSize,
+          filter: actionFilter,
+        },
+        { headers: { "X-Cache": status } },
+      );
     }
 
     return NextResponse.json({ ok: false, error: "Invalid tab" }, { status: 400 });

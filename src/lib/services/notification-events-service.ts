@@ -194,45 +194,75 @@ export async function getBatchOutreachCounts(
       lastFailedGuidanceAt: string | null;
     }
   >();
-  if (moduleIds.length === 0) return map;
 
   try {
     const isCourse = track === "course";
-    const rows = isCourse
-      ? await sql`
-          SELECT
-            LOWER(user_email) AS user_email,
-            module_id,
-            COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
-            MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
-            COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
-            MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
-          FROM course_notification_events
-          WHERE module_id = ANY(${moduleIds})
-            AND (
-              batch_id = ${batchId}
-              OR batch_id IS NULL
-            )
-            AND notification_type IN ('reminder', 'failed_review_guidance')
-          GROUP BY LOWER(user_email), module_id
-        `
-      : await sql`
-          SELECT
-            LOWER(user_email) AS user_email,
-            module_id,
-            COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
-            MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
-            COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
-            MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
-          FROM training_notification_events
-          WHERE module_id = ANY(${moduleIds})
-            AND (
-              batch_id = ${batchId}
-              OR batch_id IS NULL
-            )
-            AND notification_type IN ('reminder', 'failed_review_guidance')
-          GROUP BY LOWER(user_email), module_id
-        `;
+    // Prefer batch-scoped query (parallel-friendly). Fall back to module filter
+    // when callers pass an explicit module list without relying on batch alone.
+    const rows =
+      moduleIds.length === 0
+        ? isCourse
+          ? await sql`
+              SELECT
+                LOWER(user_email) AS user_email,
+                module_id,
+                COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
+                COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
+              FROM course_notification_events
+              WHERE batch_id = ${batchId}
+                AND notification_type IN ('reminder', 'failed_review_guidance')
+              GROUP BY LOWER(user_email), module_id
+            `
+          : await sql`
+              SELECT
+                LOWER(user_email) AS user_email,
+                module_id,
+                COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
+                COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
+              FROM training_notification_events
+              WHERE batch_id = ${batchId}
+                AND notification_type IN ('reminder', 'failed_review_guidance')
+              GROUP BY LOWER(user_email), module_id
+            `
+        : isCourse
+          ? await sql`
+              SELECT
+                LOWER(user_email) AS user_email,
+                module_id,
+                COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
+                COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
+              FROM course_notification_events
+              WHERE module_id = ANY(${moduleIds})
+                AND (
+                  batch_id = ${batchId}
+                  OR batch_id IS NULL
+                )
+                AND notification_type IN ('reminder', 'failed_review_guidance')
+              GROUP BY LOWER(user_email), module_id
+            `
+          : await sql`
+              SELECT
+                LOWER(user_email) AS user_email,
+                module_id,
+                COUNT(*) FILTER (WHERE notification_type = 'reminder')::int AS reminder_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'reminder') AS last_reminded_at,
+                COUNT(*) FILTER (WHERE notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
+                MAX(sent_at) FILTER (WHERE notification_type = 'failed_review_guidance') AS last_failed_guidance_at
+              FROM training_notification_events
+              WHERE module_id = ANY(${moduleIds})
+                AND (
+                  batch_id = ${batchId}
+                  OR batch_id IS NULL
+                )
+                AND notification_type IN ('reminder', 'failed_review_guidance')
+              GROUP BY LOWER(user_email), module_id
+            `;
 
     for (const r of rows) {
       map.set(outreachCountKey(r.user_email as string, r.module_id as string), {

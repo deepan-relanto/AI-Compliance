@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS course_module_batches (
   PRIMARY KEY (module_id, batch_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_course_module_batches_batch ON course_module_batches(batch_id);
+CREATE INDEX IF NOT EXISTS idx_course_module_batches_module ON course_module_batches(module_id);
+
 CREATE TABLE IF NOT EXISTS course_module_steps (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   module_id   TEXT NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,

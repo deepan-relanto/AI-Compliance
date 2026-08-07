@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const MODULES_CACHE_TTL_MS = 45_000;
+const MODULES_CACHE_TTL_MS = 90_000;
 
 function mapModule(row: Record<string, unknown>, batchIds: string[]) {
   return {
