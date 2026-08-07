@@ -12,7 +12,9 @@ import {
   syncCourseAbandonmentFailure,
   syncCourseAbandonmentFailureBeacon,
   syncCourseProctorWarning,
+  syncCourseResumeCheckpointBeacon,
 } from "@/lib/course-progress-api";
+import type { CourseResumeCheckpoint } from "@/lib/course-resume";
 import {
   isProctorViolationReason,
   type ProctorViolationReason,
@@ -41,6 +43,10 @@ interface UseProctorMonitorOptions {
   reviewOnlyMode: boolean;
   blockEscape?: boolean;
   courseMode?: boolean;
+  /** When true (gated courses), tab close saves a resume checkpoint instead of abandoning. */
+  allowSaveExit?: boolean;
+  /** Latest checkpoint builder for beforeunload beacon (course Save & Exit only). */
+  getResumeCheckpoint?: () => CourseResumeCheckpoint | null;
   onLockout: () => void;
   onStatusChange?: (status: ModuleStatus) => void;
 }
@@ -56,6 +62,8 @@ export function useProctorMonitor({
   reviewOnlyMode,
   blockEscape = false,
   courseMode = false,
+  allowSaveExit = false,
+  getResumeCheckpoint,
   onLockout,
   onStatusChange,
 }: UseProctorMonitorOptions) {
@@ -71,11 +79,21 @@ export function useProctorMonitor({
   const usernameRef = useRef(username);
   const activeReasonRef = useRef<ProctorViolationReason | null>(null);
   const lastFullscreenExitWarnAtRef = useRef(0);
+  const allowSaveExitRef = useRef(allowSaveExit);
+  const getResumeCheckpointRef = useRef(getResumeCheckpoint);
+  const moduleTitleRef = useRef(moduleTitle);
+  const batchIdRef = useRef(batchId);
+  const totalSlidesRef = useRef(totalSlides);
 
   enabledRef.current = enabled;
   sessionActiveRef.current = sessionActive;
   usernameRef.current = username;
   activeReasonRef.current = activeReason;
+  allowSaveExitRef.current = allowSaveExit;
+  getResumeCheckpointRef.current = getResumeCheckpoint;
+  moduleTitleRef.current = moduleTitle;
+  batchIdRef.current = batchId;
+  totalSlidesRef.current = totalSlides;
 
   const clearBlurTimeout = useCallback(() => {
     if (blurTimeoutRef.current) {
@@ -391,12 +409,27 @@ export function useProctorMonitor({
 
     const onBeforeUnload = () => {
       if (isExitingRef.current || !sessionActiveRef.current) return;
+      if (courseMode && allowSaveExitRef.current) {
+        const user = usernameRef.current;
+        const checkpoint = getResumeCheckpointRef.current?.() ?? null;
+        if (user && checkpoint) {
+          syncCourseResumeCheckpointBeacon({
+            userEmail: user,
+            moduleId,
+            moduleTitle: moduleTitleRef.current,
+            batchId: batchIdRef.current,
+            totalSlides: totalSlidesRef.current,
+            checkpoint,
+          });
+        }
+        return;
+      }
       recordAbandonmentFailure("Assessment abandoned", { beacon: true });
     };
 
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [moduleId, recordAbandonmentFailure, reviewOnlyMode, username]);
+  }, [courseMode, moduleId, recordAbandonmentFailure, reviewOnlyMode, username]);
 
   return {
     activeReason,

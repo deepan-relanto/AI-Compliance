@@ -1,3 +1,4 @@
+import type { CourseResumeCheckpoint } from "@/lib/course-resume";
 import type { ServerProgressEntry } from "@/lib/progress-api";
 
 const COURSE_PROGRESS_BASE = "/api/course-progress";
@@ -139,6 +140,49 @@ export function syncCourseAbandonmentFailureBeacon(params: {
   if (typeof navigator === "undefined" || !navigator.sendBeacon) return;
   const blob = new Blob([JSON.stringify(params)], { type: "application/json" });
   navigator.sendBeacon(`${COURSE_PROGRESS_BASE}/abandon`, blob);
+}
+
+export async function syncCourseResumeCheckpoint(params: {
+  userEmail: string;
+  moduleId: string;
+  moduleTitle: string;
+  batchId: string;
+  totalSlides: number;
+  checkpoint: Omit<CourseResumeCheckpoint, "savedAt"> & { savedAt?: string };
+}): Promise<{ ok: boolean; message?: string; checkpoint?: CourseResumeCheckpoint | null }> {
+  try {
+    const res = await fetch(`${COURSE_PROGRESS_BASE}/save-exit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+      keepalive: true,
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      message?: string;
+      checkpoint?: CourseResumeCheckpoint | null;
+    };
+    if (!res.ok || !data.ok) {
+      return { ok: false, message: data.message ?? "Could not save progress." };
+    }
+    return { ok: true, checkpoint: data.checkpoint };
+  } catch {
+    return { ok: false, message: "Could not reach the server to save progress." };
+  }
+}
+
+/** Best-effort Save & Exit beacon on tab close (does not abandon). */
+export function syncCourseResumeCheckpointBeacon(params: {
+  userEmail: string;
+  moduleId: string;
+  moduleTitle: string;
+  batchId: string;
+  totalSlides: number;
+  checkpoint: Omit<CourseResumeCheckpoint, "savedAt"> & { savedAt?: string };
+}): void {
+  if (typeof navigator === "undefined" || !navigator.sendBeacon) return;
+  const blob = new Blob([JSON.stringify(params)], { type: "application/json" });
+  navigator.sendBeacon(`${COURSE_PROGRESS_BASE}/save-exit`, blob);
 }
 
 export async function syncCourseProctorWarning(params: {

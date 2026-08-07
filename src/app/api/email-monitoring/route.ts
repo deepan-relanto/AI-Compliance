@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         ? trackParam
         : "all";
     const batchId = req.nextUrl.searchParams.get("batchId");
+    const moduleId = req.nextUrl.searchParams.get("moduleId");
     const typeParam = req.nextUrl.searchParams.get("type");
     const type =
       typeParam && EVENT_TYPES.has(typeParam as EmailEventType)
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
     const data = await getEmailMonitoring(sql, {
       track,
       batchId,
+      moduleId,
       type,
       search,
       limit,

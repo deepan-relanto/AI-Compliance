@@ -92,6 +92,11 @@ export interface TrainingModule {
     | "review_only"
     | "acknowledgement_pending"
     | "already_completed";
+  /**
+   * Course-only: Save & Exit / resume enabled for modules created after the feature ships.
+   * Existing published courses stay false.
+   */
+  allowSaveExit?: boolean;
 }
 
 export interface AssessmentAcknowledgement {

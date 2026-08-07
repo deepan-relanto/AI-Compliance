@@ -28,6 +28,7 @@ export async function GET(
       module: detail.module,
       mcqs: detail.mcqs,
       steps: detail.steps ?? [],
+      resumeCheckpoint: detail.resumeCheckpoint ?? null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load module";

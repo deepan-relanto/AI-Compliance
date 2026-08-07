@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { PASS_THRESHOLD_PERCENT, isPassingScore } from "@/lib/constants";
 import { clientCourseAssetUrl } from "@/lib/course-asset-url";
+import { parseCourseResumeCheckpoint } from "@/lib/course-resume";
 import { clientPdfUrl } from "@/lib/pdf-url";
 import { resolveModuleKind } from "@/lib/module-kind";
 import { dedupeMcqsByPrompt, gateCountForSlides } from "@/lib/mcq-dedupe";
@@ -90,7 +91,7 @@ export async function loadModuleDetail(
       ? isCourse
         ? sql`
             SELECT status, retake_count, score_percent, completed_at, acknowledgement,
-                   mcq_correct, mcq_total, mcq_answers
+                   mcq_correct, mcq_total, mcq_answers, resume_checkpoint, current_slide
             FROM course_progress
             WHERE user_email = ${userEmail} AND module_id = ${moduleId}
             LIMIT 1
@@ -238,6 +239,10 @@ export async function loadModuleDetail(
       }));
   }
 
+  const resumeCheckpoint = isCourse
+    ? parseCourseResumeCheckpoint(progress?.resume_checkpoint)
+    : null;
+
   return {
     module: {
       id: row.id as string,
@@ -253,8 +258,10 @@ export async function loadModuleDetail(
       createdAt: row.created_at ? new Date(row.created_at as string).getTime() : undefined,
       feedbackRequired: Boolean(row.feedback_required),
       viewerMode,
+      allowSaveExit: isCourse ? Boolean(row.allow_save_exit) : false,
     },
     mcqs,
     steps,
+    resumeCheckpoint,
   };
 }

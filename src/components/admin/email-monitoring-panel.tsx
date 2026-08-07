@@ -18,6 +18,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ViewMode = "events" | "learners";
@@ -36,6 +37,24 @@ function formatSentAt(iso: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function parseTrack(raw: string | null): EmailMonitoringTrack {
+  if (raw === "compliance" || raw === "course" || raw === "all") return raw;
+  return "all";
+}
+
+function parseType(raw: string | null): EmailEventType | "all" {
+  if (
+    raw === "invited" ||
+    raw === "reminder" ||
+    raw === "failed_review_guidance" ||
+    raw === "completed" ||
+    raw === "retake_approved"
+  ) {
+    return raw;
+  }
+  return "all";
 }
 
 function TypePill({ type }: { type: EmailEventType }) {
@@ -62,17 +81,20 @@ function FilterPill({
   active,
   onClick,
   children,
+  title,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  title?: string;
 }) {
   return (
     <button
       type="button"
+      title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+        "inline-flex max-w-full items-center gap-1 truncate rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
         active
           ? "border-[#2e3192] bg-[#2e3192] text-white"
           : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
@@ -127,11 +149,25 @@ function TrackControl({
 }
 
 export function EmailMonitoringPanel() {
-  const [track, setTrack] = useState<EmailMonitoringTrack>("all");
-  const [batchId, setBatchId] = useState<string>("all");
-  const [type, setType] = useState<EmailEventType | "all">("all");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [track, setTrack] = useState<EmailMonitoringTrack>(() =>
+    parseTrack(searchParams.get("track")),
+  );
+  const [batchId, setBatchId] = useState<string>(
+    () => searchParams.get("batchId")?.trim() || "all",
+  );
+  const [moduleId, setModuleId] = useState<string>(
+    () => searchParams.get("moduleId")?.trim() || "all",
+  );
+  const [type, setType] = useState<EmailEventType | "all">(() =>
+    parseType(searchParams.get("type")),
+  );
+  const [search, setSearch] = useState(() => searchParams.get("q")?.trim() || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    () => searchParams.get("q")?.trim() || "",
+  );
   const [view, setView] = useState<ViewMode>("events");
   const [data, setData] = useState<EmailMonitoringPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,6 +179,19 @@ export function EmailMonitoringPanel() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Keep URL in sync so batch pages can deep-link here.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (track !== "all") params.set("track", track);
+    if (batchId !== "all") params.set("batchId", batchId);
+    if (moduleId !== "all") params.set("moduleId", moduleId);
+    if (type !== "all") params.set("type", type);
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    const qs = params.toString();
+    const next = qs ? `/admin/email-monitoring?${qs}` : "/admin/email-monitoring";
+    router.replace(next, { scroll: false });
+  }, [track, batchId, moduleId, type, debouncedSearch, router]);
+
   const load = useCallback(
     async (isRefresh = false) => {
       if (isRefresh) setRefreshing(true);
@@ -152,6 +201,7 @@ export function EmailMonitoringPanel() {
         const params = new URLSearchParams();
         params.set("track", track);
         if (batchId !== "all") params.set("batchId", batchId);
+        if (moduleId !== "all") params.set("moduleId", moduleId);
         if (type !== "all") params.set("type", type);
         if (debouncedSearch) params.set("q", debouncedSearch);
         const res = await fetch(`/api/email-monitoring?${params.toString()}`);
@@ -170,7 +220,7 @@ export function EmailMonitoringPanel() {
         setRefreshing(false);
       }
     },
-    [track, batchId, type, debouncedSearch],
+    [track, batchId, moduleId, type, debouncedSearch],
   );
 
   useEffect(() => {
@@ -181,6 +231,15 @@ export function EmailMonitoringPanel() {
   const events = data?.events ?? [];
   const learners = data?.learners ?? [];
   const batches = data?.batches ?? [];
+  const modules = data?.modules ?? [];
+
+  // Drop stale module selection when it is no longer in the assigned list.
+  useEffect(() => {
+    if (moduleId === "all" || !data) return;
+    if (!modules.some((m) => m.id === moduleId)) {
+      setModuleId("all");
+    }
+  }, [data, moduleId, modules]);
 
   const typeCounts = useMemo(() => {
     if (!summary) {
@@ -202,6 +261,24 @@ export function EmailMonitoringPanel() {
       retake_approved: summary.retakeApprovedCount,
     };
   }, [summary]);
+
+  const moduleEventCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const ev of events) {
+      counts.set(ev.moduleId, (counts.get(ev.moduleId) ?? 0) + 1);
+    }
+    return counts;
+  }, [events]);
+
+  const handleTrackChange = (next: EmailMonitoringTrack) => {
+    setTrack(next);
+    setModuleId("all");
+  };
+
+  const handleBatchChange = (next: string) => {
+    setBatchId(next);
+    setModuleId("all");
+  };
 
   if (loading && !data) {
     return (
@@ -228,7 +305,7 @@ export function EmailMonitoringPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TrackControl value={track} onChange={setTrack} />
+        <TrackControl value={track} onChange={handleTrackChange} />
         <Button
           variant="ghost"
           size="sm"
@@ -272,9 +349,8 @@ export function EmailMonitoringPanel() {
                 Logged outreach activity
               </h2>
               <p className="mt-1 max-w-2xl text-xs text-zinc-500">
-                Every invitation, not-started reminder, failed-learner guidance,
-                completion, and retake approval email is recorded. Filter by track,
-                batch, and email type. Send outreach from batch analytics.
+                Filter by track, batch, and modules assigned to that batch. Send
+                outreach from batch analytics, then review the log here.
               </p>
               {data?.generatedAt && (
                 <p className="mt-1 text-[11px] text-zinc-400">
@@ -315,49 +391,96 @@ export function EmailMonitoringPanel() {
               ))}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Batch
-                </span>
-                <select
-                  value={batchId}
-                  onChange={(e) => setBatchId(e.target.value)}
-                  className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-700 focus:border-[#2e3192]/40 focus:outline-none focus:ring-2 focus:ring-[#2e3192]/15"
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                Batch
+              </span>
+              <FilterPill
+                active={batchId === "all"}
+                onClick={() => handleBatchChange("all")}
+              >
+                All batches
+              </FilterPill>
+              {batches.map((b) => (
+                <FilterPill
+                  key={b.id}
+                  active={batchId === b.id}
+                  onClick={() => handleBatchChange(b.id)}
+                  title={b.label}
                 >
-                  <option value="all">All batches</option>
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="ml-1 inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setView("events")}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-[11px] font-semibold",
-                      view === "events"
-                        ? "bg-white text-[#2e3192] shadow-sm"
-                        : "text-zinc-500",
-                    )}
-                  >
-                    Event log
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("learners")}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-[11px] font-semibold",
-                      view === "learners"
-                        ? "bg-white text-[#2e3192] shadow-sm"
-                        : "text-zinc-500",
-                    )}
-                  >
-                    By learner
-                  </button>
-                </div>
+                  {b.label}
+                </FilterPill>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                Module
+              </span>
+              <FilterPill
+                active={moduleId === "all"}
+                onClick={() => setModuleId("all")}
+              >
+                All modules
+                {batchId !== "all" ? ` (${modules.length})` : ""}
+              </FilterPill>
+              {modules.length === 0 ? (
+                <span className="text-[11px] text-zinc-400">
+                  {batchId === "all"
+                    ? "No modules in the email log yet for this track."
+                    : "No modules assigned to this batch for the selected track."}
+                </span>
+              ) : (
+                modules.map((m) => {
+                  const count = moduleEventCounts.get(m.id);
+                  const prefix =
+                    track === "all"
+                      ? m.track === "course"
+                        ? "Course · "
+                        : "Compliance · "
+                      : "";
+                  return (
+                    <FilterPill
+                      key={`${m.track}-${m.id}`}
+                      active={moduleId === m.id}
+                      onClick={() => setModuleId(m.id)}
+                      title={m.title}
+                    >
+                      {prefix}
+                      {m.title}
+                      {count != null && moduleId === "all" ? ` (${count})` : ""}
+                    </FilterPill>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView("events")}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-semibold",
+                    view === "events"
+                      ? "bg-white text-[#2e3192] shadow-sm"
+                      : "text-zinc-500",
+                  )}
+                >
+                  Event log
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("learners")}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-semibold",
+                    view === "learners"
+                      ? "bg-white text-[#2e3192] shadow-sm"
+                      : "text-zinc-500",
+                  )}
+                >
+                  By learner
+                </button>
               </div>
               <div className="relative w-full sm:max-w-xs">
                 <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />

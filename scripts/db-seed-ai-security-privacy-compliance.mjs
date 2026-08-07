@@ -311,7 +311,7 @@ async function ensureModule(reuseId) {
   await sql`
     INSERT INTO course_modules (
       id, title, description, slide_count, duration_minutes,
-      content_type, feedback_required, mcq_generation_status
+      content_type, feedback_required, mcq_generation_status, allow_save_exit
     )
     VALUES (
       ${id},
@@ -321,7 +321,8 @@ async function ensureModule(reuseId) {
       ${DURATION_MINUTES},
       'text',
       false,
-      'pending'
+      'pending',
+      TRUE
     )
   `;
   console.log(`Created module ${id}`);

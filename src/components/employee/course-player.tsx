@@ -16,6 +16,7 @@ import {
   CourseAcknowledgementPanel,
   CourseExitModal,
   CourseProctorFailOverlay,
+  CourseWelcomeBackPanel,
 } from "@/components/employee/course-player-overlays";
 import { ProctorWarningModal } from "@/components/employee/proctor-warning-modal";
 import { toProctorViolationReason, useProctorMonitor } from "@/hooks/use-proctor-monitor";
@@ -31,6 +32,10 @@ import {
   normalizeCourseEmbedState,
   type CourseEmbedState,
 } from "@/lib/course-embed";
+import {
+  buildCourseResumeCheckpoint,
+  type CourseResumeCheckpoint,
+} from "@/lib/course-resume";
 import type { McqQuestion, TrainingModule, ReviewRequest, ModuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, m as motion, LazyMotion, domAnimation } from "@/lib/motion";
@@ -61,6 +66,7 @@ import {
   requestCourseScoreRetake,
   fetchCourseUserProgress,
   syncCourseAbandonmentFailure,
+  syncCourseResumeCheckpoint,
 } from "@/lib/course-progress-api";
 import type { ServerProgressEntry } from "@/lib/progress-api";
 import { PASS_THRESHOLD_PERCENT, POINTS_PER_MCQ, isPassingScore } from "@/lib/constants";
@@ -123,6 +129,7 @@ interface CoursePlayerProps {
   steps: CourseStepRow[];
   mcqs?: McqQuestion[];
   freshStart?: boolean;
+  resumeCheckpoint?: CourseResumeCheckpoint | null;
 }
 
 export function CoursePlayer({
@@ -130,9 +137,11 @@ export function CoursePlayer({
   steps,
   mcqs = [],
   freshStart = false,
+  resumeCheckpoint = null,
 }: CoursePlayerProps) {
   const user = useAuthStore((s) => s.user);
   const moduleMcqs = mcqs;
+  const allowSaveExit = Boolean(module.allowSaveExit);
 
   const contentSteps = useMemo(
     () =>
@@ -146,15 +155,41 @@ export function CoursePlayer({
   const ackPendingMode = module.viewerMode === "acknowledgement_pending";
   const autoStartSession = quizOnlyModeFromModule || ackPendingMode;
 
-  const [phase, setPhase] = useState<CoursePhase>(quizOnlyModeFromModule ? "quiz" : "content");
-  const [contentStepIndex, setContentStepIndex] = useState(0);
-  const [pdfPage, setPdfPage] = useState(1);
+  /** Ignore accidental ?fresh=1 when resuming a gated Save & Exit course. */
+  const shouldResumeFromCheckpoint =
+    allowSaveExit &&
+    Boolean(resumeCheckpoint) &&
+    !quizOnlyModeFromModule &&
+    !ackPendingMode;
+  const effectiveFreshStart = shouldResumeFromCheckpoint ? false : freshStart;
+
+  const initialCheckpoint = shouldResumeFromCheckpoint ? resumeCheckpoint : null;
+  const clampedInitialStep = Math.min(
+    Math.max(0, initialCheckpoint?.contentStepIndex ?? 0),
+    Math.max(0, contentSteps.length - 1),
+  );
+  const clampedInitialQuiz = Math.min(
+    Math.max(0, initialCheckpoint?.quizIndex ?? 0),
+    Math.max(0, moduleMcqs.length - 1),
+  );
+
+  const [phase, setPhase] = useState<CoursePhase>(
+    quizOnlyModeFromModule
+      ? "quiz"
+      : initialCheckpoint?.phase === "quiz"
+        ? "quiz"
+        : "content",
+  );
+  const [contentStepIndex, setContentStepIndex] = useState(clampedInitialStep);
+  const [pdfPage, setPdfPage] = useState(initialCheckpoint?.pdfPage ?? 1);
   const [pdfPages, setPdfPages] = useState(1);
   const [pdfReady, setPdfReady] = useState(true);
 
   const [mcqOpen, setMcqOpen] = useState(false);
   const [gateMcq, setGateMcq] = useState<McqQuestion>(FALLBACK_MCQ);
-  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizIndex, setQuizIndex] = useState(
+    initialCheckpoint?.phase === "quiz" ? clampedInitialQuiz : 0,
+  );
   const [forceQuizOnlyRetake, setForceQuizOnlyRetake] = useState(false);
   const [quizFinalizing, setQuizFinalizing] = useState(false);
   const quizOnlyMode = quizOnlyModeFromModule || forceQuizOnlyRetake;
@@ -202,6 +237,8 @@ export function CoursePlayer({
   const [proctorRestartLoading, setProctorRestartLoading] = useState(false);
   const [awaitingRetakeRestart, setAwaitingRetakeRestart] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [saveExitSaving, setSaveExitSaving] = useState(false);
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   /** Suppress fail overlay while navigating away after Exit confirm. */
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const [showProctorRules, setShowProctorRules] = useState(!autoStartSession);
@@ -231,6 +268,15 @@ export function CoursePlayer({
   const [nextSlideCooldownMs, setNextSlideCooldownMs] = useState(0);
   const [nextSlideCooldownToken, setNextSlideCooldownToken] = useState(0);
   const prevSlideCompleteKeyRef = useRef<string | null>(null);
+  const skipStepResetRef = useRef(Boolean(initialCheckpoint));
+  const pendingHtmlGotoRef = useRef<number | null>(
+    initialCheckpoint && initialCheckpoint.htmlSlideIndex > 0
+      ? initialCheckpoint.htmlSlideIndex
+      : null,
+  );
+  const autosaveInFlightRef = useRef(false);
+  const resumeHydratedAnswersRef = useRef(false);
+  const answeredQuestionIdsRef = useRef(new Set<string>());
 
   const currentContentStep = contentSteps[contentStepIndex];
   const isHtmlLessonStep =
@@ -259,6 +305,17 @@ export function CoursePlayer({
   const liveScore = correctAnswers * POINTS_PER_MCQ;
   const totalSlides = Math.max(contentSteps.length, 1);
 
+  const buildCurrentCheckpoint = useCallback((): CourseResumeCheckpoint => {
+    return buildCourseResumeCheckpoint({
+      contentStepIndex,
+      phase,
+      pdfPage,
+      htmlSlideIndex:
+        htmlEmbedState?.slideIndex ?? pendingHtmlGotoRef.current ?? 0,
+      quizIndex,
+    });
+  }, [contentStepIndex, phase, pdfPage, htmlEmbedState?.slideIndex, quizIndex]);
+
   const handleProctorLockout = useCallback(() => {
     setIsFailed(true);
     setMcqOpen(false);
@@ -271,8 +328,9 @@ export function CoursePlayer({
       !showFinalQa &&
       !showScoreResult &&
       !showExitModal &&
+      !showWelcomeBack &&
       !isFailed,
-    sessionActive: sessionStarted && !isFailed,
+    sessionActive: sessionStarted && !isFailed && !showWelcomeBack,
     username: user?.username,
     moduleId: module.id,
     moduleTitle: module.title,
@@ -280,6 +338,8 @@ export function CoursePlayer({
     totalSlides,
     reviewOnlyMode: false,
     courseMode: true,
+    allowSaveExit,
+    getResumeCheckpoint: allowSaveExit ? buildCurrentCheckpoint : undefined,
     onLockout: handleProctorLockout,
     onStatusChange: (status) => setDbStatus(status),
   });
@@ -343,6 +403,17 @@ export function CoursePlayer({
               ]);
               if (serverEntry.mcqCorrect > 0) {
                 setCorrectAnswers(serverEntry.mcqCorrect);
+              }
+              if (
+                !resumeHydratedAnswersRef.current &&
+                serverEntry.mcqAnswers &&
+                Object.keys(serverEntry.mcqAnswers).length > 0
+              ) {
+                resumeHydratedAnswersRef.current = true;
+                answeredQuestionIdsRef.current = new Set(
+                  Object.keys(serverEntry.mcqAnswers),
+                );
+                setAnsweredCount(Object.keys(serverEntry.mcqAnswers).length);
               }
             } else if (serverEntry && serverGrantedRetake) {
               setRetakeCount(serverEntry.retakeCount);
@@ -484,7 +555,6 @@ export function CoursePlayer({
   const earnedBadgeIdsRef = useRef<Set<string>>(new Set());
   const badgeQueueRef = useRef<GamificationBadge[]>([]);
   const badgeShowingRef = useRef(false);
-  const answeredQuestionIdsRef = useRef(new Set<string>());
 
   const rawProgressPercent = useMemo(() => {
     if (showScoreResult || showAcknowledgement || showFinalQa) return 100;
@@ -638,7 +708,8 @@ export function CoursePlayer({
         batchId: user.batchId,
         totalSlides,
         assignedMcqCount: moduleMcqs.length,
-        freshStart: isFullRetake || freshStart,
+        // Full retake always wipes; gated resume ignores accidental ?fresh=1.
+        freshStart: isFullRetake || (shouldResumeFromCheckpoint ? false : effectiveFreshStart),
       });
       if (!sync.ok) {
         setSessionStartError(
@@ -660,7 +731,16 @@ export function CoursePlayer({
     setSessionStarted(true);
     setSessionStartMs(Date.now());
     enterFullscreen();
-    if (contentSteps.length === 0 && !quizOnlyMode) {
+    if (shouldResumeFromCheckpoint) {
+      setShowContentOverview(false);
+      setShowWelcomeBack(true);
+      if (initialCheckpoint?.phase === "quiz" && moduleMcqs.length > 0) {
+        setPhase("quiz");
+        setQuizIndex(clampedInitialQuiz);
+        setGateMcq(moduleMcqs[clampedInitialQuiz] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
+        setMcqOpen(false);
+      }
+    } else if (contentSteps.length === 0 && !quizOnlyMode) {
       startQuizPhase();
       setShowContentOverview(false);
     } else if (!quizOnlyMode && !ackPendingMode) {
@@ -699,7 +779,7 @@ export function CoursePlayer({
       batchId: user.batchId,
       totalSlides,
       assignedMcqCount: moduleMcqs.length,
-      freshStart,
+      freshStart: effectiveFreshStart,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartSession, user?.username, module.id]);
@@ -1072,6 +1152,25 @@ export function CoursePlayer({
   }, [isFailed]);
 
   useEffect(() => {
+    if (skipStepResetRef.current) {
+      skipStepResetRef.current = false;
+      setNextSlideCooldownMs(0);
+      prevSlideCompleteKeyRef.current = null;
+      const configuredPages = currentContentStep?.config.pageCount;
+      if (isPdfStep) {
+        if (configuredPages && configuredPages > 0) {
+          setPdfPages(configuredPages);
+          setPdfReady(true);
+        } else {
+          setPdfPages(1);
+          setPdfReady(false);
+        }
+      } else {
+        setPdfPages(1);
+        setPdfReady(true);
+      }
+      return;
+    }
     setPdfPage(1);
     setHtmlEmbedState(null);
     setNextSlideCooldownMs(0);
@@ -1098,6 +1197,16 @@ export function CoursePlayer({
       const nextState = normalizeCourseEmbedState(event.data);
       setHtmlEmbedState(nextState);
 
+      const pendingGoto = pendingHtmlGotoRef.current;
+      if (pendingGoto != null && pendingGoto > 0) {
+        pendingHtmlGotoRef.current = null;
+        htmlIframeRef.current?.contentWindow?.postMessage(
+          { type: COURSE_EMBED_COMMAND, command: "goto", index: pendingGoto },
+          "*",
+        );
+        return;
+      }
+
       if (!nextState.slideComplete) {
         prevSlideCompleteKeyRef.current = null;
         return;
@@ -1111,6 +1220,63 @@ export function CoursePlayer({
     window.addEventListener("message", onEmbedMessage);
     return () => window.removeEventListener("message", onEmbedMessage);
   }, []);
+
+  /** Debounced autosave for gated Save & Exit courses. */
+  useEffect(() => {
+    if (!allowSaveExit || !sessionStarted || !user?.username) return;
+    if (
+      showWelcomeBack ||
+      showContentOverview ||
+      showProctorRules ||
+      isFailed ||
+      showAcknowledgement ||
+      showFinalQa ||
+      showScoreResult ||
+      isNavigatingAway
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (autosaveInFlightRef.current) return;
+      autosaveInFlightRef.current = true;
+      const checkpoint = buildCurrentCheckpoint();
+      void syncCourseResumeCheckpoint({
+        userEmail: user.username!,
+        moduleId: module.id,
+        moduleTitle: module.title,
+        batchId: user.batchId,
+        totalSlides,
+        checkpoint,
+      }).finally(() => {
+        autosaveInFlightRef.current = false;
+      });
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    allowSaveExit,
+    sessionStarted,
+    user?.username,
+    user?.batchId,
+    module.id,
+    module.title,
+    totalSlides,
+    buildCurrentCheckpoint,
+    showWelcomeBack,
+    showContentOverview,
+    showProctorRules,
+    isFailed,
+    showAcknowledgement,
+    showFinalQa,
+    showScoreResult,
+    isNavigatingAway,
+    contentStepIndex,
+    phase,
+    pdfPage,
+    htmlEmbedState?.slideIndex,
+    quizIndex,
+  ]);
 
   useEffect(() => {
     if (nextSlideCooldownToken === 0) return;
@@ -1148,7 +1314,15 @@ export function CoursePlayer({
         }
         return;
       }
-      if (navLocked || showAcknowledgement || showFinalQa || showExitModal) return;
+      if (
+        navLocked ||
+        showAcknowledgement ||
+        showFinalQa ||
+        showExitModal ||
+        showWelcomeBack
+      ) {
+        return;
+      }
       if (phase !== "content" || quizOnlyMode) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
@@ -1168,6 +1342,7 @@ export function CoursePlayer({
     showAcknowledgement,
     showFinalQa,
     showExitModal,
+    showWelcomeBack,
     phase,
     quizOnlyMode,
     tryAdvanceContent,
@@ -1391,15 +1566,32 @@ export function CoursePlayer({
             )}
           </Button>
           <Button
-            variant="destructive"
+            variant={allowSaveExit ? "primary" : "destructive"}
             size="sm"
             onClick={() => setShowExitModal(true)}
-            className="h-8 cursor-pointer px-3 text-xs"
+            className={cn(
+              "h-8 cursor-pointer px-3 text-xs",
+              allowSaveExit && "bg-[#2e3192] hover:bg-[#25277a]",
+            )}
           >
-            Exit
+            {allowSaveExit ? "Save & exit" : "Exit"}
           </Button>
         </div>
       </header>
+
+      {showWelcomeBack && (
+        <CourseWelcomeBackPanel
+          learnerName={user?.username?.split("@")[0]}
+          moduleTitle={module.title}
+          onContinue={() => {
+            setShowWelcomeBack(false);
+            if (phase === "quiz" && moduleMcqs.length > 0) {
+              setGateMcq(moduleMcqs[quizIndex] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
+              setMcqOpen(true);
+            }
+          }}
+        />
+      )}
 
       {showingOverview ? (
         <CourseContentOverview
@@ -1673,9 +1865,56 @@ export function CoursePlayer({
 
       {showExitModal && (
         <CourseExitModal
-          onCancel={() => setShowExitModal(false)}
+          mode={allowSaveExit ? "save" : "abandon"}
+          saving={saveExitSaving}
+          onCancel={() => {
+            if (saveExitSaving) return;
+            setShowExitModal(false);
+          }}
           onConfirm={() => {
             void (async () => {
+              if (allowSaveExit) {
+                setSaveExitSaving(true);
+                if (user?.username && sessionStarted) {
+                  const result = await syncCourseResumeCheckpoint({
+                    userEmail: user.username,
+                    moduleId: module.id,
+                    moduleTitle: module.title,
+                    batchId: user.batchId,
+                    totalSlides,
+                    checkpoint: buildCurrentCheckpoint(),
+                  });
+                  if (!result.ok) {
+                    setSaveExitSaving(false);
+                    setCompletionNotice({
+                      title: "Could not save progress",
+                      message:
+                        result.message ??
+                        "Please check your connection and try Save & exit again.",
+                      variant: "info",
+                      acknowledgeLabel: "OK",
+                      onAcknowledge: () => setCompletionNotice(null),
+                    });
+                    return;
+                  }
+                  markInProgress(
+                    user.username,
+                    module.id,
+                    module.title,
+                    user.batchId,
+                    totalSlides,
+                  );
+                }
+                isExitingRef.current = true;
+                setIsNavigatingAway(true);
+                setShowExitModal(false);
+                if (document.fullscreenElement) {
+                  await document.exitFullscreen().catch(() => undefined);
+                }
+                window.location.href = "/dashboard";
+                return;
+              }
+
               // Mark exiting FIRST so the admin-review overlay never flashes.
               isExitingRef.current = true;
               setIsNavigatingAway(true);

@@ -21,5 +21,6 @@ export function mapTrainingModuleRow(
       ? new Date(row.created_at as string).getTime()
       : undefined,
     feedbackRequired: Boolean(row.feedback_required),
+    allowSaveExit: Boolean(row.allow_save_exit),
   };
 }

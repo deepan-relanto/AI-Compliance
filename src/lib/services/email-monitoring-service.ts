@@ -14,6 +14,7 @@ export type EmailEventType =
 export interface EmailMonitoringFilters {
   track?: EmailMonitoringTrack;
   batchId?: string | null;
+  moduleId?: string | null;
   type?: EmailEventType | "all";
   search?: string | null;
   limit?: number;
@@ -58,11 +59,18 @@ export interface EmailMonitoringSummary {
   uniqueLearners: number;
 }
 
+export interface EmailMonitoringModuleOption {
+  id: string;
+  title: string;
+  track: "compliance" | "course";
+}
+
 export interface EmailMonitoringPayload {
   summary: EmailMonitoringSummary;
   events: EmailEventRow[];
   learners: EmailLearnerAggregate[];
   batches: { id: string; label: string }[];
+  modules: EmailMonitoringModuleOption[];
   generatedAt: string;
 }
 
@@ -124,7 +132,7 @@ function mapSummary(row: Record<string, unknown> | undefined): EmailMonitoringSu
 
 /**
  * Full email outreach monitoring — event log + per-learner aggregates.
- * Supports Compliance / Courses / All with batch + type filters.
+ * Supports Compliance / Courses / All with batch + module + type filters.
  */
 export async function getEmailMonitoring(
   sql: Sql,
@@ -132,13 +140,15 @@ export async function getEmailMonitoring(
 ): Promise<EmailMonitoringPayload> {
   const track: EmailMonitoringTrack = filters.track ?? "all";
   const batchId = filters.batchId?.trim() || null;
+  const moduleId = filters.moduleId?.trim() || null;
   const type =
     filters.type && filters.type !== "all" ? filters.type : null;
   const search = filters.search?.trim().toLowerCase() || null;
   const limit = Math.min(Math.max(filters.limit ?? 300, 1), 1000);
 
   try {
-    const [summaryRows, eventRows, learnerRows, batchRows] = await Promise.all([
+    const [summaryRows, eventRows, learnerRows, batchRows, moduleRows] =
+      await Promise.all([
       sql`
         WITH events AS (
           SELECT
@@ -154,6 +164,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -175,6 +186,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -211,6 +223,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -237,6 +250,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -264,6 +278,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -286,6 +301,7 @@ export async function getEmailMonitoring(
           LEFT JOIN batches b ON b.id = e.batch_id
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (${batchId}::text IS NULL OR e.batch_id = ${batchId})
+            AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
               ${search}::text IS NULL
@@ -318,6 +334,56 @@ export async function getEmailMonitoring(
         FROM batches
         ORDER BY label ASC
       `,
+      // Assigned modules for the selected batch; when no batch, modules that
+      // already appear in the notification log for the selected track.
+      sql`
+        (
+          SELECT DISTINCT
+            m.id,
+            m.title,
+            'compliance'::text AS track
+          FROM training_modules m
+          INNER JOIN module_batches mb ON mb.module_id = m.id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
+            AND ${batchId}::text IS NOT NULL
+            AND mb.batch_id = ${batchId}
+        )
+        UNION
+        (
+          SELECT DISTINCT
+            m.id,
+            m.title,
+            'course'::text AS track
+          FROM course_modules m
+          INNER JOIN course_module_batches mb ON mb.module_id = m.id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'course')
+            AND ${batchId}::text IS NOT NULL
+            AND mb.batch_id = ${batchId}
+        )
+        UNION
+        (
+          SELECT DISTINCT
+            m.id,
+            COALESCE(m.title, e.module_id) AS title,
+            'compliance'::text AS track
+          FROM training_notification_events e
+          LEFT JOIN training_modules m ON m.id = e.module_id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
+            AND ${batchId}::text IS NULL
+        )
+        UNION
+        (
+          SELECT DISTINCT
+            m.id,
+            COALESCE(m.title, e.module_id) AS title,
+            'course'::text AS track
+          FROM course_notification_events e
+          LEFT JOIN course_modules m ON m.id = e.module_id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'course')
+            AND ${batchId}::text IS NULL
+        )
+        ORDER BY title ASC
+      `,
     ]);
 
     return {
@@ -328,6 +394,11 @@ export async function getEmailMonitoring(
         id: b.id as string,
         label: (b.label as string) ?? (b.id as string),
       })),
+      modules: moduleRows.map((m) => ({
+        id: m.id as string,
+        title: (m.title as string) ?? (m.id as string),
+        track: m.track as "compliance" | "course",
+      })),
       generatedAt: new Date().toISOString(),
     };
   } catch (err) {
@@ -337,6 +408,7 @@ export async function getEmailMonitoring(
       events: [],
       learners: [],
       batches: [],
+      modules: [],
       generatedAt: new Date().toISOString(),
     };
   }

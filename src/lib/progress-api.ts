@@ -1,3 +1,4 @@
+import type { CourseResumeCheckpoint } from "@/lib/course-resume";
 import type { ModuleStatus, TrainingModule } from "@/lib/types";
 
 export interface ServerProgressEntry {
@@ -15,6 +16,8 @@ export interface ServerProgressEntry {
   scorePercent: number | null;
   failedReason: string | null;
   completedAt: string | null;
+  resumeCheckpoint?: CourseResumeCheckpoint | null;
+  mcqAnswers?: Record<string, boolean>;
 }
 
 export type FetchUserProgressResult =

@@ -101,39 +101,115 @@ export function CourseAcknowledgementPanel({
 export function CourseExitModal({
   onCancel,
   onConfirm,
+  mode = "abandon",
+  saving = false,
 }: {
   onCancel: () => void;
   onConfirm: () => void;
+  /** abandon = legacy fail-on-exit; save = Save & Exit (progress kept). */
+  mode?: "abandon" | "save";
+  saving?: boolean;
 }) {
+  const isSave = mode === "save";
   return (
-    <div className="fixed inset-0 z-[75] flex cursor-default items-center justify-center bg-zinc-900/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-sm space-y-4 rounded-lg border border-zinc-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-        <h3 className="text-left text-base font-bold text-zinc-900">Exit course?</h3>
-        <div className="space-y-2 text-left text-xs leading-relaxed text-zinc-500">
-          <p>You are about to leave this course session.</p>
-          <p className="font-semibold text-zinc-600">If you exit now:</p>
-          <ul className="list-disc space-y-1 pl-4">
-            <li>
-              This attempt will be marked as{" "}
-              <span className="font-semibold text-red-600">Failed</span>.
-            </li>
-            <li>
-              You will need to request administrator review before you can retake (if eligible).
-            </li>
-          </ul>
-          <p className="mt-2 font-medium">Do you want to proceed?</p>
+    <div className="fixed inset-0 z-[75] flex cursor-default items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-xs">
+      <div className="training-form-zone w-full max-w-md overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)] animate-in fade-in zoom-in-95 duration-200">
+        <BrandPanelHeader
+          eyebrow={isSave ? "Save progress" : "Leave session"}
+          title={isSave ? "Save and exit?" : "Exit course?"}
+          description={
+            isSave
+              ? "Your progress will be saved. You can return anytime to continue from where you left off."
+              : "You are about to leave this course session."
+          }
+          icon={GraduationCap}
+          compact
+        />
+        <div className="space-y-4 p-6">
+          {isSave ? (
+            <ul className="list-disc space-y-1.5 rounded-lg border border-zinc-100 bg-zinc-50/90 p-4 pl-8 text-xs leading-relaxed text-zinc-600">
+              <li>Your place in the course will be locked in securely.</li>
+              <li>When you return, you will resume from this point.</li>
+              <li>Please complete the course when you next have a focused stretch of time.</li>
+            </ul>
+          ) : (
+            <div className="space-y-2 text-left text-xs leading-relaxed text-zinc-500">
+              <p className="font-semibold text-zinc-600">If you exit now:</p>
+              <ul className="list-disc space-y-1 pl-4">
+                <li>
+                  This attempt will be marked as{" "}
+                  <span className="font-semibold text-red-600">Failed</span>.
+                </li>
+                <li>
+                  You will need to request administrator review before you can retake (if
+                  eligible).
+                </li>
+              </ul>
+              <p className="mt-2 font-medium text-zinc-600">Do you want to proceed?</p>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer border-zinc-200 text-xs text-zinc-700"
+              onClick={onCancel}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={isSave ? "primary" : "destructive"}
+              size="sm"
+              className={cn(
+                "cursor-pointer text-xs",
+                isSave && "bg-[#2e3192] hover:bg-[#25277a]",
+              )}
+              onClick={onConfirm}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : isSave ? "Save & exit" : "Exit course"}
+            </Button>
+          </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+      </div>
+    </div>
+  );
+}
+
+export function CourseWelcomeBackPanel({
+  learnerName,
+  moduleTitle,
+  onContinue,
+}: {
+  learnerName?: string;
+  moduleTitle: string;
+  onContinue: () => void;
+}) {
+  const greeting = learnerName?.trim()
+    ? `Welcome back, ${learnerName.trim().split(/\s+/)[0]}`
+    : "Welcome back";
+  return (
+    <div className="fixed inset-0 z-[76] flex items-center justify-center bg-zinc-900/60 p-4 backdrop-blur-xs">
+      <div className="training-form-zone w-full max-w-md overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[var(--shadow-elevated)] animate-in fade-in zoom-in-95 duration-200">
+        <BrandPanelHeader
+          eyebrow="Resume course"
+          title={`${greeting} — happy to see you again`}
+          description={`You left off mid-way through “${moduleTitle}”. Pick up where you saved and try to complete it in one focused session.`}
+          icon={GraduationCap}
+          compact
+        />
+        <div className="space-y-4 p-6">
+          <p className="text-xs leading-relaxed text-zinc-500">
+            Your previous progress is ready. Continue when you can give the course your full
+            attention.
+          </p>
           <Button
-            variant="outline"
-            size="sm"
-            className="cursor-pointer border-zinc-200 text-xs text-zinc-700"
-            onClick={onCancel}
+            size="md"
+            className="w-full bg-[#2e3192] text-sm hover:bg-[#25277a]"
+            onClick={onContinue}
           >
-            Cancel
-          </Button>
-          <Button variant="destructive" size="sm" className="cursor-pointer text-xs" onClick={onConfirm}>
-            Exit course
+            Continue course
           </Button>
         </div>
       </div>
