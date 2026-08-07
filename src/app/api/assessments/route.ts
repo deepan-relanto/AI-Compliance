@@ -19,7 +19,7 @@ export const maxDuration = 300;
 
 /** POST — persist uploaded assessment, assign batches, generate or reuse MCQs */
 export async function POST(req: NextRequest) {
-  const { error } = await requireAdminSession();
+  const { session, error } = await requireAdminSession();
   if (error) return error;
 
   try {
@@ -166,6 +166,10 @@ export async function POST(req: NextRequest) {
 
       const inviteResult = await sendModuleInvitationEmails(sql, targetModuleId, {
         forceResend: true,
+        triggeredBy:
+          typeof session?.user?.email === "string"
+            ? session.user.email
+            : undefined,
       }).catch((err) => {
         console.error("[assessments reuse invite emails]", err);
         return {

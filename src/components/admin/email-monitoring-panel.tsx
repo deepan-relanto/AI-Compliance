@@ -11,13 +11,16 @@ import type {
   EmailMonitoringTrack,
 } from "@/lib/services/email-monitoring-service";
 import {
+  ExternalLink,
   GraduationCap,
   Loader2,
   Mail,
   RefreshCw,
   Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -68,7 +71,7 @@ function TypePill({ type }: { type: EmailEventType }) {
   return (
     <span
       className={cn(
-        "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        "inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold",
         tones[type],
       )}
     >
@@ -94,7 +97,7 @@ function FilterPill({
       title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 truncate rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+        "inline-flex max-w-full items-center gap-1 truncate rounded-md border px-2.5 py-1 text-[11px] font-semibold transition-colors",
         active
           ? "border-[#2e3192] bg-[#2e3192] text-white"
           : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
@@ -121,7 +124,7 @@ function TrackControl({
     <div
       role="tablist"
       aria-label="Email track"
-      className="inline-flex items-center gap-1 rounded-full border border-zinc-200/90 bg-zinc-100/90 p-1"
+      className="inline-flex items-center gap-1 rounded-lg border border-zinc-200/90 bg-zinc-100/90 p-1"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -133,7 +136,7 @@ function TrackControl({
             aria-selected={value === item.id}
             onClick={() => onChange(item.id)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all",
+              "inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all",
               value === item.id
                 ? "bg-white text-[#2e3192] shadow-sm ring-1 ring-zinc-200/80"
                 : "text-zinc-500 hover:text-zinc-700",
@@ -179,7 +182,6 @@ export function EmailMonitoringPanel() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Keep URL in sync so batch pages can deep-link here (skip no-op replaces).
   useEffect(() => {
     const params = new URLSearchParams();
     if (track !== "all") params.set("track", track);
@@ -246,7 +248,6 @@ export function EmailMonitoringPanel() {
   const batches = data?.batches ?? [];
   const modules = data?.modules ?? [];
 
-  // Drop stale module selection when it is no longer in the assigned list.
   useEffect(() => {
     if (moduleId === "all" || !data) return;
     if (!modules.some((m) => m.id === moduleId)) {
@@ -283,6 +284,31 @@ export function EmailMonitoringPanel() {
     return counts;
   }, [events]);
 
+  const selectedBatchLabel =
+    batchId === "all"
+      ? null
+      : batches.find((b) => b.id === batchId)?.label ?? batchId;
+  const selectedModuleTitle =
+    moduleId === "all"
+      ? null
+      : modules.find((m) => m.id === moduleId)?.title ?? moduleId;
+
+  const hasActiveFilters =
+    track !== "all" ||
+    batchId !== "all" ||
+    moduleId !== "all" ||
+    type !== "all" ||
+    !!debouncedSearch;
+
+  const clearFilters = () => {
+    setTrack("all");
+    setBatchId("all");
+    setModuleId("all");
+    setType("all");
+    setSearch("");
+    setDebouncedSearch("");
+  };
+
   const handleTrackChange = (next: EmailMonitoringTrack) => {
     setTrack(next);
     setModuleId("all");
@@ -316,18 +342,29 @@ export function EmailMonitoringPanel() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TrackControl value={track} onChange={handleTrackChange} />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void load(true)}
-          disabled={refreshing}
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-          {refreshing ? "Updating…" : "Refresh"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {batchId !== "all" && (
+            <Link
+              href={`/admin/analytics/batch/${encodeURIComponent(batchId)}?track=${track === "compliance" ? "compliance" : "course"}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#2e3192] hover:bg-zinc-50"
+            >
+              Batch analytics
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void load(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+            {refreshing ? "Updating…" : "Refresh"}
+          </Button>
+        </div>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -362,8 +399,8 @@ export function EmailMonitoringPanel() {
                 Logged outreach activity
               </h2>
               <p className="mt-1 max-w-2xl text-xs text-zinc-500">
-                Filter by track, batch, and modules assigned to that batch. Send
-                outreach from batch analytics, then review the log here.
+                Invites, reminders, and guidance emails are stamped with the learner&apos;s
+                batch so filters stay in sync with assignments.
               </p>
               {data?.generatedAt && (
                 <p className="mt-1 text-[11px] text-zinc-400">
@@ -371,23 +408,64 @@ export function EmailMonitoringPanel() {
                 </p>
               )}
             </div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
+            <div className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-600">
               <Mail className="h-3.5 w-3.5 text-[#2e3192]" />
-              Event log
+              {view === "events" ? `${events.length} events` : `${learners.length} learners`}
             </div>
           </div>
 
+          {hasActiveFilters && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-[#2e3192]/15 bg-[#2e3192]/5 px-3 py-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#2e3192]/80">
+                Active filters
+              </span>
+              {track !== "all" && (
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200">
+                  Track: {track === "course" ? "Courses" : "Compliance"}
+                </span>
+              )}
+              {selectedBatchLabel && (
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200">
+                  Batch: {selectedBatchLabel}
+                </span>
+              )}
+              {selectedModuleTitle && (
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200">
+                  Module: {selectedModuleTitle}
+                </span>
+              )}
+              {type !== "all" && (
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200">
+                  Type: {TYPE_LABELS[type]}
+                </span>
+              )}
+              {debouncedSearch && (
+                <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 ring-1 ring-zinc-200">
+                  Search: {debouncedSearch}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-[#2e3192] hover:underline"
+              >
+                <X className="h-3 w-3" />
+                Clear all
+              </button>
+            </div>
+          )}
+
           <div className="mt-4 flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              <span className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
                 Type
               </span>
               {(
                 [
                   "all",
+                  "invited",
                   "reminder",
                   "failed_review_guidance",
-                  "invited",
                   "completed",
                   "retake_approved",
                 ] as const
@@ -405,29 +483,49 @@ export function EmailMonitoringPanel() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              <span className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
                 Batch
               </span>
-              <FilterPill
-                active={batchId === "all"}
-                onClick={() => handleBatchChange("all")}
+              <select
+                value={batchId}
+                onChange={(e) => handleBatchChange(e.target.value)}
+                className="h-8 max-w-xs rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 focus:border-[#2e3192]/40 focus:outline-none focus:ring-2 focus:ring-[#2e3192]/15"
+                aria-label="Filter by batch"
               >
-                All batches
-              </FilterPill>
-              {batches.map((b) => (
+                <option value="all">All batches</option>
+                {batches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+              <div className="flex flex-wrap gap-1.5">
                 <FilterPill
-                  key={b.id}
-                  active={batchId === b.id}
-                  onClick={() => handleBatchChange(b.id)}
-                  title={b.label}
+                  active={batchId === "all"}
+                  onClick={() => handleBatchChange("all")}
                 >
-                  {b.label}
+                  All
                 </FilterPill>
-              ))}
+                {batches.slice(0, 8).map((b) => (
+                  <FilterPill
+                    key={b.id}
+                    active={batchId === b.id}
+                    onClick={() => handleBatchChange(b.id)}
+                    title={b.label}
+                  >
+                    {b.label}
+                  </FilterPill>
+                ))}
+                {batches.length > 8 && (
+                  <span className="self-center text-[11px] text-zinc-400">
+                    +{batches.length - 8} more in dropdown
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+              <span className="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
                 Module
               </span>
               <FilterPill
@@ -435,13 +533,13 @@ export function EmailMonitoringPanel() {
                 onClick={() => setModuleId("all")}
               >
                 All modules
-                {batchId !== "all" ? ` (${modules.length})` : ""}
+                {` (${modules.length})`}
               </FilterPill>
               {modules.length === 0 ? (
                 <span className="text-[11px] text-zinc-400">
                   {batchId === "all"
                     ? "No modules in the email log yet for this track."
-                    : "No modules assigned to this batch for the selected track."}
+                    : "No modules assigned or emailed for this batch."}
                 </span>
               ) : (
                 modules.map((m) => {
@@ -461,7 +559,7 @@ export function EmailMonitoringPanel() {
                     >
                       {prefix}
                       {m.title}
-                      {count != null && moduleId === "all" ? ` (${count})` : ""}
+                      {count != null ? ` (${count})` : ""}
                     </FilterPill>
                   );
                 })
@@ -469,12 +567,12 @@ export function EmailMonitoringPanel() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+              <div className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5">
                 <button
                   type="button"
                   onClick={() => setView("events")}
                   className={cn(
-                    "rounded-full px-3 py-1 text-[11px] font-semibold",
+                    "rounded-md px-3 py-1 text-[11px] font-semibold",
                     view === "events"
                       ? "bg-white text-[#2e3192] shadow-sm"
                       : "text-zinc-500",
@@ -486,7 +584,7 @@ export function EmailMonitoringPanel() {
                   type="button"
                   onClick={() => setView("learners")}
                   className={cn(
-                    "rounded-full px-3 py-1 text-[11px] font-semibold",
+                    "rounded-md px-3 py-1 text-[11px] font-semibold",
                     view === "learners"
                       ? "bg-white text-[#2e3192] shadow-sm"
                       : "text-zinc-500",
@@ -511,9 +609,23 @@ export function EmailMonitoringPanel() {
 
         <CardContent className="p-0">
           {view === "events" ? (
-            <EventLogTable events={events} />
+            <EventLogTable
+              events={events}
+              emptyHint={
+                hasActiveFilters
+                  ? "No emails match these filters. Try clearing the batch filter or choose All batches."
+                  : "Send invites from Assign & email, or reminders from batch analytics, to populate this log."
+              }
+            />
           ) : (
-            <LearnerTable learners={learners} />
+            <LearnerTable
+              learners={learners}
+              emptyHint={
+                hasActiveFilters
+                  ? "No learner outreach matches these filters."
+                  : "Aggregated resend counts appear here after emails are sent."
+              }
+            />
           )}
         </CardContent>
       </Card>
@@ -541,15 +653,19 @@ function MetricTile({
   );
 }
 
-function EventLogTable({ events }: { events: EmailEventRow[] }) {
+function EventLogTable({
+  events,
+  emptyHint,
+}: {
+  events: EmailEventRow[];
+  emptyHint: string;
+}) {
   if (events.length === 0) {
     return (
-      <div className="empty-state mx-6 my-10 border-dashed py-12">
-        <p className="text-sm font-medium text-zinc-600">No emails logged yet</p>
-        <p className="mt-1 text-xs text-zinc-400">
-          Send not-started reminders or failed-learner guidance from a batch
-          analytics page to populate this log.
-        </p>
+      <div className="mx-6 my-10 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 py-12 text-center">
+        <Mail className="mx-auto h-8 w-8 text-zinc-300" />
+        <p className="mt-3 text-sm font-medium text-zinc-600">No emails logged</p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-zinc-400">{emptyHint}</p>
       </div>
     );
   }
@@ -557,7 +673,7 @@ function EventLogTable({ events }: { events: EmailEventRow[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[980px] text-left text-sm">
-        <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <thead className="sticky top-0 border-b border-zinc-100 bg-zinc-50/95 text-xs font-semibold uppercase tracking-wide text-zinc-500 backdrop-blur">
           <tr>
             <th className="px-6 py-3">Sent</th>
             <th className="px-6 py-3">Type</th>
@@ -578,7 +694,17 @@ function EventLogTable({ events }: { events: EmailEventRow[] }) {
                 <TypePill type={row.notificationType} />
               </td>
               <td className="px-6 py-3">
-                <span className="text-xs font-medium text-zinc-600">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs font-medium",
+                    row.track === "course" ? "text-[#2e3192]" : "text-zinc-600",
+                  )}
+                >
+                  {row.track === "course" ? (
+                    <GraduationCap className="h-3.5 w-3.5" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  )}
                   {row.track === "course" ? "Courses" : "Compliance"}
                 </span>
               </td>
@@ -586,9 +712,19 @@ function EventLogTable({ events }: { events: EmailEventRow[] }) {
                 {row.userEmail}
               </td>
               <td className="px-6 py-3 text-zinc-800">{row.moduleTitle}</td>
-              <td className="px-6 py-3 text-zinc-600">{row.batchLabel}</td>
+              <td className="px-6 py-3">
+                {row.batchLabel && row.batchLabel !== "—" ? (
+                  <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                    {row.batchLabel}
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-400">Unassigned</span>
+                )}
+              </td>
               <td className="px-6 py-3 font-mono text-[11px] text-zinc-500">
-                {row.triggeredBy ?? "—"}
+                {row.triggeredBy ?? (
+                  <span className="text-zinc-400">System / unknown</span>
+                )}
               </td>
             </tr>
           ))}
@@ -598,14 +734,18 @@ function EventLogTable({ events }: { events: EmailEventRow[] }) {
   );
 }
 
-function LearnerTable({ learners }: { learners: EmailLearnerAggregate[] }) {
+function LearnerTable({
+  learners,
+  emptyHint,
+}: {
+  learners: EmailLearnerAggregate[];
+  emptyHint: string;
+}) {
   if (learners.length === 0) {
     return (
-      <div className="empty-state mx-6 my-10 border-dashed py-12">
+      <div className="mx-6 my-10 rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 py-12 text-center">
         <p className="text-sm font-medium text-zinc-600">No learner outreach yet</p>
-        <p className="mt-1 text-xs text-zinc-400">
-          Aggregated resend counts appear here after emails are sent.
-        </p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-zinc-400">{emptyHint}</p>
       </div>
     );
   }
@@ -613,7 +753,7 @@ function LearnerTable({ learners }: { learners: EmailLearnerAggregate[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1040px] text-left text-sm">
-        <thead className="border-b border-zinc-100 bg-zinc-50/80 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <thead className="sticky top-0 border-b border-zinc-100 bg-zinc-50/95 text-xs font-semibold uppercase tracking-wide text-zinc-500 backdrop-blur">
           <tr>
             <th className="px-6 py-3">Learner</th>
             <th className="px-6 py-3">Track</th>
@@ -639,7 +779,15 @@ function LearnerTable({ learners }: { learners: EmailLearnerAggregate[] }) {
                 {row.track === "course" ? "Courses" : "Compliance"}
               </td>
               <td className="px-6 py-3 text-zinc-800">{row.moduleTitle}</td>
-              <td className="px-6 py-3 text-zinc-600">{row.batchLabel}</td>
+              <td className="px-6 py-3">
+                {row.batchLabel && row.batchLabel !== "—" ? (
+                  <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-700">
+                    {row.batchLabel}
+                  </span>
+                ) : (
+                  <span className="text-xs text-zinc-400">Unassigned</span>
+                )}
+              </td>
               <td className="px-6 py-3 tabular-nums font-semibold text-zinc-900">
                 {row.reminderCount}
               </td>
