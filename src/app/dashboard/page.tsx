@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [inProgressCount, setInProgressCount] = useState(0);
   const [filter, setFilter] = useState<AssessmentFilter>("all");
+  const [progressVersion, setProgressVersion] = useState(0);
 
   const sessionEmail = session?.user?.email ?? null;
 
@@ -62,13 +63,13 @@ export default function DashboardPage() {
     !!user?.username &&
     emailsMatch(sessionEmail, user.username);
 
-  const loadModules = useCallback(async () => {
+  const loadModules = useCallback(async (options?: { force?: boolean }) => {
     if (!authReady || !user?.username) return;
 
     setLoading(true);
     setLoadError(null);
     try {
-      const result = await fetchLearnerDashboard();
+      const result = await fetchLearnerDashboard(options);
 
       if (!result.ok) {
         setLoadError(result.error);
@@ -149,6 +150,9 @@ export default function DashboardPage() {
       setStatusByModule(statusMap);
       setCompletedCount(completed);
       setInProgressCount(inProgress);
+      // Tell the cards to re-read the local store — a retake approved while the
+      // dashboard was open changes their CTA without changing module identity.
+      setProgressVersion((v) => v + 1);
     } catch {
       setLoadError("Something went wrong while loading your training.");
     } finally {
@@ -166,14 +170,19 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!authReady) return;
+    // Refresh dashboard data only — avoid JWT→DB round-trips on every tab focus.
+    // Bypass the short client cache: admin decisions land while we're away, and
+    // window focus covers admin-in-another-window workflows.
+    const refresh = () => void loadModules({ force: true });
     const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        // Refresh dashboard data only — avoid JWT→DB round-trips on every tab focus.
-        void loadModules();
-      }
+      if (document.visibilityState === "visible") refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
   }, [authReady, loadModules]);
 
   const batchId = user?.batchId ?? "";
@@ -401,7 +410,11 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {filteredModules.map((module) => (
-                <ModuleCard key={module.id} module={module} />
+                <ModuleCard
+                  key={module.id}
+                  module={module}
+                  refreshKey={progressVersion}
+                />
               ))}
             </div>
           )}

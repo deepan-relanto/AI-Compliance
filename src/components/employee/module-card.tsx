@@ -28,6 +28,8 @@ function prefetchTraining(moduleId: string, userEmail?: string, moduleKind?: str
 
 interface ModuleCardProps {
   module: TrainingModule;
+  /** Bump to re-read local progress after the dashboard merges server state. */
+  refreshKey?: number;
 }
 
 const statusAccent: Record<ModuleStatus, string> = {
@@ -54,7 +56,7 @@ function displayStatus(
   return status;
 }
 
-export function ModuleCard({ module }: ModuleCardProps) {
+export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
@@ -78,7 +80,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
       setScorePercent(null);
       setRetakeCount(0);
     }
-  }, [user?.username, module.id, module.status]);
+  }, [user?.username, module.id, module.status, refreshKey]);
 
   const canScoreRetake =
     status !== "completed" &&
@@ -113,12 +115,11 @@ export function ModuleCard({ module }: ModuleCardProps) {
               ? "Continue"
               : "Start";
 
-  const ctaVariant =
-    canScoreRetake || isFullAssessmentRetake || canRequestRetake
-      ? "primary"
-      : status === "completed"
-        ? "secondary"
-        : "primary";
+  const ctaVariant = canRequestRetake
+    ? "accent"
+    : status === "completed"
+      ? "secondary"
+      : "primary";
 
   return (
     <article
@@ -191,8 +192,9 @@ export function ModuleCard({ module }: ModuleCardProps) {
           </div>
           <div
             className={cn(
-              "flex flex-col justify-center border-t border-zinc-100 px-5 py-4 sm:w-[172px] sm:border-l sm:border-t-0 sm:px-4",
+              "flex flex-col justify-center border-t border-zinc-100 px-5 py-4 sm:w-[216px] sm:shrink-0 sm:border-l sm:border-t-0 sm:px-4",
               canScoreRetake && "bg-gradient-to-b from-[#2e3192]/[0.04] to-zinc-50/80",
+              canRequestRetake && "bg-gradient-to-b from-[#f15a24]/[0.05] to-zinc-50/80",
             )}
           >
             {canScoreRetake && (
@@ -206,7 +208,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
               </p>
             )}
             {canRequestRetake && (
-              <p className="mb-2 text-center text-[10px] font-medium leading-snug text-zinc-500 sm:text-left">
+              <p className="mb-2 text-center text-[10px] font-semibold leading-snug text-[#c2410c] sm:text-left">
                 Attempt locked — request admin approval to retake
               </p>
             )}
@@ -214,7 +216,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
               variant={ctaVariant}
               size="md"
               className={cn(
-                "w-full gap-1.5",
+                "w-full gap-1.5 whitespace-nowrap px-3 text-[13px]",
                 (canScoreRetake || isFullAssessmentRetake || canRequestRetake) &&
                   "shadow-sm",
               )}
@@ -261,7 +263,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
               ) : (
                 <Play className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               )}
-              <span className="truncate">{ctaLabel}</span>
+              <span>{ctaLabel}</span>
             </Button>
           </div>
         </div>

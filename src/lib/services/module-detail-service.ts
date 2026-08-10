@@ -170,14 +170,18 @@ export async function loadModuleDetail(
     !hasAck &&
     progressStatus !== "permanently_failed";
   const retakeCount = Number(progress?.retake_count ?? 0);
+  // A proctor / abandonment failure (failed with no score) is locked until an
+  // admin approves a retake — it must never open as a quiz-only retake.
+  const proctorLocked =
+    rawStatus === "permanently_failed" ||
+    (rawStatus === "failed" && scorePercent == null);
   const isScoreRetake =
     !isCompleted &&
     !passedPendingAck &&
+    !proctorLocked &&
     progressStatus !== "permanently_failed" &&
     ((scorePercent != null && scorePercent < PASS_THRESHOLD_PERCENT) ||
-      (retakeCount > 0 &&
-        scorePercent == null &&
-        (progressStatus === "in_progress" || rawStatus === "failed")));
+      (retakeCount > 0 && scorePercent == null && progressStatus === "in_progress"));
   const viewerMode:
     | "standard"
     | "quiz_only_retake"
@@ -238,9 +242,12 @@ export async function loadModuleDetail(
       }));
   }
 
-  const resumeCheckpoint = isCourse
-    ? parseCourseResumeCheckpoint(progress?.resume_checkpoint)
-    : null;
+  // Only resume a live attempt: a locked attempt or a freshly granted retake
+  // must start clean instead of flashing the old Welcome Back position.
+  const resumeCheckpoint =
+    isCourse && !proctorLocked && rawStatus !== "not_started"
+      ? parseCourseResumeCheckpoint(progress?.resume_checkpoint)
+      : null;
 
   return {
     module: {

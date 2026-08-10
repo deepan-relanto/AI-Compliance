@@ -238,17 +238,15 @@ export function CoursePlayer({
   const [awaitingRetakeRestart, setAwaitingRetakeRestart] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [saveExitSaving, setSaveExitSaving] = useState(false);
-  const [showWelcomeBack, setShowWelcomeBack] = useState(
-    () => Boolean(shouldResumeFromCheckpoint),
-  );
+  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
   /** Suppress fail overlay while navigating away after Exit confirm. */
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
   const [showProctorRules, setShowProctorRules] = useState(
     () => !autoStartSession && !shouldResumeFromCheckpoint,
   );
-  const [sessionStarted, setSessionStarted] = useState(
-    () => autoStartSession || shouldResumeFromCheckpoint,
-  );
+  // Auto-start / resume only begin once the server integrity check has landed,
+  // otherwise a locked attempt paints live course UI before the review overlay.
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [showContentOverview, setShowContentOverview] = useState(false);
   const [sessionStartError, setSessionStartError] = useState<string | null>(null);
   const [sessionStartMs, setSessionStartMs] = useState<number | null>(null);
@@ -291,6 +289,16 @@ export function CoursePlayer({
   const autosaveInFlightRef = useRef(false);
   const resumeHydratedAnswersRef = useRef(false);
   const answeredQuestionIdsRef = useRef(new Set<string>());
+  /** Latest embed state for timers that must not close over stale renders. */
+  const htmlEmbedStateRef = useRef<CourseEmbedState | null>(null);
+  const htmlAdvanceRetryRef = useRef<number | null>(null);
+
+  const clearHtmlAdvanceRetry = useCallback(() => {
+    if (htmlAdvanceRetryRef.current != null) {
+      window.clearTimeout(htmlAdvanceRetryRef.current);
+      htmlAdvanceRetryRef.current = null;
+    }
+  }, []);
 
   const currentContentStep = contentSteps[contentStepIndex];
   const isHtmlLessonStep =
@@ -337,6 +345,7 @@ export function CoursePlayer({
 
   const proctorHook = useProctorMonitor({
     enabled:
+      integrityHydrated &&
       sessionStarted &&
       !showAcknowledgement &&
       !showFinalQa &&
@@ -344,7 +353,8 @@ export function CoursePlayer({
       !showExitModal &&
       !showWelcomeBack &&
       !isFailed,
-    sessionActive: sessionStarted && !isFailed && !showWelcomeBack,
+    sessionActive:
+      integrityHydrated && sessionStarted && !isFailed && !showWelcomeBack,
     username: user?.username,
     moduleId: module.id,
     moduleTitle: module.title,
@@ -531,7 +541,14 @@ export function CoursePlayer({
             setDbStatus("not_started");
             setRetakeCount(serverEntry?.retakeCount ?? prog?.retakeCount ?? 0);
           }
-          setAwaitingRetakeRestart(true);
+          if (serverNotStarted && effectiveFreshStart) {
+            // Learner already chose "Retake assessment" on the dashboard —
+            // don't make them confirm a restart again, go straight to the rules.
+            proctorRetakeStartedRef.current = true;
+            setAwaitingRetakeRestart(false);
+          } else {
+            setAwaitingRetakeRestart(true);
+          }
         }
       } else {
         const requests = getAllReviewRequests();
@@ -552,18 +569,37 @@ export function CoursePlayer({
       setIntegrityHydrated(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, module.id, moduleMcqs.length, ackPendingMode, quizOnlyModeFromModule]);
+  }, [
+    user?.username,
+    module.id,
+    moduleMcqs.length,
+    ackPendingMode,
+    quizOnlyModeFromModule,
+    effectiveFreshStart,
+  ]);
 
   useEffect(() => {
     loadIntegrityState();
   }, [loadIntegrityState]);
 
+  // While a retake request is pending, pick up the admin decision quickly and
+  // also the moment the learner comes back to the tab.
   useEffect(() => {
     if (!user?.username || !(isFailed || awaitingRetakeRestart) || reviewRequest?.status !== "Pending") return;
-    const id = window.setInterval(() => {
+    const refresh = () => {
       void loadIntegrityState();
-    }, 12000);
-    return () => window.clearInterval(id);
+    };
+    const id = window.setInterval(refresh, 5000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
   }, [user?.username, isFailed, awaitingRetakeRestart, reviewRequest?.status, loadIntegrityState]);
 
   const earnedBadgeIdsRef = useRef<Set<string>>(new Set());
@@ -681,14 +717,14 @@ export function CoursePlayer({
   }, []);
 
   useEffect(() => {
-    if (!sessionStarted || quizOnlyModeFromModule) return;
+    if (!integrityHydrated || !sessionStarted || quizOnlyModeFromModule) return;
     enterFullscreen();
     return () => {
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => undefined);
       }
     };
-  }, [sessionStarted, quizOnlyModeFromModule, enterFullscreen]);
+  }, [integrityHydrated, sessionStarted, quizOnlyModeFromModule, enterFullscreen]);
 
   useEffect(() => {
     if (!sessionStarted || sessionStartMs === null) return;
@@ -765,20 +801,30 @@ export function CoursePlayer({
   };
 
   useEffect(() => {
-    if (!autoStartSession) return;
+    // Wait for the server integrity check: a locked attempt must show the
+    // review overlay, never a half-second of live quiz UI.
+    if (!autoStartSession || !integrityHydrated || isFailed || awaitingRetakeRestart) {
+      return;
+    }
     setShowProctorRules(false);
     setSessionStarted(true);
     setShowContentOverview(false);
     if (sessionStartMs === null) {
       setSessionStartMs(Date.now());
     }
-  }, [autoStartSession, sessionStartMs]);
+  }, [
+    autoStartSession,
+    integrityHydrated,
+    isFailed,
+    awaitingRetakeRestart,
+    sessionStartMs,
+  ]);
 
   // Save & Exit resume: skip "I understand" — land on Welcome Back immediately.
   const resumeBootstrapRef = useRef(false);
   useEffect(() => {
     if (!shouldResumeFromCheckpoint || resumeBootstrapRef.current) return;
-    if (!user?.username) return;
+    if (!user?.username || !integrityHydrated) return;
     if (awaitingRetakeRestart || isFailed) return;
     resumeBootstrapRef.current = true;
     setShowProctorRules(false);
@@ -806,6 +852,7 @@ export function CoursePlayer({
     void enterFullscreen();
   }, [
     shouldResumeFromCheckpoint,
+    integrityHydrated,
     user?.username,
     user?.batchId,
     module.id,
@@ -948,7 +995,18 @@ export function CoursePlayer({
   const nextSlideLocked = isHtmlLessonStep && nextSlideCooldownMs > 0;
   const htmlReadyForNextSlide =
     Boolean(isHtmlLessonStep && htmlEmbedState?.slideComplete && !htmlEmbedState.atEnd);
+  /**
+   * Scenario decks refuse to advance until a department path is chosen, and the
+   * choice lives inside the iframe. Lesson decks are different: an incomplete
+   * slide just means Next still has fragments to reveal, so it stays enabled.
+   */
+  const htmlChoiceRequired = Boolean(
+    isHtmlLessonStep &&
+      htmlEmbedState?.kind === "scenarios" &&
+      !htmlEmbedState.slideComplete,
+  );
   const nextFooterLabel = (() => {
+    if (htmlChoiceRequired) return "Choose above";
     if (isLastContentUnit) {
       return nextSlideLocked
         ? `Start quiz ${(nextSlideCooldownMs / 1000).toFixed(1)}s`
@@ -967,10 +1025,28 @@ export function CoursePlayer({
     if (nextSlideLocked) return;
     if (isHtmlLessonStep) {
       if (!htmlEmbedState?.atEnd) {
+        const fromIndex = htmlEmbedState?.slideIndex ?? 0;
+        // Only a slide that was already fully revealed should have moved on.
+        const shouldHaveMoved = htmlEmbedState?.slideComplete === true;
         htmlIframeRef.current?.contentWindow?.postMessage(
           { type: COURSE_EMBED_COMMAND, command: "next" },
           "*",
         );
+        // If the deck swallowed the command (its own cooldown, a dropped
+        // message), nudge it directly so the learner is never stuck.
+        clearHtmlAdvanceRetry();
+        if (shouldHaveMoved) {
+          htmlAdvanceRetryRef.current = window.setTimeout(() => {
+            htmlAdvanceRetryRef.current = null;
+            const latest = htmlEmbedStateRef.current;
+            if (!latest || latest.slideIndex !== fromIndex) return;
+            if (!latest.slideComplete || latest.atEnd) return;
+            htmlIframeRef.current?.contentWindow?.postMessage(
+              { type: COURSE_EMBED_COMMAND, command: "goto", index: fromIndex + 1 },
+              "*",
+            );
+          }, 900);
+        }
         return;
       }
     }
@@ -981,15 +1057,18 @@ export function CoursePlayer({
     }
     if (!isLastContentUnit) {
       if (!isLastContentStep) {
+        clearHtmlAdvanceRetry();
         setContentStepIndex((i) => i + 1);
         setPdfPage(1);
         setPdfPages(currentContentStep?.config.pageCount ?? 1);
+        htmlEmbedStateRef.current = null;
         setHtmlEmbedState(null);
         setNextSlideCooldownMs(0);
         prevSlideCompleteKeyRef.current = null;
       }
       return;
     }
+    clearHtmlAdvanceRetry();
     startQuizPhase();
   }, [
     phase,
@@ -997,6 +1076,8 @@ export function CoursePlayer({
     nextSlideLocked,
     isHtmlLessonStep,
     htmlEmbedState?.atEnd,
+    htmlEmbedState?.slideIndex,
+    htmlEmbedState?.slideComplete,
     isPdfStep,
     pdfReady,
     pdfPage,
@@ -1004,6 +1085,7 @@ export function CoursePlayer({
     isLastContentUnit,
     isLastContentStep,
     startQuizPhase,
+    clearHtmlAdvanceRetry,
     currentContentStep?.config.pageCount,
   ]);
 
@@ -1262,8 +1344,10 @@ export function CoursePlayer({
       return;
     }
     setPdfPage(1);
+    htmlEmbedStateRef.current = null;
     setHtmlEmbedState(null);
     setNextSlideCooldownMs(0);
+    clearHtmlAdvanceRetry();
     prevSlideCompleteKeyRef.current = null;
     const configuredPages = currentContentStep?.config.pageCount;
     if (isPdfStep) {
@@ -1278,13 +1362,19 @@ export function CoursePlayer({
       setPdfPages(1);
       setPdfReady(true);
     }
-  }, [contentStepIndex, currentContentStep?.config.pageCount, isPdfStep]);
+  }, [
+    contentStepIndex,
+    currentContentStep?.config.pageCount,
+    isPdfStep,
+    clearHtmlAdvanceRetry,
+  ]);
 
   useEffect(() => {
     const onEmbedMessage = (event: MessageEvent) => {
       if (!isCourseEmbedState(event.data) || event.data.type !== COURSE_EMBED_EVENT) return;
       if (event.data.kind !== "lesson" && event.data.kind !== "scenarios") return;
       const nextState = normalizeCourseEmbedState(event.data);
+      htmlEmbedStateRef.current = nextState;
       setHtmlEmbedState(nextState);
 
       const pendingGoto = pendingHtmlGotoRef.current;
@@ -1298,9 +1388,7 @@ export function CoursePlayer({
         window.setTimeout(() => setHtmlResumeReady(true), 50);
         return;
       }
-      if (!htmlResumeReady) {
-        setHtmlResumeReady(true);
-      }
+      setHtmlResumeReady(true);
 
       if (!nextState.slideComplete) {
         prevSlideCompleteKeyRef.current = null;
@@ -1471,6 +1559,15 @@ export function CoursePlayer({
       setForceQuizOnlyRetake(false);
       setShowExitModal(false);
       setShowWelcomeBack(false);
+      // A retake is a fresh attempt: drop every Save & Exit resume artifact so
+      // no old slide, Welcome Back panel or pending goto leaks into it.
+      resumeBootstrapRef.current = true;
+      skipStepResetRef.current = false;
+      pendingHtmlGotoRef.current = null;
+      setHtmlEmbedState(null);
+      setHtmlResumeReady(true);
+      setNextSlideCooldownMs(0);
+      prevSlideCompleteKeyRef.current = null;
       proctorHook.hydrateFromProgress(null);
       setIsFailed(false);
       setAwaitingRetakeRestart(false);
@@ -1564,10 +1661,30 @@ export function CoursePlayer({
     onContinue: handleMcqContinue,
   };
 
+  // Hold a calm dark stage until the server tells us whether this attempt is
+  // locked, resumable or fresh — and until auto-start/resume has committed.
+  const bootstrapPending =
+    !integrityHydrated ||
+    (!isFailed &&
+      !awaitingRetakeRestart &&
+      !sessionStarted &&
+      (shouldResumeFromCheckpoint || autoStartSession));
+
+  if (bootstrapPending) {
+    return (
+      <div className="fixed inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-zinc-950 text-white">
+        <RelantoLogo size="sm" showTagline={false} />
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-700 border-t-[#f15a24]" />
+          Preparing your course…
+        </div>
+      </div>
+    );
+  }
+
   if (!sessionStarted) {
     // Failed lockout OR approved-retake restart — never show ProctorRules first.
     if (
-      integrityHydrated &&
       !isNavigatingAway &&
       (awaitingRetakeRestart || (isFailed && dbStatus !== "not_started"))
     ) {
@@ -1616,7 +1733,7 @@ export function CoursePlayer({
           </p>
         )}
         <ProctorRulesModal
-          open={showProctorRules}
+          open={!isNavigatingAway}
           moduleTitle={module.title}
           eyebrow="Proctored course training"
           onAccept={() => void handleBeginSession()}
@@ -1886,9 +2003,15 @@ export function CoursePlayer({
         !showWelcomeBack && (
           <footer className="relative z-[70] flex h-14 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
             <span className="text-xs text-zinc-500">
-              {isHtmlLessonStep && htmlEmbedState
-                ? `Slide ${htmlEmbedState.slideIndex + 1} of ${htmlEmbedState.slideCount}`
-                : "Forward only"}
+              {htmlChoiceRequired ? (
+                <span className="text-amber-400">
+                  Select an option in the slide to continue
+                </span>
+              ) : isHtmlLessonStep && htmlEmbedState ? (
+                `Slide ${htmlEmbedState.slideIndex + 1} of ${htmlEmbedState.slideCount}`
+              ) : (
+                "Forward only"
+              )}
             </span>
             <div className="flex gap-1">
               {contentSteps.map((_, i) => (
@@ -1908,6 +2031,7 @@ export function CoursePlayer({
               disabled={
                 navLocked ||
                 nextSlideLocked ||
+                htmlChoiceRequired ||
                 (isPdfStep && !pdfReady)
               }
               onClick={tryAdvanceContent}

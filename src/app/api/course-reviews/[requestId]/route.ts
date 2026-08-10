@@ -1,5 +1,6 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import {
   approveReviewRequestDb,
   rejectReviewRequestDb,
@@ -62,6 +63,10 @@ export async function PATCH(
         { status: 400 },
       );
     }
+
+    // Review decisions change the admin queue, the learner dashboard CTA and
+    // the module viewer mode — serve all three fresh on the next read.
+    invalidateAdminCaches();
 
     return NextResponse.json({ ok: true });
   } catch (err) {
