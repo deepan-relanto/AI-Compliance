@@ -399,6 +399,11 @@ export function failAssessmentForAbandonment(
   ) {
     return existing;
   }
+  // Mirror the server: a scored attempt is waiting for acknowledgement / feedback,
+  // not an unfinished run. Marking it failed locally desyncs CTA and status.
+  if (existing.scorePercent != null) {
+    return existing;
+  }
   return markAssessmentFailed(username, moduleId, reason);
 }
 

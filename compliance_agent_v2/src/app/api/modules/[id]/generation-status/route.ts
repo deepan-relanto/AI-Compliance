@@ -19,6 +19,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { id } = await params;
     const sql = getSql();

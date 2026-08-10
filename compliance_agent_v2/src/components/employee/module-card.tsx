@@ -6,7 +6,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { getProgress, getModuleStatus, isProctorLocked } from "@/lib/progress-store";
 import type { ModuleStatus, TrainingModule } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
+import { isPassingScore } from "@/lib/constants";
 import { MODULE_KIND_LABELS } from "@/lib/module-kind";
 import { Clock, FileText, Layers, Play, RotateCcw, ShieldAlert, Trophy } from "lucide-react";
 import { requestScoreRetake } from "@/lib/progress-api";
@@ -49,7 +49,7 @@ function displayStatus(
   if (
     status === "failed" ||
     status === "in_progress" ||
-    (scorePercent != null && scorePercent <= PASS_THRESHOLD_PERCENT)
+    (scorePercent != null && !isPassingScore(scorePercent))
   ) {
     return "in_progress";
   }
@@ -66,6 +66,8 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
   const [status, setStatus] = useState<ModuleStatus>(module.status);
   const [scorePercent, setScorePercent] = useState<number | null>(null);
   const [retakeCount, setRetakeCount] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
 
   useEffect(() => {
     if (!user?.username) return;
@@ -82,11 +84,13 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
     }
   }, [user?.username, module.id, module.status, refreshKey]);
 
+  // A score of exactly the threshold is a pass: offering a retake there would ask
+  // the server to wipe a passing attempt.
   const canScoreRetake =
     status !== "completed" &&
     status !== "permanently_failed" &&
     scorePercent != null &&
-    scorePercent <= PASS_THRESHOLD_PERCENT;
+    !isPassingScore(scorePercent);
 
   const isFullAssessmentRetake =
     retakeCount > 0 && !canScoreRetake && status === "not_started";
@@ -100,6 +104,15 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
   const canRequestRetake =
     proctorLocked && status !== "permanently_failed";
 
+  // Only save/exit modules keep their position. Everything else restarts the
+  // attempt, so the button has to say so.
+  const resumeInPlace =
+    Boolean(module.allowSaveExit) &&
+    status === "in_progress" &&
+    !proctorLocked &&
+    !canScoreRetake &&
+    !isFullAssessmentRetake;
+
   const ctaLabel = canScoreRetake
     ? "Retake quiz"
     : isFullAssessmentRetake
@@ -110,10 +123,11 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
           ? "Request retake"
           : status === "completed"
             ? "Review"
-            : badgeStatus === "in_progress" ||
-                (Boolean(module.allowSaveExit) && status === "in_progress")
+            : resumeInPlace
               ? "Continue"
-              : "Start";
+              : badgeStatus === "in_progress"
+                ? "Restart"
+                : "Start";
 
   const ctaVariant = canRequestRetake
     ? "accent"
@@ -162,7 +176,7 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
                   <span
                     className={cn(
                       "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-                      scorePercent > PASS_THRESHOLD_PERCENT
+                      isPassingScore(scorePercent)
                         ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60"
                         : "bg-red-50 text-red-700 ring-1 ring-red-200/60",
                     )}
@@ -212,36 +226,48 @@ export function ModuleCard({ module, refreshKey = 0 }: ModuleCardProps) {
                 Attempt locked — request admin approval to retake
               </p>
             )}
+            {actionError && (
+              <p className="mb-2 text-center text-[10px] font-semibold leading-snug text-[#b91c1c] sm:text-left">
+                {actionError}
+              </p>
+            )}
             <Button
               variant={ctaVariant}
               size="md"
+              disabled={actionPending}
               className={cn(
                 "w-full gap-1.5 whitespace-nowrap px-3 text-[13px]",
                 (canScoreRetake || isFullAssessmentRetake || canRequestRetake) &&
                   "shadow-sm",
               )}
               onClick={async () => {
+                if (actionPending) return;
+                setActionError(null);
                 if (!user?.username) {
                   router.push(`/training/${module.id}`);
                   return;
                 }
                 if (canScoreRetake) {
+                  setActionPending(true);
                   const res = await requestScoreRetake(user.username, module.id);
                   if (res.ok) {
                     resetForScoreRetake(user.username, module.id);
                     router.push(`/training/${module.id}`);
+                    return;
                   }
+                  setActionPending(false);
+                  setActionError(
+                    res.message ??
+                      "This attempt cannot be retaken right now. Please contact your administrator.",
+                  );
                   return;
                 }
                 // Gated courses: Continue resumes without wiping / fresh=1.
-                const resumeInPlace =
-                  Boolean(module.allowSaveExit) &&
-                  status === "in_progress" &&
-                  !proctorLocked &&
-                  !canScoreRetake &&
-                  !isFullAssessmentRetake;
+                // Never fresh-start a scored attempt (pass awaiting ack, or fail
+                // awaiting Retake quiz) — that would discard the recorded score.
                 const needsFreshStart =
                   !resumeInPlace &&
+                  scorePercent == null &&
                   (isFullAssessmentRetake ||
                     status === "not_started" ||
                     (status === "in_progress" && !proctorLocked));

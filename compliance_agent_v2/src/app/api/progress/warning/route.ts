@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
       moduleId: String(moduleId),
       reportedWarningCount:
         typeof body.warningCount === "number" ? body.warningCount : undefined,
-      warningHistory: Array.isArray(warningHistory) ? warningHistory : [],
+      // Bounded: an attempt fails at 3 warnings, so anything beyond the most
+      // recent entries is noise the client should never be able to grow.
+      warningHistory: Array.isArray(warningHistory) ? warningHistory.slice(-25) : [],
       reportedReason:
         typeof failedReason === "string" ? failedReason : null,
     });

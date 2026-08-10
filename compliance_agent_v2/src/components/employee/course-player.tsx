@@ -352,9 +352,18 @@ export function CoursePlayer({
       !showScoreResult &&
       !showExitModal &&
       !showWelcomeBack &&
+      !showContentOverview &&
       !isFailed,
     sessionActive:
-      integrityHydrated && sessionStarted && !isFailed && !showWelcomeBack,
+      integrityHydrated &&
+      sessionStarted &&
+      !isFailed &&
+      !showWelcomeBack &&
+      !showAcknowledgement &&
+      !showFinalQa &&
+      !showScoreResult &&
+      !showExitModal &&
+      !showContentOverview,
     username: user?.username,
     moduleId: module.id,
     moduleTitle: module.title,
@@ -1105,7 +1114,7 @@ export function CoursePlayer({
     }, 300);
   }, []);
 
-  const finishTrainingCompletion = useCallback(() => {
+  const finishTrainingCompletion = useCallback(async () => {
     // Keep final-QA / score chrome suppressed and park on a blank dark stage
     // so "Ready for the quiz" never flashes behind the completion notice.
     setShowAcknowledgement(false);
@@ -1113,13 +1122,22 @@ export function CoursePlayer({
     setMcqOpen(false);
     setPhase("quiz");
     setShowFinalQa(true);
+
+    let completionMessage = `Thank you. Your training for “${module.title}” is complete — attestation and feedback are on record.`;
     if (user?.username) {
       markCompleted(user.username, module.id);
-      void syncCourseProgressComplete(user.username, module.id);
+      const result = await syncCourseProgressComplete(user.username, module.id);
+      if (!result.ok) {
+        completionMessage =
+          "Your training is recorded locally, but we could not finalize it on the server. Please refresh your dashboard or contact Relanto Academy if your status looks wrong.";
+      } else if (result.emailSent) {
+        completionMessage += " A confirmation email with your results is on its way.";
+      }
     }
+
     setCompletionNotice({
       title: "Course submitted successfully",
-      message: `Thank you. Your training for “${module.title}” is complete — attestation and feedback are on record.`,
+      message: completionMessage,
       variant: "success",
       autoCloseAfterMs: 5000,
       showAcknowledgeButton: false,
@@ -1171,7 +1189,19 @@ export function CoursePlayer({
     setRetakeLoading(true);
     const res = await requestCourseScoreRetake(user.username, module.id);
     setRetakeLoading(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      setCompletionNotice({
+        title: "Retake not available",
+        message:
+          res.message ??
+          "This attempt cannot be retaken right now. Please contact your administrator.",
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
+      return;
+    }
 
     resetForScoreRetake(user.username, module.id);
     loadIntegrityState();
@@ -1985,7 +2015,7 @@ export function CoursePlayer({
                   messageRequired
                   ratingRequired
                   onSuccess={() => {
-                    finishTrainingCompletion();
+                    void finishTrainingCompletion();
                   }}
                 />
               </div>

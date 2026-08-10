@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { PASS_THRESHOLD_PERCENT, isPassingScore } from "@/lib/constants";
+import { isPassingScore } from "@/lib/constants";
 import { clientCourseAssetUrl } from "@/lib/course-asset-url";
 import { parseCourseResumeCheckpoint } from "@/lib/course-resume";
 import { clientPdfUrl } from "@/lib/pdf-url";
@@ -175,13 +175,17 @@ export async function loadModuleDetail(
   const proctorLocked =
     rawStatus === "permanently_failed" ||
     (rawStatus === "failed" && scorePercent == null);
+  // Quiz-only mode is for an already-cleared failing attempt (after Retake quiz).
+  // A still-stored failing score must reopen as the score report so answers are not
+  // locked against score_percent IS NOT NULL on the answer API.
   const isScoreRetake =
     !isCompleted &&
     !passedPendingAck &&
     !proctorLocked &&
     progressStatus !== "permanently_failed" &&
-    ((scorePercent != null && scorePercent < PASS_THRESHOLD_PERCENT) ||
-      (retakeCount > 0 && scorePercent == null && progressStatus === "in_progress"));
+    scorePercent == null &&
+    retakeCount > 0 &&
+    progressStatus === "in_progress";
   const viewerMode:
     | "standard"
     | "quiz_only_retake"

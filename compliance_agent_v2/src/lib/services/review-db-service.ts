@@ -224,7 +224,7 @@ export async function approveReviewRequestDb(
   sql: Sql,
   requestId: string,
   adminUsername: string,
-): Promise<void> {
+): Promise<{ ok: true } | { ok: false; code: "MAX_RETAKES"; message: string }> {
   const reqRows = await sql`
     SELECT * FROM review_requests WHERE id = ${requestId} LIMIT 1
   `;
@@ -275,7 +275,11 @@ export async function approveReviewRequestDb(
       adminUsername,
       `Retake blocked for ${request.username} on ${moduleTitle}. Already had 2 retakes.`,
     );
-    throw new Error("Maximum retake limit reached. No further attempts allowed.");
+    return {
+      ok: false,
+      code: "MAX_RETAKES",
+      message: "Maximum retake limit reached. No further attempts allowed.",
+    };
   }
 
   const warningHistory = parseJsonArray(progRows[0].warning_history, [] as {
@@ -350,6 +354,7 @@ export async function approveReviewRequestDb(
   void sendRetakeApprovalEmail(sql, request.username, request.moduleId).catch((err) => {
     console.error("[review approve retake email]", request.username, err);
   });
+  return { ok: true };
 }
 
 export async function rejectReviewRequestDb(

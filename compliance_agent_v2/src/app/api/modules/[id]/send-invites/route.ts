@@ -1,5 +1,6 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import {
   sendFailedReviewGuidanceEmails,
   sendModuleInvitationEmails,
@@ -46,6 +47,7 @@ export async function POST(
       batchId,
       triggeredBy,
     });
+    invalidateAdminCaches();
     return NextResponse.json(result);
   }
 
@@ -55,5 +57,8 @@ export async function POST(
     reminderOnlyNotStarted,
     triggeredBy,
   });
+  // Email monitoring reads through a 180s cache; without this the admin would not
+  // see the send they just triggered.
+  invalidateAdminCaches();
   return NextResponse.json(result);
 }
