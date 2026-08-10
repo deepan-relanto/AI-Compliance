@@ -1,11 +1,12 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { startScoreRetakeDb } from "@/lib/services/course-progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** POST — reset assessment for retake when score <= 70% */
+/** POST — reset assessment for retake when score is below the passing threshold */
 export async function POST(req: NextRequest) {
   try {
     const { userEmail, moduleId } = await req.json();
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ ok: false, message: result.message }, { status: 400 });
     }
+    invalidateAdminCachesAsync();
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Retake failed";

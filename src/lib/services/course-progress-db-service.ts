@@ -185,7 +185,19 @@ export async function reconcilePassedProgressStatus(sql: Sql): Promise<number> {
 }
 
 function parseMcqAnswers(raw: unknown): Record<string, boolean> {
-  if (!raw || typeof raw !== "object") return {};
+  // jsonb normally arrives parsed, but a driver/config change can hand back the
+  // raw text — reading that as an empty map would silently zero a learner's score.
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, boolean>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as Record<string, boolean>;
 }
 
@@ -290,24 +302,31 @@ export async function startTrainingSessionDb(
         await consumeApprovedRetakeDb(sql, params.userEmail, params.moduleId);
       }
 
-      await sql`
-        UPDATE course_progress
-        SET status = 'in_progress',
-            current_slide = 0,
-            mcq_answers = '{}'::jsonb,
-            mcq_correct = 0,
-            score_percent = NULL,
-            failed_reason = NULL,
-            last_failure_reason = NULL,
-            completed_at = NULL,
-            resume_checkpoint = NULL,
-            last_accessed_at = NOW(),
-            updated_at = NOW()
-        WHERE user_email = ${params.userEmail}
-          AND module_id = ${params.moduleId}
-          AND status IN ('not_started', 'in_progress')
-      `;
-      invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+      // Never wipe a scored attempt (pass or fail awaiting ack / retake CTA).
+      // fresh=1 is for restarting unfinished work, not for discarding results.
+      if (existing.score_percent != null) {
+        invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+      } else {
+        await sql`
+          UPDATE course_progress
+          SET status = 'in_progress',
+              current_slide = 0,
+              mcq_answers = '{}'::jsonb,
+              mcq_correct = 0,
+              score_percent = NULL,
+              failed_reason = NULL,
+              last_failure_reason = NULL,
+              completed_at = NULL,
+              resume_checkpoint = NULL,
+              last_accessed_at = NOW(),
+              updated_at = NOW()
+          WHERE user_email = ${params.userEmail}
+            AND module_id = ${params.moduleId}
+            AND status IN ('not_started', 'in_progress')
+            AND score_percent IS NULL
+        `;
+        invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
+      }
     }
   }
 
@@ -465,17 +484,21 @@ export async function validateAndRecordMcqAnswerDb(
 
   if (!progressStatus) {
     const dbTotal = await getModuleMcqCount(sql, params.moduleId);
-    void startTrainingSessionDb(sql, {
-      userEmail: params.userEmail,
-      moduleId: params.moduleId,
-      moduleTitle: params.moduleTitle,
-      batchId: params.batchId,
-      totalSlides: params.totalSlides,
-      assignedMcqCount: dbTotal > 0 ? dbTotal : undefined,
-    }).catch((err) => {
+    // The answer UPDATE below can only patch an existing row, so the session row
+    // has to land first — creating it in the background loses the first answer.
+    try {
+      await startTrainingSessionDb(sql, {
+        userEmail: params.userEmail,
+        moduleId: params.moduleId,
+        moduleTitle: params.moduleTitle,
+        batchId: params.batchId,
+        totalSlides: params.totalSlides,
+        assignedMcqCount: dbTotal > 0 ? dbTotal : undefined,
+      });
+    } catch (err) {
       console.error(err);
       invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
-    });
+    }
     progressStatus = "in_progress";
     mcqCorrectStored = 0;
     mcqTotalStored = dbTotal;
@@ -489,10 +512,13 @@ export async function validateAndRecordMcqAnswerDb(
     });
   }
 
+  // A stored score means the attempt was finalized: no further answers may change
+  // it. A retake clears the score before reopening the quiz.
   if (
     progressStatus === "completed" ||
     progressStatus === "permanently_failed" ||
-    progressStatus === "failed"
+    progressStatus === "failed" ||
+    scorePercent != null
   ) {
     return {
       found: true,
@@ -551,18 +577,32 @@ export async function validateAndRecordMcqAnswerDb(
       WHERE user_email = ${params.userEmail}
         AND module_id = ${params.moduleId}
         AND status NOT IN ('failed', 'permanently_failed', 'completed')
+        AND score_percent IS NULL
         AND NOT (mcq_answers ? ${params.questionId})
       RETURNING status, mcq_correct, mcq_total, mcq_answers
     `;
     if (!updated[0]) {
       invalidateLearnerProgressSnapshot(params.userEmail, params.moduleId);
-      // Re-check: already answered concurrently, or attempt locked.
+      // Re-check: already answered concurrently, or attempt locked. A retry of an
+      // answer that did land is reported as recorded, not as a locked attempt.
       const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+      if (row && Object.prototype.hasOwnProperty.call(row.mcq_answers, params.questionId)) {
+        return {
+          found: true,
+          correct: Boolean(row.mcq_answers[params.questionId]),
+          correctOptionId,
+          mcqCorrect: row.mcq_correct,
+          mcqTotal: row.mcq_total,
+          alreadyAnswered: true,
+          persisted: true,
+        };
+      }
       if (
         row &&
         (row.status === "failed" ||
           row.status === "permanently_failed" ||
-          row.status === "completed")
+          row.status === "completed" ||
+          row.score_percent != null)
       ) {
         return {
           found: true,
@@ -573,17 +613,6 @@ export async function validateAndRecordMcqAnswerDb(
           alreadyAnswered: false,
           attemptLocked: true,
           persisted: false,
-        };
-      }
-      if (row && Object.prototype.hasOwnProperty.call(row.mcq_answers, params.questionId)) {
-        return {
-          found: true,
-          correct: Boolean(row.mcq_answers[params.questionId]),
-          correctOptionId,
-          mcqCorrect: row.mcq_correct,
-          mcqTotal: row.mcq_total,
-          alreadyAnswered: true,
-          persisted: true,
         };
       }
       return {
@@ -895,6 +924,21 @@ export async function finalizeAssessmentDb(
     throw new Error("Assessment cannot be finalized in its current state.");
   }
 
+  // Finalizing is idempotent. Once a score is stored the attempt is closed until a
+  // retake clears it, so a repeat call (retry, second tab, replayed request) returns
+  // the recorded result instead of re-scoring against answers submitted afterwards.
+  if (row.score_percent != null) {
+    const storedScore = Number(row.score_percent);
+    const storedPassed = isPassingScore(storedScore);
+    return {
+      scorePercent: storedScore,
+      passed: storedPassed,
+      canRetake: !storedPassed && Number(row.retake_count ?? 0) < 2,
+      mcqCorrect: row.mcq_correct,
+      mcqTotal: row.mcq_total,
+    };
+  }
+
   const answerCount = countMcqAnswers(row.mcq_answers);
   if (row.mcq_total > 0 && answerCount < row.mcq_total) {
     throw new Error(
@@ -1069,11 +1113,13 @@ export async function resetInProgressAttemptDb(
         score_percent = NULL,
         failed_reason = NULL,
         completed_at = NULL,
+        resume_checkpoint = NULL,
         last_accessed_at = NOW(),
         updated_at = NOW()
     WHERE user_email = ${userEmail}
       AND module_id = ${moduleId}
       AND status = 'in_progress'
+      AND score_percent IS NULL
   `;
   invalidateLearnerProgressSnapshot(userEmail, moduleId);
 }
@@ -1088,15 +1134,25 @@ export async function startScoreRetakeDb(
     return { ok: false, message: "No progress found for this assessment." };
   }
 
-  const canRetake =
-    row.score_percent != null && row.score_percent < PASS_THRESHOLD_PERCENT;
-
-  if (!canRetake && row.status === "completed") {
+  if (row.status === "completed" || isPassingScore(row.score_percent)) {
     return { ok: false, message: "You passed this assessment and cannot retake it." };
   }
 
   if (row.status === "permanently_failed") {
     return { ok: false, message: "Maximum retakes reached." };
+  }
+
+  // A self-service retake is earned by a recorded failing score. Without one the
+  // attempt is either still running or locked by proctoring/abandonment, and only
+  // an approved review request may reopen it.
+  if (row.score_percent == null) {
+    return {
+      ok: false,
+      message:
+        row.status === "failed"
+          ? "This attempt is locked. Ask your administrator to approve a retake."
+          : "There is no scored attempt to retake yet.",
+    };
   }
 
   if (Number(row.retake_count ?? 0) >= 2) {
@@ -1106,17 +1162,20 @@ export async function startScoreRetakeDb(
     };
   }
 
+  const mcqTotal = await getModuleMcqCount(sql, moduleId);
+
   await sql`
     UPDATE course_progress
     SET status = 'in_progress',
         current_slide = 0,
         mcq_answers = ${JSON.stringify({})}::jsonb,
         mcq_correct = 0,
-        mcq_total = 0,
+        mcq_total = ${mcqTotal},
         score_percent = NULL,
         failed_reason = NULL,
         completed_at = NULL,
         acknowledgement = NULL,
+        resume_checkpoint = NULL,
         retake_count = retake_count + 1,
         last_failure_reason = ${SCORE_QUIZ_RETAKE_MARKER},
         last_accessed_at = NOW(),
@@ -1237,7 +1296,7 @@ export async function failAssessmentAbandonmentDb(
 ): Promise<{ ok: boolean; status: string }> {
   const reason = params.reason ?? "Assessment abandoned";
   const rows = await sql`
-    SELECT retake_count, status
+    SELECT retake_count, status, score_percent
     FROM course_progress
     WHERE user_email = ${params.userEmail} AND module_id = ${params.moduleId}
     LIMIT 1
@@ -1250,6 +1309,13 @@ export async function failAssessmentAbandonmentDb(
     existingStatus === "permanently_failed" ||
     existingStatus === "failed"
   ) {
+    return { ok: true, status: existingStatus };
+  }
+
+  // The quiz is already scored — the attempt stays 'in_progress' only until the
+  // learner signs the acknowledgement. Closing that screen is not abandonment,
+  // and failing here would lock out a learner who has already passed.
+  if (rows[0].score_percent != null) {
     return { ok: true, status: existingStatus };
   }
 
@@ -1316,6 +1382,9 @@ export async function syncProctorWarningDb(
         END,
         status = CASE
           WHEN status IN ('completed', 'permanently_failed', 'failed') THEN status
+          -- Scored attempts stay open only for acknowledgement; never fail them
+          -- from later proctor noise on the score / ack / feedback screens.
+          WHEN score_percent IS NOT NULL THEN status
           WHEN GREATEST(
             warning_count,
             jsonb_array_length(${historyJson}::jsonb),
@@ -1327,6 +1396,7 @@ export async function syncProctorWarningDb(
         failed_reason = CASE
           WHEN status IN ('completed', 'permanently_failed') THEN failed_reason
           WHEN status = 'failed' THEN COALESCE(failed_reason, ${reason})
+          WHEN score_percent IS NOT NULL THEN failed_reason
           WHEN GREATEST(
             warning_count,
             jsonb_array_length(${historyJson}::jsonb),
@@ -1337,6 +1407,7 @@ export async function syncProctorWarningDb(
         END,
         last_failure_at = CASE
           WHEN status IN ('completed', 'permanently_failed', 'failed') THEN last_failure_at
+          WHEN score_percent IS NOT NULL THEN last_failure_at
           WHEN GREATEST(
             warning_count,
             jsonb_array_length(${historyJson}::jsonb),
@@ -1348,6 +1419,7 @@ export async function syncProctorWarningDb(
         last_failure_reason = CASE
           WHEN status IN ('completed', 'permanently_failed') THEN last_failure_reason
           WHEN status = 'failed' THEN COALESCE(last_failure_reason, ${reason})
+          WHEN score_percent IS NOT NULL THEN last_failure_reason
           WHEN GREATEST(
             warning_count,
             jsonb_array_length(${historyJson}::jsonb),

@@ -231,7 +231,14 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       !showScoreResult &&
       !showExitModal &&
       !isFailed,
-    sessionActive: sessionStarted && !reviewOnlyMode && !isFailed,
+    sessionActive:
+      sessionStarted &&
+      !reviewOnlyMode &&
+      !isFailed &&
+      !showAcknowledgement &&
+      !showFinalQa &&
+      !showScoreResult &&
+      !showExitModal,
     username: user?.username,
     moduleId: module.id,
     moduleTitle: module.title,
@@ -665,9 +672,26 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
       return;
     }
 
-    // Require every question recorded client-side before finalize.
+    // Require every question recorded client-side before finalize. Reopen the
+    // first outstanding question instead of returning silently — otherwise the
+    // Finish button looks broken and the learner cannot complete the attempt.
     if (totalQuestions > 0 && answeredCount < totalQuestions) {
       setQuizFinalizing(false);
+      const pending = moduleMcqs.find(
+        (q) => !answeredQuestionIdsRef.current.has(q.id),
+      );
+      if (pending) {
+        setGateMcq(pending);
+        setMcqOpen(true);
+      }
+      setCompletionNotice({
+        title: "Almost done",
+        message: `Please answer all questions before finishing (${answeredCount} of ${totalQuestions} recorded).`,
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
       return;
     }
 
@@ -900,7 +924,19 @@ export function SlideViewer({ module, mcqs = [], freshStart = false }: SlideView
     setRetakeLoading(true);
     const res = await requestScoreRetake(user.username, module.id);
     setRetakeLoading(false);
-    if (!res.ok) return;
+    if (!res.ok) {
+      setCompletionNotice({
+        title: "Retake not available",
+        message:
+          res.message ??
+          "This attempt cannot be retaken right now. Please contact your administrator.",
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
+      return;
+    }
 
     proctorHook.ignoreNextFullscreenEntryRef.current = true;
     resetForScoreRetake(user.username, module.id);

@@ -1,5 +1,7 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
+import { invalidateLearnerAccessForModule } from "@/lib/learner-access-cache";
 import { makeAssessmentId } from "@/lib/assessment-id";
 import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
 import {
@@ -164,6 +166,12 @@ export async function POST(req: NextRequest) {
 
       await resetLearnerDataForModuleAssignment(sql, targetModuleId, resolvedBatchIds);
 
+      // Batch assignments just changed: drop cached learner allows and every
+      // dashboard/list cache built from them.
+      invalidateLearnerAccessForModule(targetModuleId);
+      if (titleChanged) invalidateLearnerAccessForModule(String(reuseModuleId));
+      invalidateAdminCaches();
+
       const inviteResult = await sendModuleInvitationEmails(sql, targetModuleId, {
         forceResend: true,
         triggeredBy:
@@ -257,25 +265,20 @@ export async function POST(req: NextRequest) {
         updated_at = NOW()
     `;
 
-    if (batchIds.includes("all")) {
-      for (const batchId of resolvedBatchIds) {
-        await sql`
-          INSERT INTO module_batches (module_id, batch_id)
-          VALUES (${id}, ${batchId})
-          ON CONFLICT DO NOTHING
-        `;
-      }
-    } else {
-      for (const batchId of resolvedBatchIds) {
-        await sql`
-          INSERT INTO module_batches (module_id, batch_id)
-          VALUES (${id}, ${batchId})
-          ON CONFLICT DO NOTHING
-        `;
-      }
+    for (const batchId of resolvedBatchIds) {
+      await sql`
+        INSERT INTO module_batches (module_id, batch_id)
+        VALUES (${id}, ${batchId})
+        ON CONFLICT DO NOTHING
+      `;
     }
 
     await resetLearnerDataForModuleAssignment(sql, id, resolvedBatchIds);
+
+    // Batch assignments just changed: drop cached learner allows and every
+    // dashboard/list cache built from them.
+    invalidateLearnerAccessForModule(id);
+    invalidateAdminCaches();
 
     await sql`
       INSERT INTO upload_files (original_name, pdf_url, page_count, uploaded_by, module_id, content_hash)

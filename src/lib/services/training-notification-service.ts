@@ -461,7 +461,7 @@ export async function sendFailedReviewGuidanceEmails(
         FROM users u
         INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
         LEFT JOIN course_progress cp
-          ON cp.user_email = u.email
+          ON LOWER(cp.user_email) = LOWER(u.email)
           AND cp.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
           AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
@@ -484,7 +484,7 @@ export async function sendFailedReviewGuidanceEmails(
         FROM users u
         INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
         LEFT JOIN assessment_progress ap
-          ON ap.user_email = u.email
+          ON LOWER(ap.user_email) = LOWER(u.email)
           AND ap.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
           AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
@@ -650,6 +650,62 @@ async function recordNotification(
   `;
 }
 
+/**
+ * Reserve the one-shot notification slot before sending. The unique constraint on
+ * (module_id, user_email, notification_type) makes the insert atomic, so two
+ * concurrent requests cannot both mail the learner. Returns false when the slot
+ * was already taken.
+ */
+async function claimNotification(
+  sql: Sql,
+  moduleId: string,
+  userEmail: string,
+  type: "invited" | "completed",
+): Promise<boolean> {
+  const email = userEmail.toLowerCase();
+  const isCourse = await isCourseModule(sql, moduleId);
+  const rows = isCourse
+    ? await sql`
+        INSERT INTO course_notifications (module_id, user_email, notification_type)
+        VALUES (${moduleId}, ${email}, ${type})
+        ON CONFLICT (module_id, user_email, notification_type) DO NOTHING
+        RETURNING 1 AS claimed
+      `
+    : await sql`
+        INSERT INTO training_notifications (module_id, user_email, notification_type)
+        VALUES (${moduleId}, ${email}, ${type})
+        ON CONFLICT (module_id, user_email, notification_type) DO NOTHING
+        RETURNING 1 AS claimed
+      `;
+  return rows.length > 0;
+}
+
+/** Give the slot back when the send failed, so a later retry can deliver. */
+async function releaseNotificationClaim(
+  sql: Sql,
+  moduleId: string,
+  userEmail: string,
+  type: "invited" | "completed",
+): Promise<void> {
+  const email = userEmail.toLowerCase();
+  const isCourse = await isCourseModule(sql, moduleId);
+  if (isCourse) {
+    await sql`
+      DELETE FROM course_notifications
+      WHERE module_id = ${moduleId}
+        AND LOWER(user_email) = ${email}
+        AND notification_type = ${type}
+    `;
+    return;
+  }
+  await sql`
+    DELETE FROM training_notifications
+    WHERE module_id = ${moduleId}
+      AND LOWER(user_email) = ${email}
+      AND notification_type = ${type}
+  `;
+}
+
 /** Append-only send log — every outbound training/course email. */
 export async function recordNotificationEvent(
   sql: Sql,
@@ -801,7 +857,7 @@ export async function sendModuleInvitationEmails(
         FROM users u
         INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
         LEFT JOIN course_progress cp
-          ON cp.user_email = u.email
+          ON LOWER(cp.user_email) = LOWER(u.email)
           AND cp.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
           AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
@@ -824,7 +880,7 @@ export async function sendModuleInvitationEmails(
         FROM users u
         INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
         LEFT JOIN assessment_progress ap
-          ON ap.user_email = u.email
+          ON LOWER(ap.user_email) = LOWER(u.email)
           AND ap.module_id = ${moduleId}
         WHERE mb.module_id = ${moduleId}
           AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
@@ -877,6 +933,28 @@ export async function sendModuleInvitationEmails(
       continue;
     }
 
+    // Reminders are repeatable by design (unlike the one-shot invitation), so the
+    // guard is per day — otherwise a double-click re-mails the whole batch.
+    if (
+      !forceResend &&
+      reminderOnlyNotStarted &&
+      (await wasEventSentToday(sql, moduleId, email, "reminder"))
+    ) {
+      skipped++;
+      continue;
+    }
+
+    // Claim the one-shot invite slot before sending so concurrent admin clicks
+    // cannot both mail the learner. forceResend intentionally skips the claim.
+    let inviteClaimed = false;
+    if (!reminderOnlyNotStarted && !forceResend) {
+      if (!(await claimNotification(sql, moduleId, email, "invited"))) {
+        skipped++;
+        continue;
+      }
+      inviteClaimed = true;
+    }
+
     try {
       const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
       const subjectPrefix = reminderOnlyNotStarted
@@ -916,7 +994,7 @@ export async function sendModuleInvitationEmails(
               durationLabel,
             }),
       });
-      if (!reminderOnlyNotStarted) {
+      if (!reminderOnlyNotStarted && !inviteClaimed) {
         await recordNotification(sql, moduleId, email, "invited");
       }
       const eventBatchId =
@@ -934,6 +1012,12 @@ export async function sendModuleInvitationEmails(
       );
       sent++;
     } catch (err) {
+      if (inviteClaimed) {
+        await releaseNotificationClaim(sql, moduleId, email, "invited").catch(
+          (releaseErr) =>
+            console.error("[training-notification invite release]", releaseErr),
+        );
+      }
       failed++;
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`${email}: ${msg}`);
@@ -1125,6 +1209,12 @@ export async function sendModuleCompletionEmail(
     kind === "course" ? "Relanto AI Course" : "Relanto Compliance Training";
   const subjectPrefix = kind === "course" ? "Completed" : "Submitted";
 
+  // Claim before sending: the earlier check-then-send left a window where two
+  // completion requests (double submit, retry) both mailed the learner.
+  if (!(await claimNotification(sql, moduleId, email, "completed"))) {
+    return { ok: true, message: "Completion email already sent.", emailSent: true };
+  }
+
   try {
     await sendGraphMail({
       to: email,
@@ -1143,12 +1233,14 @@ export async function sendModuleCompletionEmail(
       }),
       inlineAttachments,
     });
-    await recordNotification(sql, moduleId, email, "completed");
     await recordNotificationEvent(sql, moduleId, email, "completed");
     return { ok: true, message: "Completion email sent.", emailSent: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";
     console.error("[training-notification complete]", email, err);
+    await releaseNotificationClaim(sql, moduleId, email, "completed").catch(
+      (releaseErr) => console.error("[training-notification release]", releaseErr),
+    );
     return { ok: false, message, emailSent: false };
   }
 }

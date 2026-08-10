@@ -1,5 +1,6 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { failAssessmentAbandonmentDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
       reason: typeof reason === "string" ? reason : undefined,
     });
 
+    invalidateAdminCachesAsync();
     return NextResponse.json({ ok: result.ok, status: result.status });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to abandon assessment";

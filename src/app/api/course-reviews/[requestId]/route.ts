@@ -43,7 +43,15 @@ export async function PATCH(
     const sql = getSql();
 
     if (action === "approve") {
-      await approveReviewRequestDb(sql, requestId, adminUsername);
+      const result = await approveReviewRequestDb(sql, requestId, adminUsername);
+      // Always bust caches: max-retake path mutates progress + rejects the request.
+      invalidateAdminCaches();
+      if (!result.ok) {
+        return NextResponse.json(
+          { ok: false, error: result.message, code: result.code },
+          { status: 409 },
+        );
+      }
     } else if (action === "reject") {
       if (!comment?.trim()) {
         return NextResponse.json(
@@ -57,16 +65,13 @@ export async function PATCH(
         adminUsername,
         String(comment).trim(),
       );
+      invalidateAdminCaches();
     } else {
       return NextResponse.json(
         { ok: false, error: "action must be approve or reject." },
         { status: 400 },
       );
     }
-
-    // Review decisions change the admin queue, the learner dashboard CTA and
-    // the module viewer mode — serve all three fresh on the next read.
-    invalidateAdminCaches();
 
     return NextResponse.json({ ok: true });
   } catch (err) {
