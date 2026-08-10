@@ -288,6 +288,7 @@ export function MCQCheckpoint({
   };
 
   const handleContinue = () => {
+    if (validating || !submitted) return;
     const isLast =
       totalCheckpoints > 0 && checkpointNumber >= totalCheckpoints;
     onContinue(wasCorrect);

@@ -238,11 +238,17 @@ export function CoursePlayer({
   const [awaitingRetakeRestart, setAwaitingRetakeRestart] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const [saveExitSaving, setSaveExitSaving] = useState(false);
-  const [showWelcomeBack, setShowWelcomeBack] = useState(false);
+  const [showWelcomeBack, setShowWelcomeBack] = useState(
+    () => Boolean(shouldResumeFromCheckpoint),
+  );
   /** Suppress fail overlay while navigating away after Exit confirm. */
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
-  const [showProctorRules, setShowProctorRules] = useState(!autoStartSession);
-  const [sessionStarted, setSessionStarted] = useState(autoStartSession);
+  const [showProctorRules, setShowProctorRules] = useState(
+    () => !autoStartSession && !shouldResumeFromCheckpoint,
+  );
+  const [sessionStarted, setSessionStarted] = useState(
+    () => autoStartSession || shouldResumeFromCheckpoint,
+  );
   const [showContentOverview, setShowContentOverview] = useState(false);
   const [sessionStartError, setSessionStartError] = useState<string | null>(null);
   const [sessionStartMs, setSessionStartMs] = useState<number | null>(null);
@@ -273,6 +279,14 @@ export function CoursePlayer({
     initialCheckpoint && initialCheckpoint.htmlSlideIndex > 0
       ? initialCheckpoint.htmlSlideIndex
       : null,
+  );
+  /** Hide HTML iframe until resume goto is applied (avoids flash of slide 0). */
+  const [htmlResumeReady, setHtmlResumeReady] = useState(
+    () =>
+      !(
+        initialCheckpoint &&
+        initialCheckpoint.htmlSlideIndex > 0
+      ),
   );
   const autosaveInFlightRef = useRef(false);
   const resumeHydratedAnswersRef = useRef(false);
@@ -760,6 +774,50 @@ export function CoursePlayer({
     }
   }, [autoStartSession, sessionStartMs]);
 
+  // Save & Exit resume: skip "I understand" — land on Welcome Back immediately.
+  const resumeBootstrapRef = useRef(false);
+  useEffect(() => {
+    if (!shouldResumeFromCheckpoint || resumeBootstrapRef.current) return;
+    if (!user?.username) return;
+    if (awaitingRetakeRestart || isFailed) return;
+    resumeBootstrapRef.current = true;
+    setShowProctorRules(false);
+    setShowContentOverview(false);
+    setShowWelcomeBack(true);
+    setSessionStarted(true);
+    if (sessionStartMs === null) setSessionStartMs(Date.now());
+    markInProgress(
+      user.username,
+      module.id,
+      module.title,
+      user.batchId,
+      totalSlides,
+      { forceResume: true },
+    );
+    void syncCourseProgressStart({
+      userEmail: user.username,
+      moduleId: module.id,
+      moduleTitle: module.title,
+      batchId: user.batchId,
+      totalSlides,
+      assignedMcqCount: moduleMcqs.length,
+      freshStart: false,
+    });
+    void enterFullscreen();
+  }, [
+    shouldResumeFromCheckpoint,
+    user?.username,
+    user?.batchId,
+    module.id,
+    module.title,
+    totalSlides,
+    moduleMcqs.length,
+    awaitingRetakeRestart,
+    isFailed,
+    sessionStartMs,
+    enterFullscreen,
+  ]);
+
   useEffect(() => {
     const onFsChange = () => {
       setIsFullscreen(document.fullscreenElement !== null);
@@ -790,6 +848,23 @@ export function CoursePlayer({
     const total = moduleMcqs.length;
     if (total > 0 && answered < total) {
       setQuizFinalizing(false);
+      if (moduleMcqs.length) {
+        const idx = Math.min(
+          Math.max(answered, 0),
+          moduleMcqs.length - 1,
+        );
+        setQuizIndex(idx);
+        setGateMcq(moduleMcqs[idx] ?? FALLBACK_MCQ);
+        setMcqOpen(true);
+      }
+      setCompletionNotice({
+        title: "Almost done",
+        message: `Please answer all questions before finishing (${answered} of ${total} recorded).`,
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
       return;
     }
 
@@ -1081,21 +1156,36 @@ export function CoursePlayer({
       setGateMcq(moduleMcqs[next] ?? FALLBACK_MCQ);
       return;
     }
-    // Close immediately so the last question never flashes unanswered while
-    // finalize runs, and block the quiz-only effect from reopening it.
+    // Last question: keep finalizing until score report opens — never drop into
+    // the "Ready for the quiz" shell if the answer ref is momentarily behind.
     setQuizFinalizing(true);
     setMcqOpen(false);
-    if (!answeredQuestionIdsRef.current.has(gateMcq.id)) {
-      window.setTimeout(() => {
-        if (answeredQuestionIdsRef.current.has(gateMcq.id)) {
-          void handleFinishAttempt();
-        } else {
-          setQuizFinalizing(false);
-        }
-      }, 400);
-      return;
-    }
-    void handleFinishAttempt();
+
+    const finishWhenReady = (attempt: number) => {
+      if (answeredQuestionIdsRef.current.has(gateMcq.id)) {
+        void handleFinishAttempt();
+        return;
+      }
+      if (attempt >= 8) {
+        // Give up waiting — reopen last question with an error, stay out of Ready shell.
+        setQuizFinalizing(false);
+        setGateMcq(moduleMcqs[Math.min(quizIndex, moduleMcqs.length - 1)] ?? FALLBACK_MCQ);
+        setMcqOpen(true);
+        setCompletionNotice({
+          title: "Answer not saved yet",
+          message:
+            "Please wait for the last answer to confirm, then tap Continue again.",
+          variant: "info",
+          acknowledgeLabel: "OK",
+          showAcknowledgeButton: true,
+          onAcknowledge: () => setCompletionNotice(null),
+        });
+        return;
+      }
+      window.setTimeout(() => finishWhenReady(attempt + 1), 200);
+    };
+
+    finishWhenReady(0);
   };
 
   const checkpointOpen =
@@ -1204,7 +1294,12 @@ export function CoursePlayer({
           { type: COURSE_EMBED_COMMAND, command: "goto", index: pendingGoto },
           "*",
         );
+        // Reveal after the embed has processed goto (next tick).
+        window.setTimeout(() => setHtmlResumeReady(true), 50);
         return;
+      }
+      if (!htmlResumeReady) {
+        setHtmlResumeReady(true);
       }
 
       if (!nextState.slideComplete) {
@@ -1355,6 +1450,7 @@ export function CoursePlayer({
       await loadIntegrityState();
       resetForProctorRetake(user.username, module.id);
       answeredQuestionIdsRef.current = new Set();
+      resumeHydratedAnswersRef.current = false;
       resetGamificationState();
       setContentStepIndex(0);
       setPdfPage(1);
@@ -1374,16 +1470,19 @@ export function CoursePlayer({
       setCompletionNotice(null);
       setForceQuizOnlyRetake(false);
       setShowExitModal(false);
+      setShowWelcomeBack(false);
       proctorHook.hydrateFromProgress(null);
       setIsFailed(false);
       setAwaitingRetakeRestart(false);
       proctorRetakeStartedRef.current = true;
       setDbStatus("not_started");
-      setShowProctorRules(true);
-      setSessionStarted(false);
-      setSessionStartMs(null);
+      // One-shot into content — do not bounce back through ProctorRulesModal.
+      setShowProctorRules(false);
+      setSessionStarted(true);
+      setSessionStartMs(Date.now());
+      setShowContentOverview(contentSteps.length > 0);
       resetAcknowledgementForm();
-      void syncCourseProgressStart({
+      await syncCourseProgressStart({
         userEmail: user.username,
         moduleId: module.id,
         moduleTitle: module.title,
@@ -1392,6 +1491,15 @@ export function CoursePlayer({
         assignedMcqCount: moduleMcqs.length,
         freshStart: true,
       });
+      markInProgress(
+        user.username,
+        module.id,
+        module.title,
+        user.batchId,
+        totalSlides,
+        { forceResume: true },
+      );
+      void enterFullscreen();
     } finally {
       setProctorRestartLoading(false);
     }
@@ -1402,9 +1510,11 @@ export function CoursePlayer({
     module.title,
     moduleMcqs,
     totalSlides,
+    contentSteps.length,
     loadIntegrityState,
     resetGamificationState,
     resetAcknowledgementForm,
+    enterFullscreen,
   ]);
 
   const handleSubmitReview = async (text: string) => {
@@ -1455,7 +1565,12 @@ export function CoursePlayer({
   };
 
   if (!sessionStarted) {
-    if (integrityHydrated && !isNavigatingAway && isFailed && dbStatus !== "not_started") {
+    // Failed lockout OR approved-retake restart — never show ProctorRules first.
+    if (
+      integrityHydrated &&
+      !isNavigatingAway &&
+      (awaitingRetakeRestart || (isFailed && dbStatus !== "not_started"))
+    ) {
       return (
         <LazyMotion features={domAnimation}>
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-zinc-100 p-4">
@@ -1606,7 +1721,7 @@ export function CoursePlayer({
         />
       ) : (
         <>
-      {!showAcknowledgement && !showFinalQa && !showScoreResult && (
+      {!showAcknowledgement && !showFinalQa && !showScoreResult && !showWelcomeBack && (
         <div className="grid shrink-0 gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3 sm:grid-cols-[minmax(160px,1fr)_auto_auto] sm:items-center">
           <ProgressBar value={progressPercent} />
           <ScoreDisplay correctAnswers={correctAnswers} totalQuestions={totalQuestions} />
@@ -1615,7 +1730,10 @@ export function CoursePlayer({
       )}
 
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <AnimatePresence mode="wait">
+        {showWelcomeBack || showingOverview ? (
+          <div className="flex min-h-0 flex-1 bg-zinc-950" aria-hidden />
+        ) : (
+        <AnimatePresence mode="sync">
           {showAcknowledgement ? (
             <CourseAcknowledgementPanel
               signatureName={signatureName}
@@ -1639,10 +1757,9 @@ export function CoursePlayer({
           ) : !showFinalQa ? (
             <motion.div
               key={quizOnlyMode ? "quiz-only" : `${contentStepIndex}-${pdfPage}`}
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -12 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
               className="flex min-h-0 flex-1 flex-col p-0"
             >
               {quizOnlyMode ? (
@@ -1678,7 +1795,12 @@ export function CoursePlayer({
                   )}
                 </div>
               ) : phase === "content" && currentContentStep ? (
-                <div className="relative flex min-h-0 flex-1 flex-col">
+                <div
+                  className={cn(
+                    "relative flex min-h-0 flex-1 flex-col",
+                    isHtmlLessonStep && !htmlResumeReady && "opacity-0",
+                  )}
+                >
                   <CourseStepContent
                     step={currentContentStep}
                     pdfPage={pdfPage}
@@ -1692,7 +1814,9 @@ export function CoursePlayer({
                 !mcqOpen &&
                 !quizFinalizing &&
                 !showScoreResult &&
-                !completionNotice ? (
+                !completionNotice &&
+                quizIndex === 0 &&
+                answeredCount === 0 ? (
                 <div className="mx-auto flex h-full w-full max-w-3xl flex-col items-center justify-center gap-4 p-4">
                   <div className="w-full rounded-lg border border-[#2e3192]/30 bg-gradient-to-r from-[#2e3192]/15 via-zinc-900 to-[#f15a24]/10 px-5 py-4 text-center">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#f15a24]">
@@ -1751,13 +1875,15 @@ export function CoursePlayer({
             </motion.div>
           )}
         </AnimatePresence>
+        )}
       </div>
 
       {phase === "content" &&
         !quizOnlyMode &&
         !showFinalQa &&
         !showAcknowledgement &&
-        !showScoreResult && (
+        !showScoreResult &&
+        !showWelcomeBack && (
           <footer className="relative z-[70] flex h-14 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-4">
             <span className="text-xs text-zinc-500">
               {isHtmlLessonStep && htmlEmbedState
@@ -1903,7 +2029,12 @@ export function CoursePlayer({
                     module.title,
                     user.batchId,
                     totalSlides,
+                    { forceResume: true },
                   );
+                  const { invalidateLearnerDashboardClientCache } = await import(
+                    "@/lib/progress-api"
+                  );
+                  invalidateLearnerDashboardClientCache();
                 }
                 isExitingRef.current = true;
                 setIsNavigatingAway(true);

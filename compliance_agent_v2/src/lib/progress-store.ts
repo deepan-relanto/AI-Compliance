@@ -98,6 +98,7 @@ export function markInProgress(
   moduleTitle: string,
   batchId: string,
   totalSlides: number,
+  options?: { forceResume?: boolean },
 ): void {
   const all = readAll();
   const k = key(username, moduleId);
@@ -127,7 +128,8 @@ export function markInProgress(
     return;
   }
 
-  if (isProctorLocked(existing)) {
+  // Save & Exit must clear a stale proctor-lock so the dashboard shows Continue.
+  if (isProctorLocked(existing) && !options?.forceResume) {
     return;
   }
 
@@ -142,24 +144,18 @@ export function markInProgress(
     totalSlides,
     status: "in_progress",
     lastAccessedAt: Date.now(),
-    completedAt: existing?.completedAt,
-    warningCount: existing?.warningCount ?? 0,
-    warningHistory: existing?.warningHistory ?? [],
-    failedAt: existing?.failedAt,
-    failedReason: existing?.failedReason,
-    retakeCount: existing?.retakeCount ?? 0,
-    lastFailureAt: existing?.lastFailureAt,
-    lastFailureReason: existing?.lastFailureReason,
-    archivedWarnings: existing?.archivedWarnings ?? [],
-    mcqCorrect: existing?.mcqCorrect,
-    mcqTotal: existing?.mcqTotal,
-    scorePercent: existing?.scorePercent,
-    acknowledgement: existing?.acknowledgement,
+    warningCount: options?.forceResume ? (existing.warningCount ?? 0) : (existing.warningCount ?? 0),
+    warningHistory: existing.warningHistory ?? [],
+    retakeCount: existing.retakeCount ?? 0,
+    archivedWarnings: existing.archivedWarnings ?? [],
+    scorePercent: options?.forceResume ? existing.scorePercent : existing.scorePercent,
+    mcqCorrect: existing.mcqCorrect,
+    mcqTotal: existing.mcqTotal,
+    failedReason: options?.forceResume ? undefined : existing.failedReason,
   };
   writeAll(all);
-
   if (isRetake) {
-    logAudit("Retake Started", username, `Started Retake #${existing.retakeCount} of ${moduleTitle}`);
+    logAudit("Assessment Retake Started", username, `Started retake of ${moduleTitle}`);
   }
 }
 

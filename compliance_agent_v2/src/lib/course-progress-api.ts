@@ -165,6 +165,10 @@ export async function syncCourseResumeCheckpoint(params: {
     if (!res.ok || !data.ok) {
       return { ok: false, message: data.message ?? "Could not save progress." };
     }
+    const { invalidateLearnerDashboardClientCache } = await import(
+      "@/lib/progress-api"
+    );
+    invalidateLearnerDashboardClientCache();
     return { ok: true, checkpoint: data.checkpoint };
   } catch {
     return { ok: false, message: "Could not reach the server to save progress." };
