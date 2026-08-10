@@ -33,6 +33,9 @@
     "db:reconcile-progress": "node scripts/db-reconcile-progress.mjs",
     "db:reset-course-assignments": "node scripts/db-reset-course-assignments.mjs",
     "db:update-bundle-html": "node scripts/db-update-bundle-html.mjs",
+    "infographics:build": "node scripts/build-infographics.mjs",
+    "infographics:publish": "node scripts/db-publish-infographics.mjs",
+    "infographics:list": "node scripts/db-list-infographics.mjs",
     "db:sync-course-assets": "node scripts/db-sync-course-assets.mjs",
     "db:verify-course-assets": "node scripts/db-verify-course-assets.mjs",
     "benchmark:latency": "npx --yes tsx scripts/latency-benchmark.ts"
