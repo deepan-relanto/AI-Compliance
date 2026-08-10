@@ -439,7 +439,10 @@ export async function reuseCourseModuleDb(
 
   await sql`
     UPDATE course_modules
-    SET mcq_generation_status = 'completed', updated_at = NOW()
+    SET
+      mcq_generation_status = 'completed',
+      allow_save_exit = TRUE,
+      updated_at = NOW()
     WHERE id = ${id}
   `;
 
