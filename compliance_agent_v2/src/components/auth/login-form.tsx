@@ -116,19 +116,20 @@ export function LoginForm() {
         await signOut({ redirect: false });
       }
       const postLogin = resolvePostLoginPath(rawCallback, undefined, forEmail);
-      const authParams = isTraining ? { prompt: "select_account" as const } : undefined;
+      // Always show Microsoft account picker so logout → sign-in does not
+      // silently reuse the previous SSO session (admin vs learner).
       await signIn(
         "microsoft-entra-id",
         {
           callbackUrl: postLogin,
           redirect: true,
         },
-        authParams,
+        { prompt: "select_account" },
       );
     } finally {
       setLoading(false);
     }
-  }, [authConfigured, rawCallback, isTraining, wrongAccount, forEmail]);
+  }, [authConfigured, rawCallback, wrongAccount, forEmail]);
 
   return (
     <LazyMotion features={domAnimation}>

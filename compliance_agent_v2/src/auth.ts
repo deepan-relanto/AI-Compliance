@@ -31,6 +31,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           authorization: {
             params: {
               scope: "openid profile email User.Read",
+              // Force account chooser on every Microsoft auth redirect.
+              prompt: "select_account",
             },
           },
         }),
