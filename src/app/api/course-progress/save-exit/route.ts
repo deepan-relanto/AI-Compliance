@@ -1,6 +1,7 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { parseCourseResumeCheckpoint } from "@/lib/course-resume";
 import { getSql } from "@/lib/db";
+import { invalidateCache } from "@/lib/api-cache";
 import { saveResumeCheckpointDb } from "@/lib/services/course-progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -57,6 +58,9 @@ export async function POST(req: NextRequest) {
         { status: 409 },
       );
     }
+
+    invalidateCache(`learner-dashboard:${access.email.toLowerCase()}`);
+    invalidateCache("module:detail:");
 
     return NextResponse.json({
       ok: true,

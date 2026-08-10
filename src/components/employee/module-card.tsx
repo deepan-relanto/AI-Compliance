@@ -8,7 +8,7 @@ import type { ModuleStatus, TrainingModule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { MODULE_KIND_LABELS } from "@/lib/module-kind";
-import { Clock, FileText, Layers, Play, RotateCcw, Trophy } from "lucide-react";
+import { Clock, FileText, Layers, Play, RotateCcw, ShieldAlert, Trophy } from "lucide-react";
 import { requestScoreRetake } from "@/lib/progress-api";
 import { resetForScoreRetake, resetLocalAttempt } from "@/lib/progress-store";
 import { useRouter } from "next/navigation";
@@ -95,23 +95,30 @@ export function ModuleCard({ module }: ModuleCardProps) {
 
   const badgeStatus = displayStatus(status, scorePercent);
 
+  const canRequestRetake =
+    proctorLocked && status !== "permanently_failed";
+
   const ctaLabel = canScoreRetake
     ? "Retake quiz"
     : isFullAssessmentRetake
       ? "Retake assessment"
-      : proctorLocked
+      : status === "permanently_failed"
         ? "View status"
-        : status === "completed"
-          ? "Review"
-          : badgeStatus === "in_progress"
-            ? "Continue"
-            : "Start";
+        : canRequestRetake
+          ? "Request retake"
+          : status === "completed"
+            ? "Review"
+            : badgeStatus === "in_progress" ||
+                (Boolean(module.allowSaveExit) && status === "in_progress")
+              ? "Continue"
+              : "Start";
 
-  const ctaVariant = canScoreRetake
-    ? "primary"
-    : status === "completed"
-      ? "secondary"
-      : "primary";
+  const ctaVariant =
+    canScoreRetake || isFullAssessmentRetake || canRequestRetake
+      ? "primary"
+      : status === "completed"
+        ? "secondary"
+        : "primary";
 
   return (
     <article
@@ -198,10 +205,19 @@ export function ModuleCard({ module }: ModuleCardProps) {
                 Full retake — slides, signature, and feedback
               </p>
             )}
+            {canRequestRetake && (
+              <p className="mb-2 text-center text-[10px] font-medium leading-snug text-zinc-500 sm:text-left">
+                Attempt locked — request admin approval to retake
+              </p>
+            )}
             <Button
               variant={ctaVariant}
               size="md"
-              className={cn("w-full", canScoreRetake && "shadow-sm")}
+              className={cn(
+                "w-full gap-1.5",
+                (canScoreRetake || isFullAssessmentRetake || canRequestRetake) &&
+                  "shadow-sm",
+              )}
               onClick={async () => {
                 if (!user?.username) {
                   router.push(`/training/${module.id}`);
@@ -227,7 +243,7 @@ export function ModuleCard({ module }: ModuleCardProps) {
                   (isFullAssessmentRetake ||
                     status === "not_started" ||
                     (status === "in_progress" && !proctorLocked));
-                if (proctorLocked) {
+                if (proctorLocked || canRequestRetake) {
                   router.push(`/training/${module.id}`);
                   return;
                 }
@@ -238,12 +254,14 @@ export function ModuleCard({ module }: ModuleCardProps) {
                 router.push(`/training/${module.id}${fresh}`);
               }}
             >
-              {canScoreRetake ? (
-                <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {canScoreRetake || isFullAssessmentRetake ? (
+                <RotateCcw className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+              ) : canRequestRetake ? (
+                <ShieldAlert className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               ) : (
-                <Play className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <Play className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
               )}
-              {ctaLabel}
+              <span className="truncate">{ctaLabel}</span>
             </Button>
           </div>
         </div>
