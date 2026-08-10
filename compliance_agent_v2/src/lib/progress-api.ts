@@ -73,9 +73,12 @@ export function invalidateLearnerDashboardClientCache(): void {
   learnerDashCache = null;
 }
 
-export async function fetchLearnerDashboard(): Promise<FetchLearnerDashboardResult> {
+export async function fetchLearnerDashboard(
+  options?: { force?: boolean },
+): Promise<FetchLearnerDashboardResult> {
   try {
     if (
+      !options?.force &&
       learnerDashCache &&
       Date.now() - learnerDashCache.at < LEARNER_DASH_CLIENT_TTL_MS
     ) {

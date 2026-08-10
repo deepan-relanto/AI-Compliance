@@ -316,6 +316,7 @@ export async function approveReviewRequestDb(
         score_percent = NULL,
         completed_at = NULL,
         acknowledgement = NULL,
+        resume_checkpoint = NULL,
         last_accessed_at = NOW(),
         updated_at = NOW()
     WHERE user_email = ${request.username} AND module_id = ${request.moduleId}

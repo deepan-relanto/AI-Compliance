@@ -1,5 +1,6 @@
 import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
+import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import {
   approveReviewRequestDb,
   rejectReviewRequestDb,
@@ -62,6 +63,8 @@ export async function PATCH(
         { status: 400 },
       );
     }
+
+    invalidateAdminCaches();
 
     return NextResponse.json({ ok: true });
   } catch (err) {

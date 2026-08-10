@@ -179,6 +179,26 @@ export function MonitoringPanel({
     await Promise.all([mutateSummary(), mutateTab()]);
   };
 
+  /** Flip the decided row instantly, then confirm against the server. */
+  const applyReviewDecision = async (
+    reqId: string,
+    status: ReviewRequest["status"],
+  ) => {
+    await mutateTab(
+      (current: { ok?: boolean; reviews?: ReviewRequest[] } | undefined) => {
+        if (!current?.ok || !Array.isArray(current.reviews)) return current;
+        return {
+          ...current,
+          reviews: current.reviews.map((r) =>
+            r.id === reqId ? { ...r, status } : r,
+          ),
+        };
+      },
+      { revalidate: false },
+    );
+    await refreshData();
+  };
+
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     setPage(1);
@@ -238,8 +258,8 @@ export function MonitoringPanel({
     setActionError("");
     try {
       await approveReview(reqId);
-      await refreshData();
       setSelectedReview(null);
+      await applyReviewDecision(reqId, "Approved");
     } catch (err: unknown) {
       setActionError(
         err instanceof Error ? err.message : "Failed to approve request.",
@@ -256,10 +276,10 @@ export function MonitoringPanel({
     setActionError("");
     try {
       await rejectReview(reqId, adminComment.trim());
-      await refreshData();
       setSelectedReview(null);
       setAdminComment("");
       setShowRejectForm(false);
+      await applyReviewDecision(reqId, "Rejected");
     } catch (err: unknown) {
       setActionError(
         err instanceof Error ? err.message : "Failed to reject request.",
