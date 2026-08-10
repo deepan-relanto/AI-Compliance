@@ -268,7 +268,15 @@ export function CoursePlayer({
   const [badgePopup, setBadgePopup] = useState<GamificationBadge | null>(null);
 
   const [htmlEmbedState, setHtmlEmbedState] = useState<CourseEmbedState | null>(null);
+  /**
+   * AnimatePresence mode="sync" keeps the outgoing step mounted briefly. Its
+   * iframe cleanup calls ref(null) after the incoming iframe already attached —
+   * ignoring null keeps postMessage aimed at the live deck.
+   */
   const htmlIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const setHtmlIframeRef = useCallback((node: HTMLIFrameElement | null) => {
+    if (node) htmlIframeRef.current = node;
+  }, []);
   const [nextSlideCooldownMs, setNextSlideCooldownMs] = useState(0);
   const [nextSlideCooldownToken, setNextSlideCooldownToken] = useState(0);
   const prevSlideCompleteKeyRef = useRef<string | null>(null);
@@ -299,6 +307,23 @@ export function CoursePlayer({
       htmlAdvanceRetryRef.current = null;
     }
   }, []);
+
+  const postToHtmlEmbed = useCallback(
+    (message: { type: typeof COURSE_EMBED_COMMAND; command: string; index?: number }) => {
+      let iframe = htmlIframeRef.current;
+      // During step transitions AnimatePresence can leave a detached iframe in
+      // the ref; prefer the live deck (last sandbox iframe in the player).
+      if (!iframe?.isConnected) {
+        const all = document.querySelectorAll(
+          ".training-interactive iframe[sandbox]",
+        );
+        iframe = (all.item(all.length - 1) as HTMLIFrameElement | null) ?? null;
+        if (iframe) htmlIframeRef.current = iframe;
+      }
+      iframe?.contentWindow?.postMessage(message, "*");
+    },
+    [],
+  );
 
   const currentContentStep = contentSteps[contentStepIndex];
   const isHtmlLessonStep =
@@ -1035,14 +1060,19 @@ export function CoursePlayer({
     if (isHtmlLessonStep) {
       if (!htmlEmbedState?.atEnd) {
         const fromIndex = htmlEmbedState?.slideIndex ?? 0;
-        // Only a slide that was already fully revealed should have moved on.
+        // Fully revealed slides: goto bypasses the iframe's own cooldown so a
+        // dropped/locked "next" cannot leave the learner stuck on intro decks.
         const shouldHaveMoved = htmlEmbedState?.slideComplete === true;
-        htmlIframeRef.current?.contentWindow?.postMessage(
-          { type: COURSE_EMBED_COMMAND, command: "next" },
-          "*",
-        );
-        // If the deck swallowed the command (its own cooldown, a dropped
-        // message), nudge it directly so the learner is never stuck.
+        if (shouldHaveMoved) {
+          postToHtmlEmbed({
+            type: COURSE_EMBED_COMMAND,
+            command: "goto",
+            index: fromIndex + 1,
+          });
+        } else {
+          postToHtmlEmbed({ type: COURSE_EMBED_COMMAND, command: "next" });
+        }
+        // If the deck still didn't move (ref race / late mount), nudge again.
         clearHtmlAdvanceRetry();
         if (shouldHaveMoved) {
           htmlAdvanceRetryRef.current = window.setTimeout(() => {
@@ -1050,10 +1080,11 @@ export function CoursePlayer({
             const latest = htmlEmbedStateRef.current;
             if (!latest || latest.slideIndex !== fromIndex) return;
             if (!latest.slideComplete || latest.atEnd) return;
-            htmlIframeRef.current?.contentWindow?.postMessage(
-              { type: COURSE_EMBED_COMMAND, command: "goto", index: fromIndex + 1 },
-              "*",
-            );
+            postToHtmlEmbed({
+              type: COURSE_EMBED_COMMAND,
+              command: "goto",
+              index: fromIndex + 1,
+            });
           }, 900);
         }
         return;
@@ -1095,6 +1126,7 @@ export function CoursePlayer({
     isLastContentStep,
     startQuizPhase,
     clearHtmlAdvanceRetry,
+    postToHtmlEmbed,
     currentContentStep?.config.pageCount,
   ]);
 
@@ -1410,10 +1442,19 @@ export function CoursePlayer({
       const pendingGoto = pendingHtmlGotoRef.current;
       if (pendingGoto != null && pendingGoto > 0) {
         pendingHtmlGotoRef.current = null;
-        htmlIframeRef.current?.contentWindow?.postMessage(
-          { type: COURSE_EMBED_COMMAND, command: "goto", index: pendingGoto },
-          "*",
-        );
+        const target = event.source as Window | null;
+        if (target && typeof target.postMessage === "function") {
+          target.postMessage(
+            { type: COURSE_EMBED_COMMAND, command: "goto", index: pendingGoto },
+            "*",
+          );
+        } else {
+          postToHtmlEmbed({
+            type: COURSE_EMBED_COMMAND,
+            command: "goto",
+            index: pendingGoto,
+          });
+        }
         // Reveal after the embed has processed goto (next tick).
         window.setTimeout(() => setHtmlResumeReady(true), 50);
         return;
@@ -1432,7 +1473,7 @@ export function CoursePlayer({
     };
     window.addEventListener("message", onEmbedMessage);
     return () => window.removeEventListener("message", onEmbedMessage);
-  }, []);
+  }, [postToHtmlEmbed]);
 
   /** Debounced autosave for gated Save & Exit courses. */
   useEffect(() => {
@@ -1954,7 +1995,7 @@ export function CoursePlayer({
                     pdfPages={pdfPages}
                     moduleTitle={module.title}
                     onPdfPages={handlePdfPagesLoaded}
-                    htmlIframeRef={htmlIframeRef}
+                    htmlIframeRef={setHtmlIframeRef}
                   />
                 </div>
               ) : phase === "quiz" &&
