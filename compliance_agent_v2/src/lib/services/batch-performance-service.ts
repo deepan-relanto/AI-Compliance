@@ -2,6 +2,7 @@ import type { getSql } from "@/lib/db";
 import type {
   BatchAssessmentResult,
   BatchLearnerPerformance,
+  BatchModuleSummary,
   BatchPerformancePayload,
 } from "@/lib/batch-performance-types";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
@@ -54,22 +55,45 @@ export async function getBatchPerformance(
   const b = batchRows[0];
   const isCourse = track === "course";
 
+  /**
+   * Modules ever tied to this batch: current assignments UNION modules that
+   * already have progress rows for this batch_id (historical / unassigned).
+   * Read-only — never deletes junction or progress rows.
+   */
   const [moduleRows, memberRows, gridRows, summaryRows, outreachCounts] =
     await Promise.all([
     isCourse
       ? sql`
-          SELECT m.id, m.title
+          SELECT
+            m.id,
+            m.title,
+            EXISTS (
+              SELECT 1 FROM course_module_batches cmb
+              WHERE cmb.module_id = m.id AND cmb.batch_id = ${batchId}
+            ) AS currently_assigned
           FROM course_modules m
-          INNER JOIN course_module_batches mb ON mb.module_id = m.id
-          WHERE mb.batch_id = ${batchId}
+          WHERE m.id IN (
+            SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT module_id FROM course_progress WHERE batch_id = ${batchId}
+          )
           ORDER BY m.title
         `
       : sql`
-          SELECT m.id, m.title
+          SELECT
+            m.id,
+            m.title,
+            EXISTS (
+              SELECT 1 FROM module_batches mb
+              WHERE mb.module_id = m.id AND mb.batch_id = ${batchId}
+            ) AS currently_assigned
           FROM training_modules m
-          INNER JOIN module_batches mb ON mb.module_id = m.id
-          WHERE mb.batch_id = ${batchId}
-            AND m.mcq_generation_status = 'completed'
+          WHERE m.mcq_generation_status = 'completed'
+            AND m.id IN (
+              SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = ${batchId}
+            )
           ORDER BY m.title
         `,
     sql`
@@ -100,8 +124,11 @@ export async function getBatchPerformance(
           CROSS JOIN (
             SELECT m.id, m.title
             FROM course_modules m
-            INNER JOIN course_module_batches mb ON mb.module_id = m.id
-            WHERE mb.batch_id = ${batchId}
+            WHERE m.id IN (
+              SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM course_progress WHERE batch_id = ${batchId}
+            )
           ) bm
           LEFT JOIN course_progress ap
             ON ap.user_email = u.email
@@ -130,9 +157,12 @@ export async function getBatchPerformance(
           CROSS JOIN (
             SELECT m.id, m.title
             FROM training_modules m
-            INNER JOIN module_batches mb ON mb.module_id = m.id
-            WHERE mb.batch_id = ${batchId}
-              AND m.mcq_generation_status = 'completed'
+            WHERE m.mcq_generation_status = 'completed'
+              AND m.id IN (
+                SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
+                UNION
+                SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = ${batchId}
+              )
           ) bm
           LEFT JOIN assessment_progress ap
             ON ap.user_email = u.email
@@ -179,10 +209,13 @@ export async function getBatchPerformance(
               / NULLIF(COUNT(DISTINCT u.email), 0)
             )::int AS compliance
           FROM users u
-          INNER JOIN course_module_batches mb ON mb.batch_id = ${batchId}
-          INNER JOIN course_modules m ON m.id = mb.module_id
+          CROSS JOIN (
+            SELECT module_id AS id FROM course_module_batches WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT module_id AS id FROM course_progress WHERE batch_id = ${batchId}
+          ) bm
           LEFT JOIN course_progress ap
-            ON ap.user_email = u.email AND ap.module_id = m.id
+            ON ap.user_email = u.email AND ap.module_id = bm.id
           WHERE u.batch_id = ${batchId}
         `
       : sql`
@@ -223,11 +256,21 @@ export async function getBatchPerformance(
               / NULLIF(COUNT(DISTINCT u.email), 0)
             )::int AS compliance
           FROM users u
-          INNER JOIN module_batches mb ON mb.batch_id = ${batchId}
-          INNER JOIN training_modules m
-            ON m.id = mb.module_id AND m.mcq_generation_status = 'completed'
+          CROSS JOIN (
+            SELECT mb.module_id AS id
+            FROM module_batches mb
+            INNER JOIN training_modules tm
+              ON tm.id = mb.module_id AND tm.mcq_generation_status = 'completed'
+            WHERE mb.batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT ap.module_id AS id
+            FROM assessment_progress ap
+            INNER JOIN training_modules tm
+              ON tm.id = ap.module_id AND tm.mcq_generation_status = 'completed'
+            WHERE ap.batch_id = ${batchId}
+          ) bm
           LEFT JOIN assessment_progress ap
-            ON ap.user_email = u.email AND ap.module_id = m.id
+            ON ap.user_email = u.email AND ap.module_id = bm.id
           WHERE u.batch_id = ${batchId}
         `,
     // Parallel with grid — batch-scoped outreach (no module-id dependency).
@@ -237,6 +280,7 @@ export async function getBatchPerformance(
   const modules = moduleRows.map((m) => ({
     id: m.id as string,
     title: m.title as string,
+    currentlyAssigned: Boolean(m.currently_assigned),
   }));
 
   const learnerMap = new Map<string, BatchLearnerPerformance>();
@@ -325,6 +369,53 @@ export async function getBatchPerformance(
   const s = summaryRows[0] ?? {};
   const memberCount = Number(b.member_count ?? memberRows.length);
 
+  const moduleSummaries: BatchModuleSummary[] = modules.map((mod) => {
+    let started = 0;
+    let completed = 0;
+    let inProgress = 0;
+    let notStarted = 0;
+    let failed = 0;
+    const scored: number[] = [];
+    let passed = 0;
+
+    for (const learner of learnerMap.values()) {
+      const a = learner.assessments.find((x) => x.moduleId === mod.id);
+      const status = a?.status ?? "not_started";
+      if (status === "not_started") notStarted++;
+      else started++;
+      if (status === "completed") completed++;
+      else if (status === "in_progress") inProgress++;
+      else if (status === "failed" || status === "permanently_failed") failed++;
+      if (a?.scorePercent != null && a.mcqTotal > 0) {
+        scored.push(a.scorePercent);
+        if (a.scorePercent >= PASS_THRESHOLD_PERCENT) passed++;
+      }
+    }
+
+    const avgScore =
+      scored.length > 0
+        ? Math.round(scored.reduce((sum, n) => sum + n, 0) / scored.length)
+        : null;
+    const passRate =
+      scored.length > 0 ? Math.round((100 * passed) / scored.length) : null;
+    const compliance =
+      memberCount > 0 ? Math.round((100 * completed) / memberCount) : 0;
+
+    return {
+      id: mod.id,
+      title: mod.title,
+      currentlyAssigned: mod.currentlyAssigned,
+      started,
+      completed,
+      inProgress,
+      notStarted,
+      failed,
+      avgScore,
+      passRate,
+      compliance,
+    };
+  });
+
   return {
     batch: {
       id: b.id as string,
@@ -333,7 +424,7 @@ export async function getBatchPerformance(
       memberCount,
     },
     summary: {
-      modulesAssigned: modules.length,
+      modulesAssigned: modules.filter((m) => m.currentlyAssigned).length || modules.length,
       learnersStarted: Number(s.learners_started ?? 0),
       completed: Number(s.completed ?? 0),
       inProgress: Number(s.in_progress ?? 0),
@@ -342,6 +433,7 @@ export async function getBatchPerformance(
       compliance: Number(s.compliance ?? 0),
     },
     modules,
+    moduleSummaries,
     learners: Array.from(learnerMap.values()),
     generatedAt: new Date().toISOString(),
   };

@@ -21,6 +21,27 @@ export interface BatchLearnerPerformance {
   assessments: BatchAssessmentResult[];
 }
 
+export interface BatchModuleRef {
+  id: string;
+  title: string;
+  /** True when still linked via module_batches / course_module_batches. */
+  currentlyAssigned: boolean;
+}
+
+export interface BatchModuleSummary {
+  id: string;
+  title: string;
+  currentlyAssigned: boolean;
+  started: number;
+  completed: number;
+  inProgress: number;
+  notStarted: number;
+  failed: number;
+  avgScore: number | null;
+  passRate: number | null;
+  compliance: number;
+}
+
 export interface BatchPerformancePayload {
   batch: {
     id: string;
@@ -37,7 +58,9 @@ export interface BatchPerformancePayload {
     passRate: number | null;
     compliance: number;
   };
-  modules: { id: string; title: string }[];
+  modules: BatchModuleRef[];
+  /** Per-module KPIs for the batch overview / module filter. */
+  moduleSummaries: BatchModuleSummary[];
   learners: BatchLearnerPerformance[];
   generatedAt: string;
 }

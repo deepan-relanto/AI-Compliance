@@ -14,9 +14,48 @@ function formatStatus(status: string): string {
   return status.replace(/_/g, " ");
 }
 
-export function exportBatchPerformanceCsv(data: BatchPerformancePayload) {
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function exportBatchPerformanceCsv(
+  data: BatchPerformancePayload,
+  options?: { moduleId?: string | null },
+) {
+  const moduleId = options?.moduleId?.trim() || null;
+  const moduleMeta = moduleId
+    ? data.modules.find((m) => m.id === moduleId) ??
+      data.moduleSummaries.find((m) => m.id === moduleId)
+    : null;
+  const moduleSummary = moduleId
+    ? data.moduleSummaries.find((m) => m.id === moduleId)
+    : null;
+
   const rows = data.learners.flatMap((learner) => {
-    if (learner.assessments.length === 0) {
+    const assessments = moduleId
+      ? learner.assessments.filter((a) => a.moduleId === moduleId)
+      : learner.assessments;
+
+    if (assessments.length === 0) {
+      if (moduleId) {
+        return [
+          {
+            batch: data.batch.label,
+            learner: learner.email,
+            name: learner.displayName,
+            assessment: moduleMeta?.title ?? "",
+            status: "not started",
+            score_percent: "",
+            mcq_correct: 0,
+            mcq_total: 0,
+            retakes: 0,
+            last_activity: "",
+          },
+        ];
+      }
       return [
         {
           batch: data.batch.label,
@@ -32,7 +71,8 @@ export function exportBatchPerformanceCsv(data: BatchPerformancePayload) {
         },
       ];
     }
-    return learner.assessments.map((a) => ({
+
+    return assessments.map((a) => ({
       batch: data.batch.label,
       learner: learner.email,
       name: learner.displayName,
@@ -46,38 +86,57 @@ export function exportBatchPerformanceCsv(data: BatchPerformancePayload) {
     }));
   });
 
-  const summaryRows = [
-    {
-      batch: data.batch.label,
-      members: data.batch.memberCount,
-      modules_assigned: data.summary.modulesAssigned,
-      learners_started: data.summary.learnersStarted,
-      completed: data.summary.completed,
-      in_progress: data.summary.inProgress,
-      avg_score: data.summary.avgScore ?? "",
-      pass_rate: data.summary.passRate ?? "",
-      compliance_percent: data.summary.compliance,
-    },
-  ];
+  const summaryRows = moduleSummary
+    ? [
+        {
+          batch: data.batch.label,
+          members: data.batch.memberCount,
+          assessment: moduleSummary.title,
+          modules_assigned: 1,
+          learners_started: moduleSummary.started,
+          completed: moduleSummary.completed,
+          in_progress: moduleSummary.inProgress,
+          not_started: moduleSummary.notStarted,
+          failed: moduleSummary.failed,
+          avg_score: moduleSummary.avgScore ?? "",
+          pass_rate: moduleSummary.passRate ?? "",
+          compliance_percent: moduleSummary.compliance,
+        },
+      ]
+    : [
+        {
+          batch: data.batch.label,
+          members: data.batch.memberCount,
+          modules_assigned: data.summary.modulesAssigned,
+          learners_started: data.summary.learnersStarted,
+          completed: data.summary.completed,
+          in_progress: data.summary.inProgress,
+          avg_score: data.summary.avgScore ?? "",
+          pass_rate: data.summary.passRate ?? "",
+          compliance_percent: data.summary.compliance,
+        },
+      ];
 
   const csv = [
-    "# Compliance Agent — Batch Performance Export",
+    moduleId
+      ? "# Compliance Agent — Module Performance Export"
+      : "# Compliance Agent — Batch Performance Export",
     `# Generated: ${data.generatedAt}`,
+    ...(moduleId ? [`# Module: ${moduleMeta?.title ?? moduleId}`] : []),
     "",
-    "## Batch Summary",
+    moduleId ? "## Module Summary" : "## Batch Summary",
     Papa.unparse(summaryRows),
     "",
     "## Learner Marks",
     Papa.unparse(rows),
   ].join("\n");
 
-  const slug = data.batch.label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const batchSlug = slugify(data.batch.label) || data.batch.id;
+  const moduleSlug = moduleMeta ? slugify(moduleMeta.title) : "";
+  const date = new Date().toISOString().slice(0, 10);
+  const filename = moduleSlug
+    ? `batch-marks-${batchSlug}-${moduleSlug}-${date}.csv`
+    : `batch-marks-${batchSlug}-${date}.csv`;
 
-  downloadBlob(
-    `batch-marks-${slug || data.batch.id}-${new Date().toISOString().slice(0, 10)}.csv`,
-    new Blob([csv], { type: "text/csv;charset=utf-8" }),
-  );
+  downloadBlob(filename, new Blob([csv], { type: "text/csv;charset=utf-8" }));
 }
