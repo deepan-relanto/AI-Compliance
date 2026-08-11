@@ -72,6 +72,8 @@ export function useProctorMonitor({
   const [warningHistory, setWarningHistory] = useState<WarningHistoryEntry[]>([]);
 
   const ignoreNextFullscreenEntryRef = useRef(false);
+  /** Ignore fullscreen-exit warnings until this timestamp (resume / warning continue). */
+  const ignoreFullscreenExitUntilRef = useRef(0);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isExitingRef = useRef(false);
   const enabledRef = useRef(enabled);
@@ -221,6 +223,14 @@ export function useProctorMonitor({
   );
 
   const warnFullscreenExit = useCallback((): boolean => {
+    if (Date.now() < ignoreFullscreenExitUntilRef.current) {
+      return false;
+    }
+    if (ignoreNextFullscreenEntryRef.current) {
+      // Paired with an intentional requestFullscreen — do not burn a warning.
+      ignoreNextFullscreenEntryRef.current = false;
+      return false;
+    }
     if (!sessionActiveRef.current || isExitingRef.current || !usernameRef.current) {
       return false;
     }
@@ -273,6 +283,7 @@ export function useProctorMonitor({
 
   const handleWarningContinue = useCallback(async () => {
     ignoreNextFullscreenEntryRef.current = true;
+    ignoreFullscreenExitUntilRef.current = Date.now() + 2500;
     clearBlurTimeout();
     setActiveReason(null);
 
@@ -442,6 +453,10 @@ export function useProctorMonitor({
     hydrateFromProgress,
     isExitingRef,
     ignoreNextFullscreenEntryRef,
+    armFullscreenTransition: (ms = 2500) => {
+      ignoreNextFullscreenEntryRef.current = true;
+      ignoreFullscreenExitUntilRef.current = Date.now() + ms;
+    },
   };
 }
 

@@ -60,6 +60,8 @@ interface MCQCheckpointProps {
     meta?: { mcqCorrect?: number; mcqTotal?: number; questionId?: string },
   ) => void;
   onContinue: (wasCorrect: boolean) => void;
+  /** Server reported a locked attempt — parent should park on the fail overlay. */
+  onAttemptLocked?: () => void;
 }
 
 function stripGeneratedCheckpointPrefix(prompt: string): string {
@@ -104,6 +106,7 @@ export function MCQCheckpoint({
   variant = "modal",
   onAnswered,
   onContinue,
+  onAttemptLocked,
 }: MCQCheckpointProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -226,6 +229,9 @@ export function MCQCheckpoint({
                 ? "This attempt is locked. Your answer was not saved."
                 : (data.error ?? "Could not validate your answer."),
             );
+          }
+          if (data.code === "ATTEMPT_LOCKED") {
+            onAttemptLocked?.();
           }
           return;
         }
