@@ -65,13 +65,16 @@ const patched = await api("PATCH", `/services/${SERVICE_ID}`, {
   rootDir: "",
   autoDeploy: "yes",
   serviceDetails: {
-    startCommand: "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
+    startCommand: "node scripts/start-production.mjs",
   },
 });
 
-// Also try top-level startCommand (API shape varies by service type).
 await api("PATCH", `/services/${SERVICE_ID}`, {
-  startCommand: "HOSTNAME=0.0.0.0 node .next/standalone/server.js",
+  serviceDetails: {
+    envSpecificDetails: {
+      startCommand: "node scripts/start-production.mjs",
+    },
+  },
 });
 
 let deploy = null;
