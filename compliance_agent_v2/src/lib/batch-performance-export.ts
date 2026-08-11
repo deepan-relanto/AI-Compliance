@@ -21,11 +21,45 @@ function slugify(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
+/** Excel-friendly local datetime (empty when missing). */
+function formatExportDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+type LearnerExportRow = {
+  "Batch": string;
+  "Learner Name": string;
+  "Email": string;
+  "Assessment": string;
+  "Status": string;
+  "Score (%)": string | number;
+  "Correct": number;
+  "Total Questions": number;
+  "Retakes Used": number;
+  "Date Assigned": string;
+  "Invite Emails": number;
+  "Reminder Emails": number;
+  "Guidance Emails": number;
+  "Total Emails Sent": number;
+  "Proctor Warnings": number;
+  "Completion Date": string;
+  "Last Activity": string;
+};
+
 export function exportBatchPerformanceCsv(
   data: BatchPerformancePayload,
   options?: { moduleId?: string | null },
 ) {
   const moduleId = options?.moduleId?.trim() || null;
+  if (!moduleId) {
+    // Per-module exports only — avoid mixed multi-module sheets.
+    console.warn("[export] moduleId is required for CSV export");
+  }
+
   const moduleMeta = moduleId
     ? data.modules.find((m) => m.id === moduleId) ??
       data.moduleSummaries.find((m) => m.id === moduleId)
@@ -34,109 +68,118 @@ export function exportBatchPerformanceCsv(
     ? data.moduleSummaries.find((m) => m.id === moduleId)
     : null;
 
-  const rows = data.learners.flatMap((learner) => {
+  const rows: LearnerExportRow[] = data.learners.flatMap((learner) => {
     const assessments = moduleId
       ? learner.assessments.filter((a) => a.moduleId === moduleId)
       : learner.assessments;
 
     if (assessments.length === 0) {
-      if (moduleId) {
-        return [
-          {
-            batch: data.batch.label,
-            learner: learner.email,
-            name: learner.displayName,
-            assessment: moduleMeta?.title ?? "",
-            status: "not started",
-            score_percent: "",
-            mcq_correct: 0,
-            mcq_total: 0,
-            retakes: 0,
-            last_activity: "",
-          },
-        ];
-      }
       return [
         {
-          batch: data.batch.label,
-          learner: learner.email,
-          name: learner.displayName,
-          assessment: "",
-          status: "not started",
-          score_percent: "",
-          mcq_correct: 0,
-          mcq_total: 0,
-          retakes: 0,
-          last_activity: "",
+          Batch: data.batch.label,
+          "Learner Name": learner.displayName,
+          Email: learner.email,
+          Assessment: moduleMeta?.title ?? "",
+          Status: "not started",
+          "Score (%)": "",
+          Correct: 0,
+          "Total Questions": 0,
+          "Retakes Used": 0,
+          "Date Assigned": "",
+          "Invite Emails": 0,
+          "Reminder Emails": 0,
+          "Guidance Emails": 0,
+          "Total Emails Sent": 0,
+          "Proctor Warnings": 0,
+          "Completion Date": "",
+          "Last Activity": "",
         },
       ];
     }
 
     return assessments.map((a) => ({
-      batch: data.batch.label,
-      learner: learner.email,
-      name: learner.displayName,
-      assessment: a.moduleTitle,
-      status: formatStatus(a.status),
-      score_percent: a.scorePercent ?? "",
-      mcq_correct: a.mcqCorrect,
-      mcq_total: a.mcqTotal,
-      retakes: a.retakeCount,
-      last_activity: a.completedAt ?? a.updatedAt ?? a.lastAccessedAt ?? "",
+      Batch: data.batch.label,
+      "Learner Name": learner.displayName,
+      Email: learner.email,
+      Assessment: a.moduleTitle,
+      Status: formatStatus(a.status),
+      "Score (%)": a.scorePercent ?? "",
+      Correct: a.mcqCorrect,
+      "Total Questions": a.mcqTotal,
+      "Retakes Used": a.retakeCount,
+      "Date Assigned": formatExportDate(a.assignedAt),
+      "Invite Emails": a.inviteCount ?? 0,
+      "Reminder Emails": a.reminderCount ?? 0,
+      "Guidance Emails": a.failedGuidanceCount ?? 0,
+      "Total Emails Sent": a.emailsSent ?? 0,
+      "Proctor Warnings": a.warningCount ?? 0,
+      "Completion Date": formatExportDate(a.completedAt),
+      "Last Activity": formatExportDate(
+        a.completedAt ?? a.updatedAt ?? a.lastAccessedAt,
+      ),
     }));
   });
 
   const summaryRows = moduleSummary
     ? [
         {
-          batch: data.batch.label,
-          members: data.batch.memberCount,
-          assessment: moduleSummary.title,
-          modules_assigned: 1,
-          learners_started: moduleSummary.started,
-          completed: moduleSummary.completed,
-          in_progress: moduleSummary.inProgress,
-          not_started: moduleSummary.notStarted,
-          failed: moduleSummary.failed,
-          avg_score: moduleSummary.avgScore ?? "",
-          pass_rate: moduleSummary.passRate ?? "",
-          compliance_percent: moduleSummary.compliance,
+          Batch: data.batch.label,
+          Assessment: moduleSummary.title,
+          Members: data.batch.memberCount,
+          Started: moduleSummary.started,
+          Completed: moduleSummary.completed,
+          "In Progress": moduleSummary.inProgress,
+          "Not Started": moduleSummary.notStarted,
+          Failed: moduleSummary.failed,
+          "Avg Score (%)": moduleSummary.avgScore ?? "",
+          "Pass Rate (%)": moduleSummary.passRate ?? "",
+          "Compliance (%)": moduleSummary.compliance,
         },
       ]
     : [
         {
-          batch: data.batch.label,
-          members: data.batch.memberCount,
-          modules_assigned: data.summary.modulesAssigned,
-          learners_started: data.summary.learnersStarted,
-          completed: data.summary.completed,
-          in_progress: data.summary.inProgress,
-          avg_score: data.summary.avgScore ?? "",
-          pass_rate: data.summary.passRate ?? "",
-          compliance_percent: data.summary.compliance,
+          Batch: data.batch.label,
+          Members: data.batch.memberCount,
+          "Modules Assigned": data.summary.modulesAssigned,
+          Started: data.summary.learnersStarted,
+          Completed: data.summary.completed,
+          "In Progress": data.summary.inProgress,
+          "Avg Score (%)": data.summary.avgScore ?? "",
+          "Pass Rate (%)": data.summary.passRate ?? "",
+          "Compliance (%)": data.summary.compliance,
         },
       ];
 
+  const summaryCsv = Papa.unparse(summaryRows as Record<string, string | number>[]);
+  const rowsCsv = Papa.unparse(rows);
+
+  const title = moduleId
+    ? "Relanto — Module Performance Export"
+    : "Relanto — Batch Performance Export";
+
   const csv = [
-    moduleId
-      ? "# Compliance Agent — Module Performance Export"
-      : "# Compliance Agent — Batch Performance Export",
-    `# Generated: ${data.generatedAt}`,
-    ...(moduleId ? [`# Module: ${moduleMeta?.title ?? moduleId}`] : []),
+    title,
+    `Generated: ${formatExportDate(data.generatedAt)}`,
+    ...(moduleId ? [`Module: ${moduleMeta?.title ?? moduleId}`] : []),
+    `Batch: ${data.batch.label}`,
     "",
-    moduleId ? "## Module Summary" : "## Batch Summary",
-    Papa.unparse(summaryRows),
+    moduleId ? "MODULE SUMMARY" : "BATCH SUMMARY",
+    summaryCsv,
     "",
-    "## Learner Marks",
-    Papa.unparse(rows),
+    "LEARNER RESULTS",
+    rowsCsv,
   ].join("\n");
 
   const batchSlug = slugify(data.batch.label) || data.batch.id;
-  const moduleSlug = moduleMeta ? slugify(moduleMeta.title) : "";
+  const moduleSlug = moduleMeta ? slugify(moduleMeta.title) : "all";
   const date = new Date().toISOString().slice(0, 10);
-  const filename = moduleSlug
-    ? `batch-marks-${batchSlug}-${moduleSlug}-${date}.csv`
-    : `batch-marks-${batchSlug}-${date}.csv`;
+  const filename = moduleId
+    ? `marks-${batchSlug}-${moduleSlug}-${date}.csv`
+    : `marks-${batchSlug}-all-${date}.csv`;
 
-  downloadBlob(filename, new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  // UTF-8 BOM so Excel opens columns/accents correctly.
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+  downloadBlob(filename, blob);
 }

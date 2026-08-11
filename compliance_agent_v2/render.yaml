@@ -5,7 +5,7 @@ services:
     plan: starter
     region: oregon
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: HOSTNAME=0.0.0.0 node .next/standalone/server.js
     healthCheckPath: /api/auth/status
     envVars:
       - key: NODE_VERSION
