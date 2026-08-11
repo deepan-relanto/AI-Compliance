@@ -70,12 +70,25 @@ export async function POST(
       );
     }
 
-    if (result.attemptLocked || result.persisted === false) {
+    if (result.attemptLocked) {
       return NextResponse.json(
         {
           ok: false,
           code: "ATTEMPT_LOCKED",
           error: "This attempt is locked. Your answer was not saved.",
+          mcqCorrect: result.mcqCorrect,
+          mcqTotal: result.mcqTotal,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (result.persisted === false) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "ANSWER_NOT_SAVED",
+          error: "Could not save your answer. Please try again.",
           mcqCorrect: result.mcqCorrect,
           mcqTotal: result.mcqTotal,
         },

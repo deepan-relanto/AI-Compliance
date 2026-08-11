@@ -616,7 +616,7 @@ export async function validateAndRecordMcqAnswerDb(
         mcqCorrect: mcqCorrectStored,
         mcqTotal: mcqTotalStored,
         alreadyAnswered: false,
-        attemptLocked: true,
+        attemptLocked: false,
         persisted: false,
       };
     }

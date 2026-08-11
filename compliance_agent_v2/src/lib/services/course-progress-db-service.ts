@@ -615,6 +615,8 @@ export async function validateAndRecordMcqAnswerDb(
           persisted: false,
         };
       }
+      // Row still looks live but the UPDATE matched nothing (race). Ask client to retry —
+      // do not brand this as a locked attempt.
       return {
         found: true,
         correct: false,
@@ -622,7 +624,7 @@ export async function validateAndRecordMcqAnswerDb(
         mcqCorrect: mcqCorrectStored,
         mcqTotal: mcqTotalStored,
         alreadyAnswered: false,
-        attemptLocked: true,
+        attemptLocked: false,
         persisted: false,
       };
     }

@@ -736,18 +736,22 @@ export function CoursePlayer({
 
   const enterFullscreen = useCallback(async () => {
     try {
-      await document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
     } catch {
-      setIsFullscreen(true);
+      // Do not pretend we are fullscreen — the fullscreenchange listener is source of truth.
     }
   }, []);
 
   const exitFullscreen = useCallback(async () => {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      /* ignore */
     }
-    setIsFullscreen(false);
   }, []);
 
   useEffect(() => {
@@ -901,8 +905,9 @@ export function CoursePlayer({
 
   useEffect(() => {
     const onFsChange = () => {
-      setIsFullscreen(document.fullscreenElement !== null);
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
+    onFsChange();
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
@@ -1296,6 +1301,19 @@ export function CoursePlayer({
   );
 
   const handleMcqContinue = () => {
+    // Never advance past a question the server did not accept.
+    if (!answeredQuestionIdsRef.current.has(gateMcq.id) && gateMcq.id !== "gate-fallback") {
+      setCompletionNotice({
+        title: "Answer not saved yet",
+        message:
+          "Wait for your answer to confirm before continuing. If you see a lock message, return to the dashboard and request a retake.",
+        variant: "info",
+        acknowledgeLabel: "OK",
+        showAcknowledgeButton: true,
+        onAcknowledge: () => setCompletionNotice(null),
+      });
+      return;
+    }
     scheduleBadgeFlush(420);
     const next = quizIndex + 1;
     if (next < moduleMcqs.length) {
@@ -1754,6 +1772,10 @@ export function CoursePlayer({
     assignedMcqCount: moduleMcqs.length,
     onAnswered: handleCheckpointAnswered,
     onContinue: handleMcqContinue,
+    onAttemptLocked: () => {
+      setMcqOpen(false);
+      setIsFailed(true);
+    },
   };
 
   // Hold a calm dark stage until the server tells us whether this attempt is
@@ -1884,7 +1906,15 @@ export function CoursePlayer({
             variant="ghost"
             size="sm"
             className="cursor-pointer text-zinc-300 hover:bg-zinc-800 hover:text-white"
-            onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+            onClick={() => {
+              // Prefer document truth over React state — false "exit" clicks used
+              // to leave the session windowed and burn proctor warnings.
+              if (document.fullscreenElement) {
+                void exitFullscreen();
+              } else {
+                void enterFullscreen();
+              }
+            }}
           >
             {isFullscreen ? (
               <Minimize2 className="h-3.5 w-3.5" />
@@ -1911,14 +1941,36 @@ export function CoursePlayer({
           learnerName={user?.username?.split("@")[0]}
           moduleTitle={module.title}
           onContinue={() => {
-            // Resume bootstrap requests fullscreen in an effect (often blocked).
-            // Continue is a real gesture — enter fullscreen before the quiz opens.
-            void enterFullscreen();
-            setShowWelcomeBack(false);
-            if (phase === "quiz" && moduleMcqs.length > 0) {
-              setGateMcq(moduleMcqs[quizIndex] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
-              setMcqOpen(true);
-            }
+            void (async () => {
+              // Swallow the enter/exit pair browsers sometimes emit when
+              // requesting fullscreen from a resume click, so proctor does not
+              // burn a warning before the quiz even opens.
+              proctorHook.armFullscreenTransition(3000);
+              isExitingRef.current = false;
+              try {
+                if (!document.fullscreenElement) {
+                  await document.documentElement.requestFullscreen();
+                }
+              } catch {
+                /* gesture may still fail on some browsers — keep trying below */
+              }
+              // Second chance after paint if the first request was ignored.
+              if (!document.fullscreenElement) {
+                await enterFullscreen();
+              }
+              setShowWelcomeBack(false);
+              if (phase === "quiz" && moduleMcqs.length > 0) {
+                setGateMcq(moduleMcqs[quizIndex] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
+                setMcqOpen(true);
+              }
+              // If still windowed, one more user-visible nudge via the header
+              // toggle state (isFullscreen tracks document only).
+              if (!document.fullscreenElement) {
+                window.setTimeout(() => {
+                  void enterFullscreen();
+                }, 100);
+              }
+            })();
           }}
         />
       )}
