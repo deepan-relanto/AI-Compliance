@@ -11,7 +11,7 @@ import type { BatchPerformancePayload } from "@/lib/batch-performance-types";
 import { Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Track = "compliance" | "course";
 
@@ -21,6 +21,7 @@ export default function BatchAnalyticsPage() {
   const searchParams = useSearchParams();
   const batchId = typeof params.batchId === "string" ? params.batchId : "";
   const trackParam = searchParams.get("track");
+  const moduleParam = searchParams.get("module");
   const [track, setTrack] = useState<Track>(
     trackParam === "course" ? "course" : "compliance",
   );
@@ -32,14 +33,41 @@ export default function BatchAnalyticsPage() {
     setTrack(trackParam === "course" ? "course" : "compliance");
   }, [trackParam]);
 
-  const onTrackChange = useCallback(
-    (next: Track) => {
-      setTrack(next);
+  const selectedModuleId = useMemo(() => {
+    const id = moduleParam?.trim() || null;
+    if (!id || !data?.modules?.length) return id;
+    return data.modules.some((m) => m.id === id) ? id : null;
+  }, [moduleParam, data?.modules]);
+
+  const replaceQuery = useCallback(
+    (mutate: (qs: URLSearchParams) => void) => {
       const qs = new URLSearchParams(searchParams.toString());
-      qs.set("track", next);
+      mutate(qs);
       router.replace(`?${qs.toString()}`, { scroll: false });
     },
     [router, searchParams],
+  );
+
+  const onTrackChange = useCallback(
+    (next: Track) => {
+      setTrack(next);
+      replaceQuery((qs) => {
+        qs.set("track", next);
+        // Module IDs differ across tracks — reset to overview.
+        qs.delete("module");
+      });
+    },
+    [replaceQuery],
+  );
+
+  const onModuleChange = useCallback(
+    (moduleId: string | null) => {
+      replaceQuery((qs) => {
+        if (!moduleId) qs.delete("module");
+        else qs.set("module", moduleId);
+      });
+    },
+    [replaceQuery],
   );
 
   const load = useCallback(() => {
@@ -52,10 +80,22 @@ export default function BatchAnalyticsPage() {
       .then((r) => r.json())
       .then((json) => {
         if (json.ok && json.batch) {
+          const modules = (json.modules ?? []).map(
+            (m: {
+              id: string;
+              title: string;
+              currentlyAssigned?: boolean;
+            }) => ({
+              id: m.id,
+              title: m.title,
+              currentlyAssigned: m.currentlyAssigned ?? true,
+            }),
+          );
           setData({
             batch: json.batch,
             summary: json.summary,
-            modules: json.modules ?? [],
+            modules,
+            moduleSummaries: json.moduleSummaries ?? [],
             learners: json.learners ?? [],
             generatedAt: json.generatedAt ?? new Date().toISOString(),
           });
@@ -78,6 +118,13 @@ export default function BatchAnalyticsPage() {
   useEffect(() => {
     if (!loading && !data && !error) router.replace("/admin/analytics");
   }, [loading, data, error, router]);
+
+  // Drop stale ?module= values that are not in this track's module list.
+  useEffect(() => {
+    if (!data || !moduleParam) return;
+    if (data.modules.some((m) => m.id === moduleParam)) return;
+    replaceQuery((qs) => qs.delete("module"));
+  }, [data, moduleParam, replaceQuery]);
 
   return (
     <RouteGuard allowedRoles={["admin"]}>
@@ -113,7 +160,12 @@ export default function BatchAnalyticsPage() {
           </p>
         )}
         {!loading && data && (
-          <BatchPerformancePanel data={data} track={track} />
+          <BatchPerformancePanel
+            data={data}
+            track={track}
+            selectedModuleId={selectedModuleId}
+            onModuleChange={onModuleChange}
+          />
         )}
       </AdminShell>
     </RouteGuard>
