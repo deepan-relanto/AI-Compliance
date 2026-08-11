@@ -368,6 +368,15 @@ export function CoursePlayer({
     setMcqOpen(false);
   }, []);
 
+  /** Save & Exit is content-only; during quiz, Exit / force-close abandons as failed. */
+  const canSaveAndExit =
+    allowSaveExit &&
+    phase === "content" &&
+    !quizOnlyMode &&
+    !showScoreResult &&
+    !showAcknowledgement &&
+    !showFinalQa;
+
   const proctorHook = useProctorMonitor({
     enabled:
       integrityHydrated &&
@@ -396,8 +405,8 @@ export function CoursePlayer({
     totalSlides,
     reviewOnlyMode: false,
     courseMode: true,
-    allowSaveExit,
-    getResumeCheckpoint: allowSaveExit ? buildCurrentCheckpoint : undefined,
+    allowSaveExit: canSaveAndExit,
+    getResumeCheckpoint: canSaveAndExit ? buildCurrentCheckpoint : undefined,
     onLockout: handleProctorLockout,
     onStatusChange: (status) => setDbStatus(status),
   });
@@ -1510,17 +1519,14 @@ export function CoursePlayer({
 
   const lastAutosaveKeyRef = useRef<string | null>(null);
 
-  /** Debounced autosave for gated Save & Exit courses. */
+  /** Debounced autosave for gated Save & Exit courses (content phase only). */
   useEffect(() => {
-    if (!allowSaveExit || !sessionStarted || !user?.username) return;
+    if (!canSaveAndExit || !sessionStarted || !user?.username) return;
     if (
       showWelcomeBack ||
       showContentOverview ||
       showProctorRules ||
       isFailed ||
-      showAcknowledgement ||
-      showFinalQa ||
-      showScoreResult ||
       isNavigatingAway
     ) {
       return;
@@ -1550,7 +1556,7 @@ export function CoursePlayer({
 
     return () => window.clearTimeout(timer);
   }, [
-    allowSaveExit,
+    canSaveAndExit,
     sessionStarted,
     user?.username,
     user?.batchId,
@@ -1562,9 +1568,6 @@ export function CoursePlayer({
     showContentOverview,
     showProctorRules,
     isFailed,
-    showAcknowledgement,
-    showFinalQa,
-    showScoreResult,
     isNavigatingAway,
     contentStepIndex,
     phase,
@@ -1923,15 +1926,15 @@ export function CoursePlayer({
             )}
           </Button>
           <Button
-            variant={allowSaveExit ? "primary" : "destructive"}
+            variant={canSaveAndExit ? "primary" : "destructive"}
             size="sm"
             onClick={() => setShowExitModal(true)}
             className={cn(
               "h-8 cursor-pointer px-3 text-xs",
-              allowSaveExit && "bg-[#2e3192] hover:bg-[#25277a]",
+              canSaveAndExit && "bg-[#2e3192] hover:bg-[#25277a]",
             )}
           >
-            {allowSaveExit ? "Save & exit" : "Exit"}
+            {canSaveAndExit ? "Save & exit" : "Exit"}
           </Button>
         </div>
       </header>
@@ -2265,7 +2268,7 @@ export function CoursePlayer({
 
       {showExitModal && (
         <CourseExitModal
-          mode={allowSaveExit ? "save" : "abandon"}
+          mode={canSaveAndExit ? "save" : "abandon"}
           saving={saveExitSaving}
           onCancel={() => {
             if (saveExitSaving) return;
@@ -2273,7 +2276,7 @@ export function CoursePlayer({
           }}
           onConfirm={() => {
             void (async () => {
-              if (allowSaveExit) {
+              if (canSaveAndExit) {
                 setSaveExitSaving(true);
                 if (user?.username && sessionStarted) {
                   const result = await syncCourseResumeCheckpoint({
