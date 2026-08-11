@@ -731,17 +731,27 @@ export async function saveSlideProgressDb(
   `;
 }
 
+const saveExitAllowedCache = new Map<string, { allowed: boolean; expiresAt: number }>();
+
 export async function moduleAllowsSaveExit(
   sql: Sql,
   moduleId: string,
 ): Promise<boolean> {
+  const cached = saveExitAllowedCache.get(moduleId);
+  if (cached && Date.now() < cached.expiresAt) return cached.allowed;
+
   const rows = await sql`
     SELECT allow_save_exit
     FROM course_modules
     WHERE id = ${moduleId}
     LIMIT 1
   `;
-  return Boolean(rows[0]?.allow_save_exit);
+  const allowed = Boolean(rows[0]?.allow_save_exit);
+  saveExitAllowedCache.set(moduleId, {
+    allowed,
+    expiresAt: Date.now() + 120_000,
+  });
+  return allowed;
 }
 
 /**
@@ -776,13 +786,16 @@ export async function saveResumeCheckpointDb(
       : checkpoint.contentStepIndex + 1,
   );
 
-  const userRows = await sql`
-    SELECT batch_id FROM users
-    WHERE LOWER(email) = LOWER(${params.userEmail})
-    LIMIT 1
-  `;
-  const resolvedBatchId =
-    (userRows[0]?.batch_id as string | null)?.trim() || params.batchId;
+  // Access gate already resolved batchId — skip an extra users round-trip.
+  let resolvedBatchId = params.batchId?.trim() || "";
+  if (!resolvedBatchId) {
+    const userRows = await sql`
+      SELECT batch_id FROM users
+      WHERE LOWER(email) = LOWER(${params.userEmail})
+      LIMIT 1
+    `;
+    resolvedBatchId = (userRows[0]?.batch_id as string | null)?.trim() || "";
+  }
 
   const rows = await sql`
     INSERT INTO course_progress (

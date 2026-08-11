@@ -1024,7 +1024,10 @@ export function CoursePlayer({
     }
     setGateMcq(moduleMcqs[0] ?? FALLBACK_MCQ);
     setMcqOpen(true);
-  }, [moduleMcqs, handleFinishAttempt]);
+    // Start quiz is always a click — re-assert fullscreen in case resume
+    // bootstrap (no user gesture) could not enter it earlier.
+    void enterFullscreen();
+  }, [moduleMcqs, handleFinishAttempt, enterFullscreen]);
 
   const nextSlideLocked = isHtmlLessonStep && nextSlideCooldownMs > 0;
   const htmlReadyForNextSlide =
@@ -1436,8 +1439,20 @@ export function CoursePlayer({
       if (!isCourseEmbedState(event.data) || event.data.type !== COURSE_EMBED_EVENT) return;
       if (event.data.kind !== "lesson" && event.data.kind !== "scenarios") return;
       const nextState = normalizeCourseEmbedState(event.data);
+      const prev = htmlEmbedStateRef.current;
       htmlEmbedStateRef.current = nextState;
-      setHtmlEmbedState(nextState);
+      // Avoid full player re-renders on fragment chatter that doesn't change nav.
+      if (
+        !prev ||
+        prev.kind !== nextState.kind ||
+        prev.slideIndex !== nextState.slideIndex ||
+        prev.slideCount !== nextState.slideCount ||
+        prev.atEnd !== nextState.atEnd ||
+        prev.atStart !== nextState.atStart ||
+        prev.slideComplete !== nextState.slideComplete
+      ) {
+        setHtmlEmbedState(nextState);
+      }
 
       const pendingGoto = pendingHtmlGotoRef.current;
       if (pendingGoto != null && pendingGoto > 0) {
@@ -1475,6 +1490,8 @@ export function CoursePlayer({
     return () => window.removeEventListener("message", onEmbedMessage);
   }, [postToHtmlEmbed]);
 
+  const lastAutosaveKeyRef = useRef<string | null>(null);
+
   /** Debounced autosave for gated Save & Exit courses. */
   useEffect(() => {
     if (!allowSaveExit || !sessionStarted || !user?.username) return;
@@ -1493,8 +1510,10 @@ export function CoursePlayer({
 
     const timer = window.setTimeout(() => {
       if (autosaveInFlightRef.current) return;
-      autosaveInFlightRef.current = true;
       const checkpoint = buildCurrentCheckpoint();
+      const key = `${checkpoint.contentStepIndex}:${checkpoint.phase}:${checkpoint.pdfPage}:${checkpoint.htmlSlideIndex}:${checkpoint.quizIndex}`;
+      if (lastAutosaveKeyRef.current === key) return;
+      autosaveInFlightRef.current = true;
       void syncCourseResumeCheckpoint({
         userEmail: user.username!,
         moduleId: module.id,
@@ -1502,9 +1521,13 @@ export function CoursePlayer({
         batchId: user.batchId,
         totalSlides,
         checkpoint,
-      }).finally(() => {
-        autosaveInFlightRef.current = false;
-      });
+      })
+        .then((result) => {
+          if (result.ok) lastAutosaveKeyRef.current = key;
+        })
+        .finally(() => {
+          autosaveInFlightRef.current = false;
+        });
     }, 1500);
 
     return () => window.clearTimeout(timer);
@@ -1536,11 +1559,12 @@ export function CoursePlayer({
     if (nextSlideCooldownToken === 0) return;
     const endsAt = Date.now() + NEXT_SLIDE_COOLDOWN_MS;
     setNextSlideCooldownMs(NEXT_SLIDE_COOLDOWN_MS);
+    // 200ms is enough for the footer countdown; 50ms was ~16 React commits/slide.
     const id = window.setInterval(() => {
       const left = Math.max(0, endsAt - Date.now());
       setNextSlideCooldownMs(left);
       if (left <= 0) window.clearInterval(id);
-    }, 50);
+    }, 200);
     return () => window.clearInterval(id);
   }, [nextSlideCooldownToken]);
 
@@ -1887,6 +1911,9 @@ export function CoursePlayer({
           learnerName={user?.username?.split("@")[0]}
           moduleTitle={module.title}
           onContinue={() => {
+            // Resume bootstrap requests fullscreen in an effect (often blocked).
+            // Continue is a real gesture — enter fullscreen before the quiz opens.
+            void enterFullscreen();
             setShowWelcomeBack(false);
             if (phase === "quiz" && moduleMcqs.length > 0) {
               setGateMcq(moduleMcqs[quizIndex] ?? moduleMcqs[0] ?? FALLBACK_MCQ);
@@ -1944,7 +1971,7 @@ export function CoursePlayer({
             />
           ) : !showFinalQa ? (
             <motion.div
-              key={quizOnlyMode ? "quiz-only" : `${contentStepIndex}-${pdfPage}`}
+              key={quizOnlyMode ? "quiz-only" : `step-${contentStepIndex}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15 }}

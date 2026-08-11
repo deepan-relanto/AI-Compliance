@@ -1,7 +1,7 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { parseCourseResumeCheckpoint } from "@/lib/course-resume";
 import { getSql } from "@/lib/db";
-import { invalidateCache } from "@/lib/api-cache";
+import { CACHE_KEYS, invalidateCache } from "@/lib/api-cache";
 import { saveResumeCheckpointDb } from "@/lib/services/course-progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -59,8 +59,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Narrow bust — autosave must not wipe every warm module detail entry.
     invalidateCache(`learner-dashboard:${access.email.toLowerCase()}`);
-    invalidateCache("module:detail:");
+    invalidateCache(CACHE_KEYS.moduleDetail(moduleId, access.email));
 
     return NextResponse.json({
       ok: true,

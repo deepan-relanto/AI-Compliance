@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db";
 import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { markAssessmentCompletedDb } from "@/lib/services/progress-db-service";
 import { sendModuleCompletionEmail } from "@/lib/services/training-notification-service";
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -34,17 +35,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const emailResult = await sendModuleCompletionEmail(sql, access.email, moduleId);
-    if (!emailResult.ok) {
-      console.error("[progress complete email]", access.email, moduleId, emailResult.message);
-    }
-
-    invalidateAdminCachesAsync();
+    const email = access.email;
+    const mid = moduleId;
+    after(() => {
+      void sendModuleCompletionEmail(sql, email, mid).then((emailResult) => {
+        if (!emailResult.ok) {
+          console.error("[progress complete email]", email, mid, emailResult.message);
+        }
+      });
+      invalidateAdminCachesAsync();
+    });
 
     return NextResponse.json({
       ok: true,
-      emailSent: emailResult.emailSent,
-      emailMessage: emailResult.message,
+      emailSent: false,
+      emailQueued: true,
+      emailMessage: "Completion email queued.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to complete assessment";
