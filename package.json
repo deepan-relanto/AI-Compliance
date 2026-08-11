@@ -6,7 +6,7 @@
     "dev": "node scripts/ensure-next-in-project.mjs && next dev",
     "dev:turbo": "node scripts/ensure-next-in-project.mjs && next dev --turbo",
     "build": "node scripts/ensure-next-in-project.mjs && next build && node scripts/prepare-standalone.mjs",
-    "start": "node .next/standalone/server.js",
+    "start": "node scripts/start-production.mjs",
     "lint": "next lint",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:migrate:course": "node scripts/db-migrate-course.mjs",
