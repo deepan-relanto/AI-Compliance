@@ -63,10 +63,11 @@ export default function DashboardPage() {
     !!user?.username &&
     emailsMatch(sessionEmail, user.username);
 
-  const loadModules = useCallback(async (options?: { force?: boolean }) => {
+  const loadModules = useCallback(async (options?: { force?: boolean; soft?: boolean }) => {
     if (!authReady || !user?.username) return;
 
-    setLoading(true);
+    // Soft refresh (tab focus) keeps the list painted instead of flashing a spinner.
+    if (!options?.soft) setLoading(true);
     setLoadError(null);
     try {
       const result = await fetchLearnerDashboard(options);
@@ -170,10 +171,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!authReady) return;
-    // Refresh dashboard data only — avoid JWT→DB round-trips on every tab focus.
-    // Bypass the short client cache: admin decisions land while we're away, and
-    // window focus covers admin-in-another-window workflows.
-    const refresh = () => void loadModules({ force: true });
+    // Soft refresh on focus — force bypasses client TTL but does not blank the UI.
+    // Debounce so focus+visibilitychange don't double-fetch.
+    let lastAt = 0;
+    const refresh = () => {
+      const now = Date.now();
+      if (now - lastAt < 30_000) return;
+      lastAt = now;
+      void loadModules({ force: true, soft: true });
+    };
     const onVisible = () => {
       if (document.visibilityState === "visible") refresh();
     };

@@ -77,16 +77,28 @@ export default function TrainingPage() {
             link.href = pdf;
             document.head.appendChild(link);
           }
-          const stepList = (data.steps ?? []) as Array<{ config?: { assetUrl?: string } }>;
-          const videoUrl = stepList.find((s) =>
-            String(s.config?.assetUrl ?? "").includes("/course-assets/"),
-          )?.config?.assetUrl;
-          if (videoUrl && typeof window !== "undefined") {
-            const v = document.createElement("link");
-            v.rel = "prefetch";
-            v.as = "video";
-            v.href = videoUrl;
-            document.head.appendChild(v);
+          // Prefetch only the resume/current step asset — never the first HTML
+          // lesson mislabeled as video (that races the real first paint).
+          const stepList = (data.steps ?? []) as Array<{
+            stepType?: string;
+            config?: { assetUrl?: string };
+          }>;
+          const resume = data.resumeCheckpoint as CourseResumeCheckpoint | null;
+          const resumeIdx = Math.min(
+            Math.max(0, resume?.contentStepIndex ?? 0),
+            Math.max(0, stepList.length - 1),
+          );
+          const resumeStep = stepList[resumeIdx];
+          const resumeUrl = resumeStep?.config?.assetUrl;
+          if (
+            resumeUrl &&
+            typeof window !== "undefined" &&
+            resumeStep?.stepType !== "video"
+          ) {
+            const link = document.createElement("link");
+            link.rel = "prefetch";
+            link.href = resumeUrl;
+            document.head.appendChild(link);
           }
         } else {
           setTrainingModule(undefined);

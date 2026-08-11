@@ -3,7 +3,11 @@ import {
   getCourseAssetMeta,
   readCourseAssetRange,
 } from "@/lib/services/course-asset-service";
-import { requireSessionEmail } from "@/lib/api-session";
+import { auth } from "@/auth";
+import {
+  getCachedAssetAccess,
+  setCachedAssetAccess,
+} from "@/lib/asset-access-cache";
 import { patchHtmlCourseAsset } from "@/lib/html-embed-patch";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -56,11 +60,11 @@ function assetHeaders(
 ) {
   // Images must not stick for an hour — patched infographics (e.g. watermark
   // removal) would otherwise keep serving the old bytes from browser cache.
-  // Videos can cache longer; HTML stays no-cache for live patches.
+  // Videos can cache longer; HTML stays revalidate-friendly for live patches.
   const cacheControl = isHtmlAsset(filename, mimeType)
     ? "private, no-cache, must-revalidate"
     : mimeType.startsWith("image/")
-      ? "private, max-age=60, must-revalidate"
+      ? "private, max-age=600, must-revalidate"
       : mimeType.startsWith("video/")
         ? "private, max-age=86400, stale-while-revalidate=604800"
         : "private, max-age=3600";
@@ -104,9 +108,31 @@ function streamAssetResponse(assetUrl: string, mimeType: string, size: number, f
   });
 }
 
+async function authorizeAsset(email: string, assetUrl: string, isAdmin: boolean) {
+  const cached = getCachedAssetAccess(email, assetUrl);
+  if (cached != null) return cached;
+
+  const { getSql } = await import("@/lib/db");
+  const { canAccessCourseAsset } = await import(
+    "@/lib/services/file-access-service"
+  );
+  const allowed = await canAccessCourseAsset(getSql(), email, assetUrl, isAdmin);
+  setCachedAssetAccess(email, assetUrl, allowed);
+  return allowed;
+}
+
 async function serveAsset(req: NextRequest, filename: string) {
-  const session = await requireSessionEmail();
-  if (!session.ok) return session.response;
+  // One auth() call — avoids the previous session + requireAdminSession double hit
+  // on every video Range chunk.
+  const session = await auth();
+  const email = session?.user?.email?.trim().toLowerCase() ?? null;
+  if (!email) {
+    return NextResponse.json(
+      { ok: false, message: "Sign in required." },
+      { status: 401 },
+    );
+  }
+  const isAdmin = session?.user?.role === "admin";
 
   if (!ASSET_FILENAME.test(filename)) {
     return NextResponse.json({ ok: false, message: "Invalid file." }, { status: 400 });
@@ -116,18 +142,7 @@ async function serveAsset(req: NextRequest, filename: string) {
   const isHead = req.method === "HEAD";
 
   try {
-    const { getSql } = await import("@/lib/db");
-    const { requireAdminSession } = await import("@/lib/api-admin");
-    const { canAccessCourseAsset } = await import(
-      "@/lib/services/file-access-service"
-    );
-    const admin = await requireAdminSession();
-    const allowed = await canAccessCourseAsset(
-      getSql(),
-      session.email,
-      assetUrl,
-      !admin.error,
-    );
+    const allowed = await authorizeAsset(email, assetUrl, isAdmin);
     if (!allowed) {
       return NextResponse.json(
         { ok: false, message: "Not authorized for this asset." },
