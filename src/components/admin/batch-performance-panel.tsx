@@ -603,11 +603,17 @@ export function BatchPerformancePanel({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => exportBatchPerformanceCsv(data)}
+                  onClick={() => {
+                    for (const mod of moduleSummaries) {
+                      exportBatchPerformanceCsv(data, { moduleId: mod.id });
+                    }
+                  }}
                   disabled={moduleSummaries.length === 0}
                 >
                   <Download className="h-3.5 w-3.5" />
-                  Download full CSV
+                  {moduleSummaries.length <= 1
+                    ? "Download CSV"
+                    : `Download CSV (${moduleSummaries.length} files)`}
                 </Button>
               </div>
             </div>

@@ -117,6 +117,7 @@ export async function getBatchPerformance(
             ap.completed_at,
             ap.updated_at,
             ap.last_accessed_at,
+            ap.created_at,
             ap.current_slide,
             ap.warning_count,
             ap.mcq_answers
@@ -150,6 +151,7 @@ export async function getBatchPerformance(
             ap.completed_at,
             ap.updated_at,
             ap.last_accessed_at,
+            ap.created_at,
             ap.current_slide,
             ap.warning_count,
             ap.mcq_answers
@@ -347,10 +349,14 @@ export async function getBatchPerformance(
       completedAt: (row.completed_at as string) ?? null,
       updatedAt: (row.updated_at as string) ?? null,
       lastAccessedAt: (row.last_accessed_at as string) ?? null,
+      assignedAt: (row.created_at as string) ?? null,
+      warningCount: Number(row.warning_count ?? 0),
       reminderCount: 0,
       lastRemindedAt: null,
       failedGuidanceCount: 0,
       lastFailedGuidanceAt: null,
+      inviteCount: 0,
+      emailsSent: 0,
     };
     learner.assessments.push(assessment);
   }
@@ -363,6 +369,10 @@ export async function getBatchPerformance(
       a.lastRemindedAt = counts.lastRemindedAt;
       a.failedGuidanceCount = counts.failedGuidanceCount;
       a.lastFailedGuidanceAt = counts.lastFailedGuidanceAt;
+      a.inviteCount = counts.inviteCount;
+      a.emailsSent = counts.emailsSent;
+      // Prefer invite timestamp as "date assigned"; keep progress created_at as fallback.
+      if (counts.assignedAt) a.assignedAt = counts.assignedAt;
     }
   }
 
