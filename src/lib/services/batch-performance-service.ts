@@ -67,6 +67,7 @@ export async function getBatchPerformance(
           SELECT
             m.id,
             m.title,
+            m.created_at,
             EXISTS (
               SELECT 1 FROM course_module_batches cmb
               WHERE cmb.module_id = m.id AND cmb.batch_id = ${batchId}
@@ -83,6 +84,7 @@ export async function getBatchPerformance(
           SELECT
             m.id,
             m.title,
+            m.created_at,
             EXISTS (
               SELECT 1 FROM module_batches mb
               WHERE mb.module_id = m.id AND mb.batch_id = ${batchId}
@@ -283,7 +285,11 @@ export async function getBatchPerformance(
     id: m.id as string,
     title: m.title as string,
     currentlyAssigned: Boolean(m.currently_assigned),
+    createdAt: (m.created_at as string) ?? null,
   }));
+  const moduleCreatedAt = new Map(
+    modules.map((m) => [m.id, m.createdAt] as const),
+  );
 
   const learnerMap = new Map<string, BatchLearnerPerformance>();
   for (const m of memberRows) {
@@ -349,7 +355,10 @@ export async function getBatchPerformance(
       completedAt: (row.completed_at as string) ?? null,
       updatedAt: (row.updated_at as string) ?? null,
       lastAccessedAt: (row.last_accessed_at as string) ?? null,
-      assignedAt: (row.created_at as string) ?? null,
+      assignedAt:
+        (row.created_at as string) ??
+        moduleCreatedAt.get(row.module_id as string) ??
+        null,
       warningCount: Number(row.warning_count ?? 0),
       reminderCount: 0,
       lastRemindedAt: null,
@@ -357,12 +366,22 @@ export async function getBatchPerformance(
       lastFailedGuidanceAt: null,
       inviteCount: 0,
       emailsSent: 0,
+      emailHistoryAvailable: false,
     };
     learner.assessments.push(assessment);
   }
 
+  const modulesWithEmailHistory = new Set<string>();
+  for (const [key, counts] of outreachCounts) {
+    if (counts.hasEmailLog) {
+      const moduleId = key.split("::")[1];
+      if (moduleId) modulesWithEmailHistory.add(moduleId);
+    }
+  }
+
   for (const learner of learnerMap.values()) {
     for (const a of learner.assessments) {
+      a.emailHistoryAvailable = modulesWithEmailHistory.has(a.moduleId);
       const counts = outreachCounts.get(outreachCountKey(learner.email, a.moduleId));
       if (!counts) continue;
       a.reminderCount = counts.reminderCount;
@@ -371,10 +390,17 @@ export async function getBatchPerformance(
       a.lastFailedGuidanceAt = counts.lastFailedGuidanceAt;
       a.inviteCount = counts.inviteCount;
       a.emailsSent = counts.emailsSent;
-      // Prefer invite timestamp as "date assigned"; keep progress created_at as fallback.
+      // Prefer invite / legacy notification timestamp as date assigned.
       if (counts.assignedAt) a.assignedAt = counts.assignedAt;
     }
   }
+
+  // Drop helper-only createdAt before returning modules (API shape).
+  const modulesOut = modules.map(({ id, title, currentlyAssigned }) => ({
+    id,
+    title,
+    currentlyAssigned,
+  }));
 
   const s = summaryRows[0] ?? {};
   const memberCount = Number(b.member_count ?? memberRows.length);
@@ -434,7 +460,7 @@ export async function getBatchPerformance(
       memberCount,
     },
     summary: {
-      modulesAssigned: modules.filter((m) => m.currentlyAssigned).length || modules.length,
+      modulesAssigned: modulesOut.filter((m) => m.currentlyAssigned).length || modulesOut.length,
       learnersStarted: Number(s.learners_started ?? 0),
       completed: Number(s.completed ?? 0),
       inProgress: Number(s.in_progress ?? 0),
@@ -442,7 +468,7 @@ export async function getBatchPerformance(
       passRate: s.pass_rate != null ? Number(s.pass_rate) : null,
       compliance: Number(s.compliance ?? 0),
     },
-    modules,
+    modules: modulesOut,
     moduleSummaries,
     learners: Array.from(learnerMap.values()),
     generatedAt: new Date().toISOString(),

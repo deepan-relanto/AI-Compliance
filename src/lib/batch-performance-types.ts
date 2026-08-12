@@ -21,6 +21,11 @@ export interface BatchAssessmentResult {
   inviteCount: number;
   /** All outreach emails (invite + reminder + guidance + retake). */
   emailsSent: number;
+  /**
+   * False when this module has no invite/reminder event history in DB
+   * (typical for assignments before email logging). CSV shows "Not available".
+   */
+  emailHistoryAvailable: boolean;
 }
 
 export interface BatchLearnerPerformance {
