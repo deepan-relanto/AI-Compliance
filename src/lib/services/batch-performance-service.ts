@@ -14,6 +14,7 @@ import {
   getBatchOutreachCounts,
   outreachCountKey,
 } from "@/lib/services/notification-events-service";
+import { healOrphanedProgressBatchIds } from "@/lib/services/batch-management-service";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 type Sql = ReturnType<typeof getSql>;
@@ -54,6 +55,11 @@ export async function getBatchPerformance(
 
   const b = batchRows[0];
   const isCourse = track === "course";
+
+  // Restore progress that was wrongly re-tagged when learners moved batches.
+  await healOrphanedProgressBatchIds(sql).catch((err) =>
+    console.warn("[batch-performance heal]", err),
+  );
 
   /**
    * Modules ever tied to this batch: current assignments UNION modules that
@@ -98,17 +104,49 @@ export async function getBatchPerformance(
             )
           ORDER BY m.title
         `,
-    sql`
-      SELECT email, display_name
-      FROM users
-      WHERE batch_id = ${batchId}
-      ORDER BY email
-    `,
+    isCourse
+      ? sql`
+          SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
+          FROM users
+          WHERE batch_id = ${batchId}
+          UNION
+          SELECT DISTINCT
+            LOWER(p.user_email) AS email,
+            COALESCE(u.display_name, p.user_email) AS display_name,
+            TRUE AS is_alumni
+          FROM course_progress p
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
+          WHERE p.batch_id = ${batchId}
+            AND NOT EXISTS (
+              SELECT 1 FROM users cur
+              WHERE cur.batch_id = ${batchId}
+                AND LOWER(cur.email) = LOWER(p.user_email)
+            )
+        `
+      : sql`
+          SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
+          FROM users
+          WHERE batch_id = ${batchId}
+          UNION
+          SELECT DISTINCT
+            LOWER(p.user_email) AS email,
+            COALESCE(u.display_name, p.user_email) AS display_name,
+            TRUE AS is_alumni
+          FROM assessment_progress p
+          LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
+          WHERE p.batch_id = ${batchId}
+            AND NOT EXISTS (
+              SELECT 1 FROM users cur
+              WHERE cur.batch_id = ${batchId}
+                AND LOWER(cur.email) = LOWER(p.user_email)
+            )
+        `,
     isCourse
       ? sql`
           SELECT
-            u.email,
-            COALESCE(u.display_name, u.email) AS display_name,
+            l.email,
+            l.display_name,
+            l.is_alumni,
             bm.id AS module_id,
             bm.title AS module_title,
             ap.status,
@@ -123,7 +161,24 @@ export async function getBatchPerformance(
             ap.current_slide,
             ap.warning_count,
             ap.mcq_answers
-          FROM users u
+          FROM (
+            SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
+            FROM users
+            WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT
+              LOWER(p.user_email) AS email,
+              COALESCE(u.display_name, p.user_email) AS display_name,
+              TRUE AS is_alumni
+            FROM course_progress p
+            LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
+            WHERE p.batch_id = ${batchId}
+              AND NOT EXISTS (
+                SELECT 1 FROM users cur
+                WHERE cur.batch_id = ${batchId}
+                  AND LOWER(cur.email) = LOWER(p.user_email)
+              )
+          ) l
           CROSS JOIN (
             SELECT m.id, m.title
             FROM course_modules m
@@ -134,15 +189,19 @@ export async function getBatchPerformance(
             )
           ) bm
           LEFT JOIN course_progress ap
-            ON ap.user_email = u.email
+            ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-          WHERE u.batch_id = ${batchId}
-          ORDER BY u.email, bm.title
+            AND (
+              ap.batch_id = ${batchId}
+              OR l.is_alumni = FALSE
+            )
+          ORDER BY l.email, bm.title
         `
       : sql`
           SELECT
-            u.email,
-            COALESCE(u.display_name, u.email) AS display_name,
+            l.email,
+            l.display_name,
+            l.is_alumni,
             bm.id AS module_id,
             bm.title AS module_title,
             ap.status,
@@ -157,7 +216,24 @@ export async function getBatchPerformance(
             ap.current_slide,
             ap.warning_count,
             ap.mcq_answers
-          FROM users u
+          FROM (
+            SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
+            FROM users
+            WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT
+              LOWER(p.user_email) AS email,
+              COALESCE(u.display_name, p.user_email) AS display_name,
+              TRUE AS is_alumni
+            FROM assessment_progress p
+            LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
+            WHERE p.batch_id = ${batchId}
+              AND NOT EXISTS (
+                SELECT 1 FROM users cur
+                WHERE cur.batch_id = ${batchId}
+                  AND LOWER(cur.email) = LOWER(p.user_email)
+              )
+          ) l
           CROSS JOIN (
             SELECT m.id, m.title
             FROM training_modules m
@@ -169,15 +245,18 @@ export async function getBatchPerformance(
               )
           ) bm
           LEFT JOIN assessment_progress ap
-            ON ap.user_email = u.email
+            ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-          WHERE u.batch_id = ${batchId}
-          ORDER BY u.email, bm.title
+            AND (
+              ap.batch_id = ${batchId}
+              OR l.is_alumni = FALSE
+            )
+          ORDER BY l.email, bm.title
         `,
     isCourse
       ? sql`
           SELECT
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.user_email IS NOT NULL
                 AND (
                   ap.status IN ('in_progress', 'completed', 'failed', 'permanently_failed')
@@ -185,46 +264,69 @@ export async function getBatchPerformance(
                   OR (ap.mcq_answers IS NOT NULL AND ap.mcq_answers::text <> '{}')
                 )
             )::int AS learners_started,
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.status = 'completed'
             )::int AS completed,
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.user_email IS NOT NULL
                 AND ap.status IN ('in_progress', 'failed')
             )::int AS in_progress,
+            COUNT(DISTINCT l.email) FILTER (
+              WHERE ap.status IN ('failed', 'permanently_failed')
+            )::int AS failed,
             ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (
               WHERE ap.score_percent IS NOT NULL AND COALESCE(ap.mcq_total, 0) > 0
             ))::int AS avg_score,
             ROUND(
-              100.0 * COUNT(DISTINCT u.email) FILTER (
+              100.0 * COUNT(DISTINCT l.email) FILTER (
                 WHERE ap.score_percent IS NOT NULL
                   AND COALESCE(ap.mcq_total, 0) > 0
                   AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
               )
               / NULLIF(
-                COUNT(DISTINCT u.email) FILTER (
+                COUNT(DISTINCT l.email) FILTER (
                   WHERE ap.score_percent IS NOT NULL AND COALESCE(ap.mcq_total, 0) > 0
                 ),
                 0
               )
             )::int AS pass_rate,
             ROUND(
-              100.0 * COUNT(DISTINCT u.email) FILTER (WHERE ap.status = 'completed')
-              / NULLIF(COUNT(DISTINCT u.email), 0)
+              100.0 * COUNT(DISTINCT l.email) FILTER (WHERE ap.status = 'completed')
+              / NULLIF(
+                (SELECT COUNT(*)::int FROM users WHERE batch_id = ${batchId}),
+                0
+              )
             )::int AS compliance
-          FROM users u
+          FROM (
+            SELECT LOWER(email) AS email, FALSE AS is_alumni
+            FROM users
+            WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
+            FROM course_progress p
+            WHERE p.batch_id = ${batchId}
+              AND NOT EXISTS (
+                SELECT 1 FROM users cur
+                WHERE cur.batch_id = ${batchId}
+                  AND LOWER(cur.email) = LOWER(p.user_email)
+              )
+          ) l
           CROSS JOIN (
             SELECT module_id AS id FROM course_module_batches WHERE batch_id = ${batchId}
             UNION
             SELECT DISTINCT module_id AS id FROM course_progress WHERE batch_id = ${batchId}
           ) bm
           LEFT JOIN course_progress ap
-            ON ap.user_email = u.email AND ap.module_id = bm.id
-          WHERE u.batch_id = ${batchId}
+            ON LOWER(ap.user_email) = l.email
+            AND ap.module_id = bm.id
+            AND (
+              ap.batch_id = ${batchId}
+              OR l.is_alumni = FALSE
+            )
         `
       : sql`
           SELECT
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.user_email IS NOT NULL
                 AND (
                   ap.status IN ('in_progress', 'completed', 'failed', 'permanently_failed')
@@ -232,34 +334,53 @@ export async function getBatchPerformance(
                   OR (ap.mcq_answers IS NOT NULL AND ap.mcq_answers::text <> '{}')
                 )
             )::int AS learners_started,
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.status = 'completed'
             )::int AS completed,
-            COUNT(DISTINCT u.email) FILTER (
+            COUNT(DISTINCT l.email) FILTER (
               WHERE ap.user_email IS NOT NULL
                 AND ap.status IN ('in_progress', 'failed')
             )::int AS in_progress,
+            COUNT(DISTINCT l.email) FILTER (
+              WHERE ap.status IN ('failed', 'permanently_failed')
+            )::int AS failed,
             ROUND(AVG(LEAST(ap.score_percent, 100)) FILTER (
               WHERE ap.score_percent IS NOT NULL AND COALESCE(ap.mcq_total, 0) > 0
             ))::int AS avg_score,
             ROUND(
-              100.0 * COUNT(DISTINCT u.email) FILTER (
+              100.0 * COUNT(DISTINCT l.email) FILTER (
                 WHERE ap.score_percent IS NOT NULL
                   AND COALESCE(ap.mcq_total, 0) > 0
                   AND LEAST(ap.score_percent, 100) >= ${PASS_THRESHOLD_PERCENT}
               )
               / NULLIF(
-                COUNT(DISTINCT u.email) FILTER (
+                COUNT(DISTINCT l.email) FILTER (
                   WHERE ap.score_percent IS NOT NULL AND COALESCE(ap.mcq_total, 0) > 0
                 ),
                 0
               )
             )::int AS pass_rate,
             ROUND(
-              100.0 * COUNT(DISTINCT u.email) FILTER (WHERE ap.status = 'completed')
-              / NULLIF(COUNT(DISTINCT u.email), 0)
+              100.0 * COUNT(DISTINCT l.email) FILTER (WHERE ap.status = 'completed')
+              / NULLIF(
+                (SELECT COUNT(*)::int FROM users WHERE batch_id = ${batchId}),
+                0
+              )
             )::int AS compliance
-          FROM users u
+          FROM (
+            SELECT LOWER(email) AS email, FALSE AS is_alumni
+            FROM users
+            WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
+            FROM assessment_progress p
+            WHERE p.batch_id = ${batchId}
+              AND NOT EXISTS (
+                SELECT 1 FROM users cur
+                WHERE cur.batch_id = ${batchId}
+                  AND LOWER(cur.email) = LOWER(p.user_email)
+              )
+          ) l
           CROSS JOIN (
             SELECT mb.module_id AS id
             FROM module_batches mb
@@ -274,8 +395,12 @@ export async function getBatchPerformance(
             WHERE ap.batch_id = ${batchId}
           ) bm
           LEFT JOIN assessment_progress ap
-            ON ap.user_email = u.email AND ap.module_id = bm.id
-          WHERE u.batch_id = ${batchId}
+            ON LOWER(ap.user_email) = l.email
+            AND ap.module_id = bm.id
+            AND (
+              ap.batch_id = ${batchId}
+              OR l.is_alumni = FALSE
+            )
         `,
     // Parallel with grid — batch-scoped outreach (no module-id dependency).
     getBatchOutreachCounts(sql, batchId, [], track),
@@ -403,7 +528,13 @@ export async function getBatchPerformance(
   }));
 
   const s = summaryRows[0] ?? {};
-  const memberCount = Number(b.member_count ?? memberRows.length);
+  const currentRosterCount = memberRows.filter((m) => !m.is_alumni).length;
+  const memberCount = Number(b.member_count ?? currentRosterCount);
+  const failedCount = Number(s.failed ?? 0);
+  const notStartedCount = Math.max(
+    0,
+    memberCount - Number(s.learners_started ?? 0),
+  );
 
   const moduleSummaries: BatchModuleSummary[] = modules.map((mod) => {
     let started = 0;
@@ -464,6 +595,8 @@ export async function getBatchPerformance(
       learnersStarted: Number(s.learners_started ?? 0),
       completed: Number(s.completed ?? 0),
       inProgress: Number(s.in_progress ?? 0),
+      failed: failedCount,
+      notStarted: notStartedCount,
       avgScore: s.avg_score != null ? Number(s.avg_score) : null,
       passRate: s.pass_rate != null ? Number(s.pass_rate) : null,
       compliance: Number(s.compliance ?? 0),

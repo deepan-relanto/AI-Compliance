@@ -183,6 +183,8 @@ export function exportBatchPerformanceCsv(
           Started: data.summary.learnersStarted,
           Completed: data.summary.completed,
           "In Progress": data.summary.inProgress,
+          Failed: data.summary.failed ?? 0,
+          "Not Started": data.summary.notStarted ?? "",
           "Avg Score (%)": data.summary.avgScore ?? "",
           "Pass Rate (%)": data.summary.passRate ?? "",
           "Compliance (%)": data.summary.compliance,

@@ -67,6 +67,8 @@ export interface BatchPerformancePayload {
     learnersStarted: number;
     completed: number;
     inProgress: number;
+    failed: number;
+    notStarted: number;
     avgScore: number | null;
     passRate: number | null;
     compliance: number;

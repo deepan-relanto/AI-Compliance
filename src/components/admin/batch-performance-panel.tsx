@@ -526,56 +526,68 @@ export function BatchPerformancePanel({
           icon={Users}
           trend={
             isOverview
-              ? `${summary.modulesAssigned} ${noun}${summary.modulesAssigned !== 1 ? "s" : ""} assigned`
+              ? `${summary.modulesAssigned} ${noun}${summary.modulesAssigned !== 1 ? "s" : ""} assigned · current roster`
               : activeModule?.title
                 ? `Scoped to ${activeModule.title}`
                 : `Selected ${noun}`
           }
         />
-        <MetricCard
-          label="Started"
-          value={String(
-            isOverview
-              ? summary.learnersStarted
-              : (detailSummary?.started ?? 0),
-          )}
-          icon={FileSpreadsheet}
-          trend={
-            isOverview
-              ? "Learners with at least one attempt"
-              : "Learners who started this module"
-          }
-        />
-        <MetricCard
-          label="Completed"
-          value={String(
-            isOverview ? summary.completed : (detailSummary?.completed ?? 0),
-          )}
-          icon={CheckCircle2}
-          trend={
-            isOverview
-              ? `${summary.inProgress} in progress`
-              : `${detailSummary?.inProgress ?? 0} in progress · ${detailSummary?.failed ?? 0} failed`
-          }
-        />
-        <MetricCard
-          label="Avg. score"
-          value={
-            (isOverview ? summary.avgScore : detailSummary?.avgScore) != null
-              ? `${isOverview ? summary.avgScore : detailSummary?.avgScore}%`
-              : "—"
-          }
-          icon={Download}
-          trend={
-            isOverview
-              ? summary.passRate != null
-                ? `${summary.passRate}% pass rate · ${summary.compliance}% compliance`
-                : "No scored results yet"
-              : detailSummary?.passRate != null
-                ? `${detailSummary.passRate}% pass rate · ${detailSummary.compliance}% compliance`
-                : "No scored results yet"
-          }
-        />
+        {isOverview ? (
+          <>
+            <MetricCard
+              label="Completed"
+              value={String(summary.completed)}
+              icon={CheckCircle2}
+              trend={`${summary.inProgress} in progress · ${summary.notStarted} not started`}
+            />
+            <MetricCard
+              label="Failed"
+              value={String(summary.failed)}
+              icon={AlertTriangle}
+              accent="danger"
+              trend="Attempts locked or failed for this batch"
+            />
+            <MetricCard
+              label="Compliance"
+              value={`${summary.compliance}%`}
+              icon={Download}
+              trend={
+                summary.avgScore != null
+                  ? `Avg score ${summary.avgScore}% · ${summary.passRate ?? 0}% pass rate`
+                  : "No scored results yet"
+              }
+            />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              label="Started"
+              value={String(detailSummary?.started ?? 0)}
+              icon={FileSpreadsheet}
+              trend="Learners who started this module"
+            />
+            <MetricCard
+              label="Completed"
+              value={String(detailSummary?.completed ?? 0)}
+              icon={CheckCircle2}
+              trend={`${detailSummary?.inProgress ?? 0} in progress · ${detailSummary?.failed ?? 0} failed`}
+            />
+            <MetricCard
+              label="Avg. score"
+              value={
+                detailSummary?.avgScore != null
+                  ? `${detailSummary.avgScore}%`
+                  : "—"
+              }
+              icon={Download}
+              trend={
+                detailSummary?.passRate != null
+                  ? `${detailSummary.passRate}% pass rate · ${detailSummary.compliance}% compliance`
+                  : "No scored results yet"
+              }
+            />
+          </>
+        )}
       </div>
 
       {isOverview ? (

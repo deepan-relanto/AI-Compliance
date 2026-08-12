@@ -93,7 +93,11 @@ export default function BatchAnalyticsPage() {
           );
           setData({
             batch: json.batch,
-            summary: json.summary,
+            summary: {
+              ...json.summary,
+              failed: Number(json.summary?.failed ?? 0),
+              notStarted: Number(json.summary?.notStarted ?? 0),
+            },
             modules,
             moduleSummaries: json.moduleSummaries ?? [],
             learners: json.learners ?? [],
