@@ -227,15 +227,26 @@ export async function getProgressRow(
   sql: Sql,
   userEmail: string,
   moduleId: string,
+  batchId?: string | null,
 ): Promise<ProgressRow | null> {
-  const rows = await sql`
-    SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
-           status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
-           mcq_answers, failed_reason, completed_at
-    FROM assessment_progress
-    WHERE user_email = ${userEmail} AND module_id = ${moduleId}
-    LIMIT 1
-  `;
+  const rows = batchId
+    ? await sql`
+        SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
+               status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+               mcq_answers, failed_reason, completed_at
+        FROM assessment_progress
+        WHERE user_email = ${userEmail} AND module_id = ${moduleId} AND batch_id = ${batchId}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
+               status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
+               mcq_answers, failed_reason, completed_at
+        FROM assessment_progress
+        WHERE user_email = ${userEmail} AND module_id = ${moduleId}
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      `;
   if (rows.length === 0) return null;
   return mapProgressRow(rows[0] as Record<string, unknown>);
 }
@@ -254,13 +265,10 @@ export async function startTrainingSessionDb(
     currentSlide?: number;
   },
 ): Promise<ProgressRow> {
-  const userRows = await sql`
-    SELECT batch_id FROM users
-    WHERE LOWER(email) = LOWER(${params.userEmail})
-    LIMIT 1
-  `;
-  const resolvedBatchId =
-    (userRows[0]?.batch_id as string | null)?.trim() || params.batchId;
+  const resolvedBatchId = params.batchId.trim();
+  if (!resolvedBatchId) {
+    throw new Error("batchId is required to start training.");
+  }
 
   // Normalize impossible state: max retakes used but no finalized score.
   await sql`
@@ -272,6 +280,7 @@ export async function startTrainingSessionDb(
         updated_at = NOW()
     WHERE user_email = ${params.userEmail}
       AND module_id = ${params.moduleId}
+      AND batch_id = ${resolvedBatchId}
       AND retake_count >= 2
       AND score_percent IS NULL
       AND status = 'in_progress'
@@ -279,7 +288,12 @@ export async function startTrainingSessionDb(
   `;
 
   if (params.freshStart) {
-    const existing = await getProgressRow(sql, params.userEmail, params.moduleId);
+    const existing = await getProgressRow(
+      sql,
+      params.userEmail,
+      params.moduleId,
+      resolvedBatchId,
+    );
     if (
       existing?.status === "failed" ||
       existing?.status === "permanently_failed"
@@ -316,6 +330,7 @@ export async function startTrainingSessionDb(
               updated_at = NOW()
           WHERE user_email = ${params.userEmail}
             AND module_id = ${params.moduleId}
+            AND batch_id = ${resolvedBatchId}
             AND status IN ('not_started', 'in_progress')
             AND score_percent IS NULL
         `;
@@ -349,9 +364,8 @@ export async function startTrainingSessionDb(
       0,
       ${JSON.stringify({})}::jsonb
     )
-    ON CONFLICT (user_email, module_id) DO UPDATE SET
+    ON CONFLICT (user_email, module_id, batch_id) DO UPDATE SET
       module_title = EXCLUDED.module_title,
-      batch_id = EXCLUDED.batch_id,
       total_slides = EXCLUDED.total_slides,
       mcq_total = CASE
         WHEN assessment_progress.mcq_total > 0 THEN assessment_progress.mcq_total
@@ -701,10 +715,10 @@ export async function ensureProgressRow(
       0,
       ${JSON.stringify({})}::jsonb
     )
-    ON CONFLICT (user_email, module_id) DO NOTHING
+    ON CONFLICT (user_email, module_id, batch_id) DO NOTHING
   `;
 
-  const row = await getProgressRow(sql, params.userEmail, params.moduleId);
+  const row = await getProgressRow(sql, params.userEmail, params.moduleId, params.batchId);
   if (!row) {
     throw new Error("Could not create progress record.");
   }
@@ -1092,7 +1106,7 @@ export async function resetLearnerDataForModuleAssignment(
     DELETE FROM assessment_progress
     WHERE module_id = ${moduleId}
       AND user_email IN (
-        SELECT email FROM users WHERE batch_id = ANY(${batchIds})
+        SELECT user_email FROM user_batches WHERE batch_id = ANY(${batchIds})
       )
     RETURNING id
   `;
@@ -1101,7 +1115,7 @@ export async function resetLearnerDataForModuleAssignment(
     DELETE FROM review_requests
     WHERE module_id = ${moduleId}
       AND username IN (
-        SELECT email FROM users WHERE batch_id = ANY(${batchIds})
+        SELECT user_email FROM user_batches WHERE batch_id = ANY(${batchIds})
       )
     RETURNING id
   `;
@@ -1110,7 +1124,7 @@ export async function resetLearnerDataForModuleAssignment(
     DELETE FROM feedback_entries
     WHERE assessment_id = ${moduleId}
       AND user_id IN (
-        SELECT email FROM users WHERE batch_id = ANY(${batchIds})
+        SELECT user_email FROM user_batches WHERE batch_id = ANY(${batchIds})
       )
     RETURNING id
   `;

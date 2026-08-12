@@ -9,8 +9,8 @@ const SSO_PLACEHOLDER = "microsoft-sso";
 
 /**
  * Progress.batch_id is the batch where the attempt belongs.
- * Never rewrite it when a learner moves roster — that erased Module_1 history
- * when people were added to a new test batch.
+ * Never rewrite it when a learner is added to another batch — that erased
+ * Module_1 history when people were also enrolled in a new test batch.
  *
  * Only heal orphaned rows: progress points at a batch that does not have the
  * module assigned, while exactly one batch does → snap back to that batch.
@@ -120,7 +120,7 @@ export async function healOrphanedProgressBatchIds(sql: Sql): Promise<number> {
 
 export async function syncBatchMemberCount(sql: Sql, batchId: string): Promise<number> {
   const rows = await sql`
-    SELECT COUNT(*)::int AS c FROM users WHERE batch_id = ${batchId} AND role = 'user'
+    SELECT COUNT(*)::int AS c FROM user_batches WHERE batch_id = ${batchId}
   `;
   const count = Number(rows[0]?.c ?? 0);
   await sql`
@@ -129,7 +129,7 @@ export async function syncBatchMemberCount(sql: Sql, batchId: string): Promise<n
   return count;
 }
 
-/** Recompute member_count for every batch from live user roster. */
+/** Recompute member_count for every batch from multi-batch membership. */
 export async function syncAllBatchMemberCounts(sql: Sql): Promise<number> {
   const rows = await sql`
     UPDATE batches b
@@ -137,19 +137,17 @@ export async function syncAllBatchMemberCounts(sql: Sql): Promise<number> {
         updated_at = NOW()
     FROM (
       SELECT batch_id, COUNT(*)::int AS c
-      FROM users
-      WHERE role = 'user' AND batch_id IS NOT NULL
+      FROM user_batches
       GROUP BY batch_id
     ) u
     WHERE b.id = u.batch_id
     RETURNING b.id
   `;
-  // Zero out batches with no users
   await sql`
     UPDATE batches b
     SET member_count = 0, updated_at = NOW()
     WHERE NOT EXISTS (
-      SELECT 1 FROM users u WHERE u.batch_id = b.id AND u.role = 'user'
+      SELECT 1 FROM user_batches ub WHERE ub.batch_id = b.id
     )
       AND b.member_count <> 0
   `;
@@ -178,6 +176,8 @@ async function assignEmployeesToBatch(
   const roles_arr = normalized.map(() => "user");
   const batches_arr = normalized.map(() => batchId);
 
+  // Never overwrite an existing primary batch_id — adding to a new batch must
+  // not steal the learner from their previous batch(es).
   await sql`
     INSERT INTO users (email, password_hash, role, batch_id, display_name)
     SELECT * FROM unnest(
@@ -188,15 +188,24 @@ async function assignEmployeesToBatch(
       ${names_arr}::text[]
     ) AS t(email, password_hash, role, batch_id, display_name)
     ON CONFLICT (email) DO UPDATE SET
-      batch_id = EXCLUDED.batch_id,
+      batch_id = COALESCE(users.batch_id, EXCLUDED.batch_id),
       display_name = COALESCE(EXCLUDED.display_name, users.display_name),
       updated_at = NOW()
   `;
-  const assigned = normalized.length;
+
+  await sql`
+    INSERT INTO user_batches (user_email, batch_id)
+    SELECT * FROM unnest(
+      ${emails_arr}::text[],
+      ${batches_arr}::text[]
+    ) AS t(user_email, batch_id)
+    ON CONFLICT DO NOTHING
+  `;
+
   await syncProgressBatchForEmails(sql, normalized);
   for (const email of normalized) invalidateLearnerAccess(email);
   invalidateAdminCaches();
-  return assigned;
+  return normalized.length;
 }
 
 async function uniqueBatchId(sql: Sql, label: string): Promise<string> {
@@ -253,18 +262,49 @@ export async function removeBatchMembers(
   if (!normalized.length) return 0;
 
   const rows = await sql`
+    DELETE FROM user_batches
+    WHERE batch_id = ${batchId}
+      AND LOWER(user_email) = ANY(${normalized})
+    RETURNING user_email
+  `;
+  const removedEmails = rows.map((r) => (r.user_email as string).toLowerCase());
+  if (!removedEmails.length) {
+    await syncBatchMemberCount(sql, batchId);
+    return 0;
+  }
+
+  // If primary users.batch_id pointed at the removed batch, point it at another
+  // remaining membership (or null).
+  await sql`
+    UPDATE users u
+    SET batch_id = alt.batch_id,
+        updated_at = NOW()
+    FROM (
+      SELECT DISTINCT ON (LOWER(ub.user_email))
+        LOWER(ub.user_email) AS email,
+        ub.batch_id
+      FROM user_batches ub
+      WHERE LOWER(ub.user_email) = ANY(${removedEmails})
+      ORDER BY LOWER(ub.user_email), ub.created_at ASC
+    ) alt
+    WHERE LOWER(u.email) = alt.email
+      AND u.batch_id = ${batchId}
+  `;
+
+  await sql`
     UPDATE users
     SET batch_id = NULL, updated_at = NOW()
     WHERE batch_id = ${batchId}
-      AND LOWER(email) = ANY(${normalized})
-    RETURNING email
+      AND LOWER(email) = ANY(${removedEmails})
+      AND NOT EXISTS (
+        SELECT 1 FROM user_batches ub
+        WHERE LOWER(ub.user_email) = LOWER(users.email)
+      )
   `;
-  const removedEmails = rows.map((r) => r.email as string);
-  if (removedEmails.length) {
-    await syncProgressBatchForEmails(sql, removedEmails);
-    for (const email of removedEmails) invalidateLearnerAccess(email);
-    invalidateAdminCaches();
-  }
+
+  await syncProgressBatchForEmails(sql, removedEmails);
+  for (const email of removedEmails) invalidateLearnerAccess(email);
+  invalidateAdminCaches();
   await syncBatchMemberCount(sql, batchId);
-  return rows.length;
+  return removedEmails.length;
 }

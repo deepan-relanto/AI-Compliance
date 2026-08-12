@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       userEmail: access.email,
       moduleId,
       moduleTitle,
-      batchId: batchId || access.batchId,
+      batchId: access.batchId,
       totalSlides: totalSlides ?? 1,
       assignedMcqCount:
         typeof assignedMcqCount === "number" && assignedMcqCount > 0
