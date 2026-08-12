@@ -286,6 +286,12 @@ export async function getBatchOutreachCounts(
           `;
 
     for (const r of eventRows) {
+      if (
+        moduleIds.length > 0 &&
+        !moduleIds.includes(r.module_id as string)
+      ) {
+        continue;
+      }
       const key = outreachCountKey(r.user_email as string, r.module_id as string);
       const row = ensure(key);
       row.reminderCount = Number(r.reminder_count ?? 0);
@@ -325,6 +331,12 @@ export async function getBatchOutreachCounts(
           `;
 
     for (const r of legacyInviteRows) {
+      if (
+        moduleIds.length > 0 &&
+        !moduleIds.includes(r.module_id as string)
+      ) {
+        continue;
+      }
       const key = outreachCountKey(r.user_email as string, r.module_id as string);
       const row = ensure(key);
       row.hasEmailLog = true;
