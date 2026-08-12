@@ -7,36 +7,112 @@ type Sql = ReturnType<typeof getSql>;
 
 const SSO_PLACEHOLDER = "microsoft-sso";
 
-/** Keep progress rows aligned when roster batch changes. */
+/**
+ * Progress.batch_id is the batch where the attempt belongs.
+ * Never rewrite it when a learner moves roster — that erased Module_1 history
+ * when people were added to a new test batch.
+ *
+ * Only heal orphaned rows: progress points at a batch that does not have the
+ * module assigned, while exactly one batch does → snap back to that batch.
+ */
 export async function syncProgressBatchForEmails(
   sql: Sql,
   emails: string[],
 ): Promise<number> {
-  const normalized = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+  const normalized = [
+    ...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean)),
+  ];
   if (!normalized.length) return 0;
 
   const [compliance, course] = await Promise.all([
     sql`
       UPDATE assessment_progress ap
-      SET batch_id = u.batch_id,
+      SET batch_id = sole.batch_id,
           updated_at = NOW()
-      FROM users u
-      WHERE LOWER(ap.user_email) = LOWER(u.email)
-        AND LOWER(u.email) = ANY(${normalized})
-        AND u.batch_id IS NOT NULL
-        AND ap.batch_id IS DISTINCT FROM u.batch_id
+      FROM (
+        SELECT module_id, MIN(batch_id) AS batch_id
+        FROM module_batches
+        GROUP BY module_id
+        HAVING COUNT(*) = 1
+      ) sole
+      WHERE ap.module_id = sole.module_id
+        AND LOWER(ap.user_email) = ANY(${normalized})
+        AND ap.batch_id IS DISTINCT FROM sole.batch_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM module_batches mb
+          WHERE mb.module_id = ap.module_id
+            AND mb.batch_id = ap.batch_id
+        )
       RETURNING ap.user_email
     `,
     sql`
       UPDATE course_progress cp
-      SET batch_id = u.batch_id,
+      SET batch_id = sole.batch_id,
           updated_at = NOW()
-      FROM users u
-      WHERE LOWER(cp.user_email) = LOWER(u.email)
-        AND LOWER(u.email) = ANY(${normalized})
-        AND u.batch_id IS NOT NULL
-        AND cp.batch_id IS DISTINCT FROM u.batch_id
+      FROM (
+        SELECT module_id, MIN(batch_id) AS batch_id
+        FROM course_module_batches
+        GROUP BY module_id
+        HAVING COUNT(*) = 1
+      ) sole
+      WHERE cp.module_id = sole.module_id
+        AND LOWER(cp.user_email) = ANY(${normalized})
+        AND cp.batch_id IS DISTINCT FROM sole.batch_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM course_module_batches mb
+          WHERE mb.module_id = cp.module_id
+            AND mb.batch_id = cp.batch_id
+        )
       RETURNING cp.user_email
+    `,
+  ]);
+  return compliance.length + course.length;
+}
+
+/** Heal orphaned progress for every learner (used on analytics read / admin ops). */
+export async function healOrphanedProgressBatchIds(sql: Sql): Promise<number> {
+  const [compliance, course] = await Promise.all([
+    sql`
+      UPDATE assessment_progress ap
+      SET batch_id = sole.batch_id,
+          updated_at = NOW()
+      FROM (
+        SELECT module_id, MIN(batch_id) AS batch_id
+        FROM module_batches
+        GROUP BY module_id
+        HAVING COUNT(*) = 1
+      ) sole
+      WHERE ap.module_id = sole.module_id
+        AND ap.batch_id IS DISTINCT FROM sole.batch_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM module_batches mb
+          WHERE mb.module_id = ap.module_id
+            AND mb.batch_id = ap.batch_id
+        )
+      RETURNING ap.id
+    `,
+    sql`
+      UPDATE course_progress cp
+      SET batch_id = sole.batch_id,
+          updated_at = NOW()
+      FROM (
+        SELECT module_id, MIN(batch_id) AS batch_id
+        FROM course_module_batches
+        GROUP BY module_id
+        HAVING COUNT(*) = 1
+      ) sole
+      WHERE cp.module_id = sole.module_id
+        AND cp.batch_id IS DISTINCT FROM sole.batch_id
+        AND NOT EXISTS (
+          SELECT 1
+          FROM course_module_batches mb
+          WHERE mb.module_id = cp.module_id
+            AND mb.batch_id = cp.batch_id
+        )
+      RETURNING cp.id
     `,
   ]);
   return compliance.length + course.length;
