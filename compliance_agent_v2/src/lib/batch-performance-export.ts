@@ -21,30 +21,65 @@ function slugify(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/** Excel-friendly local datetime (empty when missing). */
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/**
+ * Human-readable datetime that Excel will not turn into a serial date
+ * (which shows as ######## when the column is narrow).
+ */
 function formatExportDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const hours24 = d.getHours();
+  const hours12 = hours24 % 12 || 12;
+  const ampm = hours24 >= 12 ? "PM" : "AM";
+  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${hours12}:${pad(d.getMinutes())} ${ampm}`;
+}
+
+/** Force Excel to treat the cell as text (avoids ######## date display). */
+function excelText(value: string): string {
+  if (!value) return "";
+  return `="${value.replace(/"/g, '""')}"`;
+}
+
+function emailCell(
+  available: boolean | undefined,
+  count: number | null | undefined,
+): string | number {
+  if (!available) return "Not available";
+  return Number(count ?? 0);
 }
 
 type LearnerExportRow = {
-  "Batch": string;
+  Batch: string;
   "Learner Name": string;
-  "Email": string;
-  "Assessment": string;
-  "Status": string;
+  Email: string;
+  Assessment: string;
+  Status: string;
   "Score (%)": string | number;
-  "Correct": number;
+  Correct: number;
   "Total Questions": number;
   "Retakes Used": number;
   "Date Assigned": string;
-  "Invite Emails": number;
-  "Reminder Emails": number;
-  "Guidance Emails": number;
-  "Total Emails Sent": number;
+  "Invite Emails": string | number;
+  "Reminder Emails": string | number;
+  "Guidance Emails": string | number;
+  "Total Emails Sent": string | number;
   "Proctor Warnings": number;
   "Completion Date": string;
   "Last Activity": string;
@@ -56,7 +91,6 @@ export function exportBatchPerformanceCsv(
 ) {
   const moduleId = options?.moduleId?.trim() || null;
   if (!moduleId) {
-    // Per-module exports only — avoid mixed multi-module sheets.
     console.warn("[export] moduleId is required for CSV export");
   }
 
@@ -86,10 +120,10 @@ export function exportBatchPerformanceCsv(
           "Total Questions": 0,
           "Retakes Used": 0,
           "Date Assigned": "",
-          "Invite Emails": 0,
-          "Reminder Emails": 0,
-          "Guidance Emails": 0,
-          "Total Emails Sent": 0,
+          "Invite Emails": "Not available",
+          "Reminder Emails": "Not available",
+          "Guidance Emails": "Not available",
+          "Total Emails Sent": "Not available",
           "Proctor Warnings": 0,
           "Completion Date": "",
           "Last Activity": "",
@@ -97,27 +131,32 @@ export function exportBatchPerformanceCsv(
       ];
     }
 
-    return assessments.map((a) => ({
-      Batch: data.batch.label,
-      "Learner Name": learner.displayName,
-      Email: learner.email,
-      Assessment: a.moduleTitle,
-      Status: formatStatus(a.status),
-      "Score (%)": a.scorePercent ?? "",
-      Correct: a.mcqCorrect,
-      "Total Questions": a.mcqTotal,
-      "Retakes Used": a.retakeCount,
-      "Date Assigned": formatExportDate(a.assignedAt),
-      "Invite Emails": a.inviteCount ?? 0,
-      "Reminder Emails": a.reminderCount ?? 0,
-      "Guidance Emails": a.failedGuidanceCount ?? 0,
-      "Total Emails Sent": a.emailsSent ?? 0,
-      "Proctor Warnings": a.warningCount ?? 0,
-      "Completion Date": formatExportDate(a.completedAt),
-      "Last Activity": formatExportDate(
-        a.completedAt ?? a.updatedAt ?? a.lastAccessedAt,
-      ),
-    }));
+    return assessments.map((a) => {
+      const lastActivityIso =
+        a.lastAccessedAt ?? a.updatedAt ?? a.completedAt ?? null;
+      return {
+        Batch: data.batch.label,
+        "Learner Name": learner.displayName,
+        Email: learner.email,
+        Assessment: a.moduleTitle,
+        Status: formatStatus(a.status),
+        "Score (%)": a.scorePercent ?? "",
+        Correct: a.mcqCorrect,
+        "Total Questions": a.mcqTotal,
+        "Retakes Used": a.retakeCount,
+        "Date Assigned": excelText(formatExportDate(a.assignedAt)),
+        "Invite Emails": emailCell(a.emailHistoryAvailable, a.inviteCount),
+        "Reminder Emails": emailCell(a.emailHistoryAvailable, a.reminderCount),
+        "Guidance Emails": emailCell(
+          a.emailHistoryAvailable,
+          a.failedGuidanceCount,
+        ),
+        "Total Emails Sent": emailCell(a.emailHistoryAvailable, a.emailsSent),
+        "Proctor Warnings": a.warningCount ?? 0,
+        "Completion Date": excelText(formatExportDate(a.completedAt)),
+        "Last Activity": excelText(formatExportDate(lastActivityIso)),
+      };
+    });
   });
 
   const summaryRows = moduleSummary
@@ -150,7 +189,9 @@ export function exportBatchPerformanceCsv(
         },
       ];
 
-  const summaryCsv = Papa.unparse(summaryRows as Record<string, string | number>[]);
+  const summaryCsv = Papa.unparse(
+    summaryRows as Record<string, string | number>[],
+  );
   const rowsCsv = Papa.unparse(rows);
 
   const title = moduleId
@@ -162,6 +203,7 @@ export function exportBatchPerformanceCsv(
     `Generated: ${formatExportDate(data.generatedAt)}`,
     ...(moduleId ? [`Module: ${moduleMeta?.title ?? moduleId}`] : []),
     `Batch: ${data.batch.label}`,
+    "Note: Email columns show Not available when invite/reminder history was not logged for this module (common for older assignments). New assignments record email history going forward.",
     "",
     moduleId ? "MODULE SUMMARY" : "BATCH SUMMARY",
     summaryCsv,
@@ -177,7 +219,6 @@ export function exportBatchPerformanceCsv(
     ? `marks-${batchSlug}-${moduleSlug}-${date}.csv`
     : `marks-${batchSlug}-all-${date}.csv`;
 
-  // UTF-8 BOM so Excel opens columns/accents correctly.
   const blob = new Blob(["\uFEFF" + csv], {
     type: "text/csv;charset=utf-8;",
   });
