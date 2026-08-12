@@ -32,6 +32,16 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_batch ON users(batch_id);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 
+-- Learners may belong to multiple batches (users.batch_id remains a primary pointer).
+CREATE TABLE IF NOT EXISTS user_batches (
+  user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+  batch_id   TEXT NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_email, batch_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_batches_batch ON user_batches(batch_id);
+CREATE INDEX IF NOT EXISTS idx_user_batches_email ON user_batches(LOWER(user_email));
+
 -- ─── Master HR employee directory ───────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS employees (

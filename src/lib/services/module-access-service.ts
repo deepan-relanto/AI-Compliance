@@ -27,11 +27,15 @@ export async function verifyModuleAccess(
     };
   }
 
-  // Run module existence + user lookup in parallel to save a round-trip
   const [courseModuleRows, complianceModuleRows, userRows] = await Promise.all([
     sql`SELECT id FROM course_modules WHERE id = ${moduleId} LIMIT 1`,
     sql`SELECT id FROM training_modules WHERE id = ${moduleId} LIMIT 1`,
-    sql`SELECT batch_id FROM users WHERE LOWER(email) = LOWER(${userEmail}) LIMIT 1`,
+    sql`
+      SELECT email, batch_id AS primary_batch_id
+      FROM users
+      WHERE LOWER(email) = LOWER(${userEmail})
+      LIMIT 1
+    `,
   ]);
 
   if (courseModuleRows.length === 0 && complianceModuleRows.length === 0) {
@@ -46,20 +50,52 @@ export async function verifyModuleAccess(
     };
   }
 
-  const batchId = userRows[0].batch_id as string | null;
-  if (!batchId) {
-    return {
-      ok: false,
-      code: "not_assigned",
-      message: "You are not assigned to a batch for this training.",
-    };
-  }
-
-  // Check assignment in the correct table
+  const primaryBatchId = (userRows[0].primary_batch_id as string | null) ?? null;
   const isCourse = courseModuleRows.length > 0;
+
+  // Intersection: learner memberships ∩ batches that have this module assigned.
+  // Prefer the learner's primary batch when it is a valid match.
   const assigned = isCourse
-    ? await sql`SELECT 1 FROM course_module_batches WHERE module_id = ${moduleId} AND batch_id = ${batchId} LIMIT 1`
-    : await sql`SELECT 1 FROM module_batches WHERE module_id = ${moduleId} AND batch_id = ${batchId} LIMIT 1`;
+    ? await sql`
+        SELECT ub.batch_id
+        FROM user_batches ub
+        INNER JOIN course_module_batches cmb
+          ON cmb.batch_id = ub.batch_id AND cmb.module_id = ${moduleId}
+        WHERE LOWER(ub.user_email) = LOWER(${userEmail})
+        ORDER BY
+          CASE WHEN ub.batch_id = ${primaryBatchId} THEN 0 ELSE 1 END,
+          ub.created_at ASC
+        LIMIT 1
+      `
+    : await sql`
+        SELECT ub.batch_id
+        FROM user_batches ub
+        INNER JOIN module_batches mb
+          ON mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+        WHERE LOWER(ub.user_email) = LOWER(${userEmail})
+        ORDER BY
+          CASE WHEN ub.batch_id = ${primaryBatchId} THEN 0 ELSE 1 END,
+          ub.created_at ASC
+        LIMIT 1
+      `;
+
+  // Legacy fallback while user_batches is backfilling: single users.batch_id.
+  if (assigned.length === 0 && primaryBatchId) {
+    const legacy = isCourse
+      ? await sql`
+          SELECT 1 FROM course_module_batches
+          WHERE module_id = ${moduleId} AND batch_id = ${primaryBatchId}
+          LIMIT 1
+        `
+      : await sql`
+          SELECT 1 FROM module_batches
+          WHERE module_id = ${moduleId} AND batch_id = ${primaryBatchId}
+          LIMIT 1
+        `;
+    if (legacy.length > 0) {
+      return { ok: true, batchId: primaryBatchId };
+    }
+  }
 
   if (assigned.length === 0) {
     return {
@@ -69,5 +105,5 @@ export async function verifyModuleAccess(
     };
   }
 
-  return { ok: true, batchId };
+  return { ok: true, batchId: assigned[0].batch_id as string };
 }

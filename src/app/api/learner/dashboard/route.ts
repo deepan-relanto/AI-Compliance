@@ -33,12 +33,27 @@ export async function GET() {
       }
 
       const row = users[0];
-      const batchId = (row.batch_id as string | null) ?? "";
+      const primaryBatchId = (row.batch_id as string | null) ?? "";
       const displayName =
         (row.display_name as string | null)?.trim() || firstNameFromEmail(userEmail);
       const role = row.role as string;
 
-      if (!batchId) {
+      const membershipRows = await sql`
+        SELECT batch_id
+        FROM user_batches
+        WHERE LOWER(user_email) = LOWER(${userEmail})
+      `;
+      const membershipBatchIds = [
+        ...new Set(
+          membershipRows
+            .map((r) => r.batch_id as string)
+            .filter(Boolean)
+            .concat(primaryBatchId ? [primaryBatchId] : []),
+        ),
+      ];
+      const batchId = primaryBatchId || membershipBatchIds[0] || "";
+
+      if (!membershipBatchIds.length) {
         const [complianceProgress, courseProgress] = await Promise.all([
           listComplianceProgressForUser(sql, userEmail),
           listCourseProgressForUser(sql, userEmail),
@@ -64,7 +79,7 @@ export async function GET() {
             FROM training_modules m
             INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
             LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
-            WHERE mb_filter.batch_id = ${batchId}
+            WHERE mb_filter.batch_id = ANY(${membershipBatchIds})
               AND m.mcq_generation_status = 'completed'
               AND COALESCE(m.module_kind, 'compliance') = 'compliance'
             GROUP BY m.id
@@ -79,7 +94,7 @@ export async function GET() {
             FROM course_modules m
             INNER JOIN course_module_batches mb_filter ON mb_filter.module_id = m.id
             LEFT JOIN course_module_batches mb_all ON mb_all.module_id = m.id
-            WHERE mb_filter.batch_id = ${batchId}
+            WHERE mb_filter.batch_id = ANY(${membershipBatchIds})
               AND m.mcq_generation_status = 'completed'
             GROUP BY m.id
             ORDER BY m.created_at DESC

@@ -106,9 +106,10 @@ export async function getBatchPerformance(
         `,
     isCourse
       ? sql`
-          SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
-          FROM users
-          WHERE batch_id = ${batchId}
+          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+          FROM user_batches ub
+          INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
+          WHERE ub.batch_id = ${batchId}
           UNION
           SELECT DISTINCT
             LOWER(p.user_email) AS email,
@@ -118,15 +119,16 @@ export async function getBatchPerformance(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
           WHERE p.batch_id = ${batchId}
             AND NOT EXISTS (
-              SELECT 1 FROM users cur
+              SELECT 1 FROM user_batches cur
               WHERE cur.batch_id = ${batchId}
-                AND LOWER(cur.email) = LOWER(p.user_email)
+                AND LOWER(cur.user_email) = LOWER(p.user_email)
             )
         `
       : sql`
-          SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
-          FROM users
-          WHERE batch_id = ${batchId}
+          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+          FROM user_batches ub
+          INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
+          WHERE ub.batch_id = ${batchId}
           UNION
           SELECT DISTINCT
             LOWER(p.user_email) AS email,
@@ -136,9 +138,9 @@ export async function getBatchPerformance(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
           WHERE p.batch_id = ${batchId}
             AND NOT EXISTS (
-              SELECT 1 FROM users cur
+              SELECT 1 FROM user_batches cur
               WHERE cur.batch_id = ${batchId}
-                AND LOWER(cur.email) = LOWER(p.user_email)
+                AND LOWER(cur.user_email) = LOWER(p.user_email)
             )
         `,
     isCourse
@@ -162,9 +164,10 @@ export async function getBatchPerformance(
             ap.warning_count,
             ap.mcq_answers
           FROM (
-            SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
-            FROM users
-            WHERE batch_id = ${batchId}
+            SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+            FROM user_batches ub
+            INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
+            WHERE ub.batch_id = ${batchId}
             UNION
             SELECT DISTINCT
               LOWER(p.user_email) AS email,
@@ -174,9 +177,9 @@ export async function getBatchPerformance(
             LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
             WHERE p.batch_id = ${batchId}
               AND NOT EXISTS (
-                SELECT 1 FROM users cur
+                SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
-                  AND LOWER(cur.email) = LOWER(p.user_email)
+                  AND LOWER(cur.user_email) = LOWER(p.user_email)
               )
           ) l
           CROSS JOIN (
@@ -217,9 +220,10 @@ export async function getBatchPerformance(
             ap.warning_count,
             ap.mcq_answers
           FROM (
-            SELECT LOWER(email) AS email, display_name, FALSE AS is_alumni
-            FROM users
-            WHERE batch_id = ${batchId}
+            SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+            FROM user_batches ub
+            INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
+            WHERE ub.batch_id = ${batchId}
             UNION
             SELECT DISTINCT
               LOWER(p.user_email) AS email,
@@ -229,9 +233,9 @@ export async function getBatchPerformance(
             LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
             WHERE p.batch_id = ${batchId}
               AND NOT EXISTS (
-                SELECT 1 FROM users cur
+                SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
-                  AND LOWER(cur.email) = LOWER(p.user_email)
+                  AND LOWER(cur.user_email) = LOWER(p.user_email)
               )
           ) l
           CROSS JOIN (
@@ -293,22 +297,22 @@ export async function getBatchPerformance(
             ROUND(
               100.0 * COUNT(DISTINCT l.email) FILTER (WHERE ap.status = 'completed')
               / NULLIF(
-                (SELECT COUNT(*)::int FROM users WHERE batch_id = ${batchId}),
+                (SELECT COUNT(*)::int FROM user_batches WHERE batch_id = ${batchId}),
                 0
               )
             )::int AS compliance
           FROM (
-            SELECT LOWER(email) AS email, FALSE AS is_alumni
-            FROM users
-            WHERE batch_id = ${batchId}
+            SELECT LOWER(ub.user_email) AS email, FALSE AS is_alumni
+            FROM user_batches ub
+            WHERE ub.batch_id = ${batchId}
             UNION
             SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
             FROM course_progress p
             WHERE p.batch_id = ${batchId}
               AND NOT EXISTS (
-                SELECT 1 FROM users cur
+                SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
-                  AND LOWER(cur.email) = LOWER(p.user_email)
+                  AND LOWER(cur.user_email) = LOWER(p.user_email)
               )
           ) l
           CROSS JOIN (
@@ -363,22 +367,22 @@ export async function getBatchPerformance(
             ROUND(
               100.0 * COUNT(DISTINCT l.email) FILTER (WHERE ap.status = 'completed')
               / NULLIF(
-                (SELECT COUNT(*)::int FROM users WHERE batch_id = ${batchId}),
+                (SELECT COUNT(*)::int FROM user_batches WHERE batch_id = ${batchId}),
                 0
               )
             )::int AS compliance
           FROM (
-            SELECT LOWER(email) AS email, FALSE AS is_alumni
-            FROM users
-            WHERE batch_id = ${batchId}
+            SELECT LOWER(ub.user_email) AS email, FALSE AS is_alumni
+            FROM user_batches ub
+            WHERE ub.batch_id = ${batchId}
             UNION
             SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
             FROM assessment_progress p
             WHERE p.batch_id = ${batchId}
               AND NOT EXISTS (
-                SELECT 1 FROM users cur
+                SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
-                  AND LOWER(cur.email) = LOWER(p.user_email)
+                  AND LOWER(cur.user_email) = LOWER(p.user_email)
               )
           ) l
           CROSS JOIN (

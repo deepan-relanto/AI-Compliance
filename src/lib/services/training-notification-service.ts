@@ -1,4 +1,4 @@
-import type { getSql } from "@/lib/db";
+﻿import type { getSql } from "@/lib/db";
 import { getGraphMailConfig } from "@/lib/graph-mail-config";
 import { firstNameFromEmail } from "@/lib/auth-env";
 import {
@@ -34,9 +34,9 @@ const COURSE_ONE_STRETCH_NOTE =
 
 /** Plain-text guidelines included in course start invites. */
 const COURSE_INVITE_GUIDELINES_TEXT = [
-  "Before you begin — please read these guidelines:",
-  "1. Save & Exit — Available during the learning content so you can pause and resume later. Once the quiz begins, Save & Exit is no longer available. Leaving during the quiz will mark the attempt as failed, and you will need to retake the full course.",
-  "2. Session integrity — This course is monitored. Leaving fullscreen or switching tabs will trigger a warning. After three warnings, the attempt is locked. You will need to request a review; if approved, a retake link will be sent to you.",
+  "Before you begin â€” please read these guidelines:",
+  "1. Save & Exit â€” Available during the learning content so you can pause and resume later. Once the quiz begins, Save & Exit is no longer available. Leaving during the quiz will mark the attempt as failed, and you will need to retake the full course.",
+  "2. Session integrity â€” This course is monitored. Leaving fullscreen or switching tabs will trigger a warning. After three warnings, the attempt is locked. You will need to request a review; if approved, a retake link will be sent to you.",
 ].join("\n\n");
 
 /**
@@ -80,7 +80,7 @@ function courseDurationLabel(minutes: number | null | undefined): string {
  */
 function ctaButtonHtml(loginUrl: string, label: string): string {
   const safeLabel = escapeHtml(label);
-  // Approximate VML width — Outlook can't size a roundrect by padding.
+  // Approximate VML width â€” Outlook can't size a roundrect by padding.
   const vmlWidth = Math.max(140, Math.min(220, label.length * 11 + 44));
   return `
   <div style="margin:24px 0;">
@@ -118,7 +118,7 @@ function invitationHtml(params: {
   ${ctaButtonHtml(loginUrl, "Start course")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
   <p style="font-size:12px;color:#71717a">In case of any technical issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” AI Course</p>
 </body></html>`;
   }
 
@@ -134,7 +134,7 @@ function invitationHtml(params: {
   ${ctaButtonHtml(loginUrl, "Start training")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
   <p style="font-size:12px;color:#71717a">In case of any technical issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” Compliance Agent</p>
 </body></html>`;
 }
 
@@ -186,7 +186,7 @@ function reminderHtml(params: {
   ${ctaButtonHtml(loginUrl, "Start course")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
   <p style="font-size:12px;color:#71717a">If you run into access issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” AI Course</p>
 </body></html>`;
   }
 
@@ -202,7 +202,7 @@ function reminderHtml(params: {
   ${ctaButtonHtml(loginUrl, "Start training")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
   <p style="font-size:12px;color:#71717a">If you run into access issues, please contact Relanto Academy at <a href="mailto:relanto.academy@relanto.ai" style="color:#2e3192;text-decoration:underline">relanto.academy@relanto.ai</a></p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” Compliance Agent</p>
 </body></html>`;
 }
 
@@ -252,7 +252,7 @@ function completionHtml(params: {
   <p>We received your completed AI course for <strong>${safeTitle}</strong>, including your attestation and feedback.</p>
   ${resultSummaryHtml}
   <p style="color:#52525b">No further action is required. Thank you for completing your AI course.</p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” AI Course</p>
 </body></html>`;
   }
   return `
@@ -265,7 +265,7 @@ function completionHtml(params: {
   <p>We received your completed assessment for <strong>${safeTitle}</strong>, including your attestation and feedback.</p>
   ${resultSummaryHtml}
   <p style="color:#52525b">No further action is required. Thank you for completing your mandatory training.</p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” Compliance Agent</p>
 </body></html>`;
 }
 
@@ -312,11 +312,11 @@ function retakeHtml(params: {
   <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto AI Course</p>
   <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
   <p>Hi ${escapeHtml(displayName)},</p>
-  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).</p>
+  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared â€” you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).</p>
   <p style="font-size:13px;color:#52525b">${COURSE_ONE_STRETCH_NOTE}</p>
   ${ctaButtonHtml(loginUrl, "Start retake")}
   <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — AI Course</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” AI Course</p>
 </body></html>`;
   }
   return `
@@ -326,11 +326,11 @@ function retakeHtml(params: {
   <p style="font-size:12px;font-weight:700;letter-spacing:0.12em;color:#f15a24;text-transform:uppercase">Relanto Compliance Agent</p>
   <h1 style="font-size:22px;margin:8px 0 16px">Retake approved</h1>
   <p>Hi ${escapeHtml(displayName)},</p>
-  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).</p>
+  <p>Your administrator approved a new attempt for <strong>${escapeHtml(moduleTitle)}</strong>. Your previous warnings were cleared â€” you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).</p>
   <p style="font-size:13px;color:#52525b">${ONE_STRETCH_NOTE}</p>
   ${ctaButtonHtml(loginUrl, "Start retake")}
   <p style="font-size:13px;color:#71717a">Sign in with your @relanto.ai Microsoft work account to continue.</p>
-  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">© Relanto — Compliance Agent</p>
+  <p style="font-size:12px;color:#a1a1aa;margin-top:32px">Â© Relanto â€” Compliance Agent</p>
 </body></html>`;
 }
 
@@ -345,7 +345,7 @@ function retakeTextBody(params: {
   if (kind === "course") {
     return [
       `Hi ${displayName},`,
-      `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).`,
+      `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared â€” you may begin again from the start. This is a Relanto AI learning course (${durationLabel}).`,
       COURSE_ONE_STRETCH_NOTE,
       `Start retake here: ${loginUrl}`,
       "Sign in with your @relanto.ai Microsoft work account to continue.",
@@ -353,7 +353,7 @@ function retakeTextBody(params: {
   }
   return [
     `Hi ${displayName},`,
-    `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared — you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).`,
+    `Your administrator approved a new attempt for "${moduleTitle}". Your previous warnings were cleared â€” you may begin again from the start. This is a proctored compliance assessment (${durationLabel}).`,
     ONE_STRETCH_NOTE,
     `Start retake here: ${loginUrl}`,
     "Sign in with your @relanto.ai Microsoft work account to continue.",
@@ -371,7 +371,7 @@ function failedReviewGuidanceHtml(params: {
     kind === "course" ? "Relanto AI Course" : "Relanto Compliance Agent";
   const noun = kind === "course" ? "course assessment" : "compliance assessment";
   const footer =
-    kind === "course" ? "© Relanto — AI Course" : "© Relanto — Compliance Agent";
+    kind === "course" ? "Â© Relanto â€” AI Course" : "Â© Relanto â€” Compliance Agent";
   return `
 <!DOCTYPE html>
 <html><body style="font-family:Segoe UI,Arial,sans-serif;color:#18181b;line-height:1.6;max-width:560px;margin:0 auto;padding:24px">
@@ -433,7 +433,7 @@ export async function sendFailedReviewGuidanceEmails(
       failed: 0,
       errors: cfg.issues,
       message:
-        "Mail not configured — set MAIL_FROM_ADDRESS and ensure Graph Mail.Send consent.",
+        "Mail not configured â€” set MAIL_FROM_ADDRESS and ensure Graph Mail.Send consent.",
     };
   }
 
@@ -482,7 +482,7 @@ export async function sendFailedReviewGuidanceEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
-          u.batch_id AS learner_batch_id,
+          ub.batch_id AS learner_batch_id,
           cp.status AS progress_status,
           LEAST(cp.score_percent, 100) AS score_percent,
           cp.completed_at,
@@ -491,12 +491,14 @@ export async function sendFailedReviewGuidanceEmails(
           cp.warning_count,
           cp.mcq_answers
         FROM users u
-        INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
+        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+        INNER JOIN course_module_batches mb ON mb.batch_id = ub.batch_id
         LEFT JOIN course_progress cp
           ON LOWER(cp.user_email) = LOWER(u.email)
           AND cp.module_id = ${moduleId}
+          AND cp.batch_id = ub.batch_id
         WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -505,7 +507,7 @@ export async function sendFailedReviewGuidanceEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
-          u.batch_id AS learner_batch_id,
+          ub.batch_id AS learner_batch_id,
           ap.status AS progress_status,
           LEAST(ap.score_percent, 100) AS score_percent,
           ap.completed_at,
@@ -514,12 +516,14 @@ export async function sendFailedReviewGuidanceEmails(
           ap.warning_count,
           ap.mcq_answers
         FROM users u
-        INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
+        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+        INNER JOIN module_batches mb ON mb.batch_id = ub.batch_id
         LEFT JOIN assessment_progress ap
           ON LOWER(ap.user_email) = LOWER(u.email)
           AND ap.module_id = ${moduleId}
+          AND ap.batch_id = ub.batch_id
         WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -571,7 +575,7 @@ export async function sendFailedReviewGuidanceEmails(
       const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
       await sendGraphMail({
         to: email,
-        subject: `Action required: complete your review request — ${moduleTitle} — ${subjectBrand}`,
+        subject: `Action required: complete your review request â€” ${moduleTitle} â€” ${subjectBrand}`,
         htmlBody: failedReviewGuidanceHtml({
           displayName,
           moduleTitle,
@@ -738,7 +742,7 @@ async function releaseNotificationClaim(
   `;
 }
 
-/** Append-only send log — every outbound training/course email. */
+/** Append-only send log â€” every outbound training/course email. */
 export async function recordNotificationEvent(
   sql: Sql,
   moduleId: string,
@@ -833,7 +837,7 @@ export async function sendModuleInvitationEmails(
       skipped: 0,
       failed: 0,
       errors: cfg.issues,
-      message: "Mail not configured — set MAIL_FROM_ADDRESS and ensure Graph Mail.Send consent.",
+      message: "Mail not configured â€” set MAIL_FROM_ADDRESS and ensure Graph Mail.Send consent.",
     };
   }
 
@@ -878,7 +882,7 @@ export async function sendModuleInvitationEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
-          u.batch_id AS learner_batch_id,
+          ub.batch_id AS learner_batch_id,
           cp.status AS progress_status,
           LEAST(cp.score_percent, 100) AS score_percent,
           cp.completed_at,
@@ -887,12 +891,14 @@ export async function sendModuleInvitationEmails(
           cp.warning_count,
           cp.mcq_answers
         FROM users u
-        INNER JOIN course_module_batches mb ON mb.batch_id = u.batch_id
+        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+        INNER JOIN course_module_batches mb ON mb.batch_id = ub.batch_id
         LEFT JOIN course_progress cp
           ON LOWER(cp.user_email) = LOWER(u.email)
           AND cp.module_id = ${moduleId}
+          AND cp.batch_id = ub.batch_id
         WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -901,7 +907,7 @@ export async function sendModuleInvitationEmails(
         SELECT DISTINCT
           u.email,
           u.display_name,
-          u.batch_id AS learner_batch_id,
+          ub.batch_id AS learner_batch_id,
           ap.status AS progress_status,
           LEAST(ap.score_percent, 100) AS score_percent,
           ap.completed_at,
@@ -910,12 +916,14 @@ export async function sendModuleInvitationEmails(
           ap.warning_count,
           ap.mcq_answers
         FROM users u
-        INNER JOIN module_batches mb ON mb.batch_id = u.batch_id
+        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+        INNER JOIN module_batches mb ON mb.batch_id = ub.batch_id
         LEFT JOIN assessment_progress ap
           ON LOWER(ap.user_email) = LOWER(u.email)
           AND ap.module_id = ${moduleId}
+          AND ap.batch_id = ub.batch_id
         WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR mb.batch_id = ${batchId})
+          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
           AND u.role = 'user'
           AND u.email IS NOT NULL
         ORDER BY u.email
@@ -966,7 +974,7 @@ export async function sendModuleInvitationEmails(
     }
 
     // Reminders are repeatable by design (unlike the one-shot invitation), so the
-    // guard is per day — otherwise a double-click re-mails the whole batch.
+    // guard is per day â€” otherwise a double-click re-mails the whole batch.
     if (
       !forceResend &&
       reminderOnlyNotStarted &&
@@ -994,7 +1002,7 @@ export async function sendModuleInvitationEmails(
         : "Action required";
       await sendGraphMail({
         to: email,
-        subject: `${subjectPrefix}: ${moduleTitle} — ${subjectBrand}`,
+        subject: `${subjectPrefix}: ${moduleTitle} â€” ${subjectBrand}`,
         htmlBody: reminderOnlyNotStarted
           ? reminderHtml({
               displayName,
@@ -1125,7 +1133,7 @@ export async function sendRetakeApprovalEmail(
   try {
     await sendGraphMail({
       to: email,
-      subject: `Retake approved: ${moduleTitle} — ${subjectBrand}`,
+      subject: `Retake approved: ${moduleTitle} â€” ${subjectBrand}`,
       htmlBody: retakeHtml({
         displayName,
         moduleTitle,
@@ -1250,7 +1258,7 @@ export async function sendModuleCompletionEmail(
   try {
     await sendGraphMail({
       to: email,
-      subject: `${subjectPrefix}: ${moduleTitle} — ${subjectBrand}`,
+      subject: `${subjectPrefix}: ${moduleTitle} â€” ${subjectBrand}`,
       htmlBody: completionHtml({
         displayName,
         moduleTitle,

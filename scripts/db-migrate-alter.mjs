@@ -228,4 +228,128 @@ await sql`CREATE INDEX IF NOT EXISTS idx_training_notification_events_batch_type
 await sql`CREATE INDEX IF NOT EXISTS idx_course_notification_events_batch_type ON course_notification_events(batch_id, notification_type)`;
 await sql`CREATE INDEX IF NOT EXISTS idx_users_batch_role ON users(batch_id) WHERE role = 'user'`;
 
+// ─── Multi-batch membership (learners can belong to more than one batch) ─────
+await sql`
+  CREATE TABLE IF NOT EXISTS user_batches (
+    user_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+    batch_id   TEXT NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_email, batch_id)
+  )
+`;
+await sql`CREATE INDEX IF NOT EXISTS idx_user_batches_batch ON user_batches(batch_id)`;
+await sql`CREATE INDEX IF NOT EXISTS idx_user_batches_email ON user_batches(LOWER(user_email))`;
+
+// Backfill from legacy single users.batch_id
+await sql`
+  INSERT INTO user_batches (user_email, batch_id)
+  SELECT email, batch_id
+  FROM users
+  WHERE batch_id IS NOT NULL
+  ON CONFLICT DO NOTHING
+`;
+
+// Progress is owned by (learner × module × batch) so the same course can be
+// attempted independently when assigned via different batches.
+await sql`
+  DO $$
+  DECLARE
+    cname text;
+  BEGIN
+    SELECT conname INTO cname
+    FROM pg_constraint
+    WHERE conrelid = 'course_progress'::regclass
+      AND contype = 'u'
+      AND pg_get_constraintdef(oid) ILIKE '%user_email%module_id%'
+      AND pg_get_constraintdef(oid) NOT ILIKE '%batch_id%'
+    LIMIT 1;
+    IF cname IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE course_progress DROP CONSTRAINT %I', cname);
+    END IF;
+  END $$
+`;
+await sql`
+  DO $$
+  DECLARE
+    cname text;
+  BEGIN
+    SELECT conname INTO cname
+    FROM pg_constraint
+    WHERE conrelid = 'assessment_progress'::regclass
+      AND contype = 'u'
+      AND pg_get_constraintdef(oid) ILIKE '%user_email%module_id%'
+      AND pg_get_constraintdef(oid) NOT ILIKE '%batch_id%'
+    LIMIT 1;
+    IF cname IS NOT NULL THEN
+      EXECUTE format('ALTER TABLE assessment_progress DROP CONSTRAINT %I', cname);
+    END IF;
+  END $$
+`;
+
+// Prefer a real UNIQUE constraint so ON CONFLICT (user_email, module_id, batch_id) works.
+await sql`
+  UPDATE course_progress cp
+  SET batch_id = u.batch_id
+  FROM users u
+  WHERE LOWER(u.email) = LOWER(cp.user_email)
+    AND cp.batch_id IS NULL
+    AND u.batch_id IS NOT NULL
+`;
+await sql`
+  UPDATE assessment_progress ap
+  SET batch_id = u.batch_id
+  FROM users u
+  WHERE LOWER(u.email) = LOWER(ap.user_email)
+    AND ap.batch_id IS NULL
+    AND u.batch_id IS NOT NULL
+`;
+
+await sql`
+  DO $$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'course_progress'::regclass
+        AND conname = 'course_progress_user_module_batch_key'
+    ) THEN
+      ALTER TABLE course_progress
+        ADD CONSTRAINT course_progress_user_module_batch_key
+        UNIQUE (user_email, module_id, batch_id);
+    END IF;
+  END $$
+`;
+await sql`
+  DO $$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'assessment_progress'::regclass
+        AND conname = 'assessment_progress_user_module_batch_key'
+    ) THEN
+      ALTER TABLE assessment_progress
+        ADD CONSTRAINT assessment_progress_user_module_batch_key
+        UNIQUE (user_email, module_id, batch_id);
+    END IF;
+  END $$
+`;
+
+// Recompute stored member counts from multi-batch membership
+await sql`
+  UPDATE batches b
+  SET member_count = COALESCE(ub.c, 0),
+      updated_at = NOW()
+  FROM (
+    SELECT batch_id, COUNT(*)::int AS c
+    FROM user_batches
+    GROUP BY batch_id
+  ) ub
+  WHERE b.id = ub.batch_id
+`;
+await sql`
+  UPDATE batches b
+  SET member_count = 0, updated_at = NOW()
+  WHERE NOT EXISTS (SELECT 1 FROM user_batches ub WHERE ub.batch_id = b.id)
+    AND b.member_count <> 0
+`;
+
 console.log("✅ Schema alterations applied.");

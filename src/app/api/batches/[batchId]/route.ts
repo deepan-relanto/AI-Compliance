@@ -31,10 +31,11 @@ export async function GET(
 
     const b = batchRows[0];
     const users = await sql`
-      SELECT email, display_name, role
-      FROM users
-      WHERE batch_id = ${batchId}
-      ORDER BY email
+      SELECT u.email, u.display_name, u.role
+      FROM user_batches ub
+      INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
+      WHERE ub.batch_id = ${batchId}
+      ORDER BY u.email
     `;
 
     return NextResponse.json({
