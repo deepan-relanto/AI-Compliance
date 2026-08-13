@@ -34,9 +34,10 @@ const COURSE_ONE_STRETCH_NOTE =
 
 /** Plain-text guidelines included in course start invites. */
 const COURSE_INVITE_GUIDELINES_TEXT = [
-  "Before you begin â€” please read these guidelines:",
-  "1. Save & Exit â€” Available during the learning content so you can pause and resume later. Once the quiz begins, Save & Exit is no longer available. Leaving during the quiz will mark the attempt as failed, and you will need to retake the full course.",
-  "2. Session integrity â€” This course is monitored. Leaving fullscreen or switching tabs will trigger a warning. After three warnings, the attempt is locked. You will need to request a review; if approved, a retake link will be sent to you.",
+  "Critical Guidelines: Read Before Starting",
+  "1. Saving Your Work: Feel free to pause and resume during the learning modules. Note: Once the final quiz starts, Save & Exit is disabled. Leaving the quiz early marks it as a failed attempt.",
+  "2. Session Integrity & Proctoring: This course uses active monitoring. Please remain in full-screen mode and do not switch browser tabs.",
+  "3. 3-Warning Limit: Hitting 3 system warnings will automatically lock your account for this attempt. If locked, submit a review request to receive a new retake link.",
 ].join("\n\n");
 
 /**
@@ -48,14 +49,18 @@ function courseInviteGuidelinesHtml(): string {
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:20px 0 8px;border-collapse:collapse;">
     <tr>
       <td style="background-color:#f4f4f5;border:1px solid #e4e4e7;border-left:4px solid #2e3192;padding:16px 18px;">
-        <p style="margin:0 0 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;color:#18181b;line-height:1.4;">Before you begin</p>
+        <p style="margin:0 0 12px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;color:#18181b;line-height:1.4;">Critical Guidelines: Read Before Starting</p>
         <p style="margin:0 0 10px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#3f3f46;line-height:1.55;">
-          <strong style="color:#18181b;">1. Save &amp; Exit</strong><br />
-          Available during the learning content so you can pause and resume later. Once the quiz begins, Save &amp; Exit is no longer available. Leaving during the quiz will mark the attempt as failed, and you will need to retake the full course.
+          <strong style="color:#18181b;">1. Saving Your Work</strong><br />
+          Feel free to pause and resume during the learning modules. Note: Once the final quiz starts, Save &amp; Exit is disabled. Leaving the quiz early marks it as a failed attempt.
+        </p>
+        <p style="margin:0 0 10px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#3f3f46;line-height:1.55;">
+          <strong style="color:#18181b;">2. Session Integrity &amp; Proctoring</strong><br />
+          This course uses active monitoring. Please remain in full-screen mode and do not switch browser tabs.
         </p>
         <p style="margin:0;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#3f3f46;line-height:1.55;">
-          <strong style="color:#18181b;">2. Session integrity</strong><br />
-          This course is monitored. Leaving fullscreen or switching tabs will trigger a warning. After three warnings, the attempt is locked. You will need to request a review; if approved, a retake link will be sent to you.
+          <strong style="color:#18181b;">3. 3-Warning Limit</strong><br />
+          Hitting 3 system warnings will automatically lock your account for this attempt. If locked, submit a review request to receive a new retake link.
         </p>
       </td>
     </tr>
@@ -113,7 +118,7 @@ function invitationHtml(params: {
   <h1 style="font-size:22px;margin:8px 0 16px">New AI course assigned</h1>
   <p>Hi ${escapeHtml(displayName)},</p>
   <p>Your administrator has assigned <strong>${escapeHtml(moduleTitle)}</strong> to you. This is a Relanto AI learning course (${durationLabel}).</p>
-  <p style="font-size:13px;color:#52525b;margin-bottom:0;">Please review the guidelines below, then start when you are ready.</p>
+  <p style="font-size:13px;color:#52525b;margin-bottom:0;">Before you begin, Please review the guidelines below, then start when you are ready.</p>
   ${courseInviteGuidelinesHtml()}
   ${ctaButtonHtml(loginUrl, "Start course")}
   <p style="font-size:13px;color:#71717a;margin-bottom:6px">Sign in with your @relanto.ai Microsoft work account to begin.</p>
@@ -150,7 +155,7 @@ function invitationTextBody(params: {
     return [
       `Hi ${displayName},`,
       `Your administrator has assigned "${moduleTitle}" to you. This is a Relanto AI learning course (${durationLabel}).`,
-      "Please review the guidelines below, then start when you are ready.",
+      "Before you begin, Please review the guidelines below, then start when you are ready.",
       COURSE_INVITE_GUIDELINES_TEXT,
       `Start course: ${loginUrl}`,
       "Sign in with your @relanto.ai Microsoft work account to begin.",
