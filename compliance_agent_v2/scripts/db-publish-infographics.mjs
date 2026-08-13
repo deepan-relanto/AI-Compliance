@@ -44,9 +44,9 @@ const dryRun = process.argv.includes("--dry");
 const SWAPS = [
   {
     module: 2,
-    replaces: "/course-assets/67465a8f-545f-4ca4-81f9-20aad08bb212.png",
+    replaces: "/course-assets/2078f0ee-f585-4ff8-b332-62579afcebbc.png",
     file: "module-2-responsible-ai-ethics.png",
-    originalName: "Responsible_AI_Ethics_Reference.png",
+    originalName: "Responsible_AI_How_to_Own_Your_Outcomes.png",
   },
   {
     module: 3,
