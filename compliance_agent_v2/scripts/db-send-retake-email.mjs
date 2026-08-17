@@ -73,7 +73,7 @@ const sendRes = await fetch(
     },
     body: JSON.stringify({
       message: {
-        subject: `Retake approved: ${moduleTitle} — Relanto Compliance Training`,
+        subject: `Retake approved: ${moduleTitle} - Relanto Compliance Training`,
         body: { contentType: "HTML", content: html },
         toRecipients: [{ emailAddress: { address: userEmail.toLowerCase() } }],
       },
