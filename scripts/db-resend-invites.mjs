@@ -128,7 +128,7 @@ for (const row of learners) {
   const loginUrl = `${cfg.baseUrl}/login?callbackUrl=${encodeURIComponent(`/training/${moduleId}`)}`;
   const html = `<p>Hi ${name},</p><p>Complete <strong>${mod[0].title}</strong>: <a href="${loginUrl}">Start training</a></p>`;
   try {
-    await sendMail(cfg, token, email, `Action required: ${mod[0].title} — Relanto Compliance Training`, html);
+    await sendMail(cfg, token, email, `Action required: ${mod[0].title} - Relanto Compliance Training`, html);
     await sql`
       INSERT INTO training_notifications (module_id, user_email, notification_type)
       VALUES (${moduleId}, ${email}, 'invited')
