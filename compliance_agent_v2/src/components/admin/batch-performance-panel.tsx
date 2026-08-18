@@ -95,8 +95,8 @@ function FilterPill({
 const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   in_progress: "In progress",
-  failed: "Failed",
-  permanently_failed: "Permanently failed",
+  failed: "Locked",
+  permanently_failed: "Locked",
   not_started: "Not started",
 };
 
@@ -444,7 +444,7 @@ export function BatchPerformancePanel({
           ? `Review-guidance emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}.`
           : aggregate.failed > 0
             ? `Failed to send ${aggregate.failed} review-guidance email(s).`
-            : "No eligible failed learners matched this outreach.";
+            : "No eligible locked learners matched this outreach.";
       setFailedResult(aggregate);
     } catch {
       setFailedError("Could not reach the server.");
@@ -535,25 +535,31 @@ export function BatchPerformancePanel({
         {isOverview ? (
           <>
             <MetricCard
-              label="Completed"
-              value={String(summary.completed)}
-              icon={CheckCircle2}
-              trend={`${summary.inProgress} in progress · ${summary.notStarted} not started`}
+              label={nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)}
+              value={String(summary.modulesAssigned)}
+              icon={LayoutDashboard}
+              trend={`Assigned to this batch · open one ${noun} below for course-specific KPIs`}
             />
             <MetricCard
-              label="Failed"
+              label="Started"
+              value={String(summary.learnersStarted)}
+              icon={CheckCircle2}
+              trend={`${summary.notStarted} have not started yet`}
+            />
+            <MetricCard
+              label="Locked"
               value={String(summary.failed)}
               icon={AlertTriangle}
               accent="danger"
-              trend="Attempts locked or failed for this batch"
+              trend="Learners currently locked in this batch"
             />
             <MetricCard
-              label="Compliance"
-              value={`${summary.compliance}%`}
+              label="Batch health"
+              value={summary.avgScore != null ? `${summary.avgScore}%` : "—"}
               icon={Download}
               trend={
                 summary.avgScore != null
-                  ? `Avg score ${summary.avgScore}% · ${summary.passRate ?? 0}% pass rate`
+                  ? `${summary.passRate ?? 0}% pass rate across scored attempts`
                   : "No scored results yet"
               }
             />
@@ -570,7 +576,14 @@ export function BatchPerformancePanel({
               label="Completed"
               value={String(detailSummary?.completed ?? 0)}
               icon={CheckCircle2}
-              trend={`${detailSummary?.inProgress ?? 0} in progress · ${detailSummary?.failed ?? 0} failed`}
+              trend={`${detailSummary?.inProgress ?? 0} in progress · ${detailSummary?.failed ?? 0} locked`}
+            />
+            <MetricCard
+              label="Locked"
+              value={String(detailSummary?.failed ?? 0)}
+              icon={AlertTriangle}
+              accent="danger"
+              trend="Learners who need review to re-enter"
             />
             <MetricCard
               label="Avg. score"
@@ -600,7 +613,7 @@ export function BatchPerformancePanel({
                   {nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)} assigned
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Select a {noun} to view marks, send reminders or failed-learner emails,
+                  Select a {noun} to view marks, send reminders or locked-learner emails,
                   and download that {noun}&apos;s CSV.
                 </p>
               </div>
@@ -676,7 +689,7 @@ export function BatchPerformancePanel({
                       </div>
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                          Failed
+                          Locked
                         </p>
                         <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-900">
                           {mod.failed}
@@ -747,7 +760,7 @@ export function BatchPerformancePanel({
                   )}
                   {failedSending
                     ? "Sending guidance…"
-                    : `Email failed learners (${failedLearnerCount})`}
+                    : `Email locked learners (${failedLearnerCount})`}
                 </Button>
                 <Link
                   href={`/admin/email-monitoring?batchId=${encodeURIComponent(batch.id)}&track=${track === "course" ? "course" : "compliance"}`}
@@ -798,7 +811,7 @@ export function BatchPerformancePanel({
                   active={statusFilter === "failed"}
                   onClick={() => setStatusFilter("failed")}
                 >
-                  Failed ({statusCounts.failed + statusCounts.permanently_failed})
+                  Locked ({statusCounts.failed + statusCounts.permanently_failed})
                 </FilterPill>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -854,7 +867,7 @@ export function BatchPerformancePanel({
                 ) : null}
                 {failedError ? (
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950">
-                    <p className="font-semibold">Failed-learner email failed</p>
+                    <p className="font-semibold">Locked-learner email failed</p>
                     <p className="mt-1 text-xs opacity-90">{failedError}</p>
                   </div>
                 ) : failedResult ? (
@@ -872,13 +885,13 @@ export function BatchPerformancePanel({
                       {failedResult.sent > 0
                         ? `Review-guidance emails sent to ${failedResult.sent} learner${failedResult.sent === 1 ? "" : "s"}`
                         : failedResult.failed > 0
-                          ? "Failed-learner send completed with failures"
-                          : "No failed learners needed guidance"}
+                          ? "Locked-learner send completed with failures"
+                          : "No locked learners needed guidance"}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed opacity-90">
                       {failedResult.message}
                       {failedResult.skipped > 0
-                        ? ` ${failedResult.skipped} learner${failedResult.skipped === 1 ? "" : "s"} were skipped (already contacted today or not failed).`
+                        ? ` ${failedResult.skipped} learner${failedResult.skipped === 1 ? "" : "s"} were skipped (already contacted today or not locked).`
                         : ""}
                     </p>
                   </div>
