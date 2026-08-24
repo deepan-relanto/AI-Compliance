@@ -37,7 +37,7 @@ function clamp(v: number) {
 }
 
 function completionPct(b: BatchAnalytics): number {
-  return clamp(b.compliance);
+  return clamp(b.seatCompletion ?? b.compliance);
 }
 
 function greeting(): string {
@@ -663,8 +663,7 @@ export default function AdminPage() {
                 topBatches.map((b) => {
                   const pct = completionPct(b);
                   const isCourse = b.track === "course";
-                  const hasActivity = b.totalAttempts > 0;
-                  const displayPct = hasActivity ? pct : null;
+                  const displayPct = b.seatCount > 0 ? pct : null;
                   return (
                     <Link
                       key={`${b.track}-${b.id}`}
@@ -718,9 +717,17 @@ export default function AdminPage() {
                         />
                       </div>
                       <p className="mt-2 text-[11px] text-zinc-500">
-                        {hasActivity
-                          ? `${b.totalAttempts} attempts · ${b.memberCount} members`
-                          : `Assigned · ${b.memberCount} members · no attempts yet`}
+                        {b.seatCount > 0
+                          ? `${b.completed}/${b.seatCount} seats complete · ${b.memberCount} people · ${b.modulesAssigned} ${
+                              isCourse
+                                ? b.modulesAssigned === 1
+                                  ? "course"
+                                  : "courses"
+                                : b.modulesAssigned === 1
+                                  ? "assessment"
+                                  : "assessments"
+                            }`
+                          : `${b.memberCount} people · nothing assigned yet`}
                       </p>
                     </Link>
                   );

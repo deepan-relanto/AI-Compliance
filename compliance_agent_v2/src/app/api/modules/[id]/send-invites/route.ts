@@ -18,10 +18,13 @@ export async function POST(
   if (error) return error;
 
   const { id } = await params;
+  const body = await req.json().catch(() => ({}));
   const forceResend =
+    body?.forceResend === true ||
+    body?.forceResend === "1" ||
+    body?.forceResend === "true" ||
     req.nextUrl.searchParams.get("forceResend") === "1" ||
     req.nextUrl.searchParams.get("forceResend") === "true";
-  const body = await req.json().catch(() => ({}));
   const batchId =
     typeof body?.batchId === "string" && body.batchId.trim()
       ? body.batchId.trim()

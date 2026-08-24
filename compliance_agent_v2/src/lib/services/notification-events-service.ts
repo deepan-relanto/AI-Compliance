@@ -231,8 +231,8 @@ export async function getBatchOutreachCounts(
     ] as const;
 
     /**
-     * Event log: include rows for this batch OR legacy rows with null batch_id
-     * for learners currently in the batch (older sends often omitted batch_id).
+     * Count every logged send for this batch. Membership is user_batches
+     * (learners can sit in several batches; users.batch_id is only a primary).
      */
     const eventRows =
       isCourse
@@ -250,13 +250,18 @@ export async function getBatchOutreachCounts(
                 WHERE e.notification_type IN ('invited', 'reminder', 'failed_review_guidance', 'retake_approved')
               )::int AS emails_sent
             FROM course_notification_events e
-            INNER JOIN users u
-              ON LOWER(u.email) = LOWER(e.user_email)
-             AND u.batch_id = ${batchId}
             WHERE e.notification_type = ANY(${[...emailTypes]})
               AND (
                 e.batch_id = ${batchId}
-                OR e.batch_id IS NULL
+                OR (
+                  e.batch_id IS NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM user_batches ub
+                    WHERE ub.batch_id = ${batchId}
+                      AND LOWER(ub.user_email) = LOWER(e.user_email)
+                  )
+                )
               )
             GROUP BY LOWER(e.user_email), e.module_id
           `
@@ -274,13 +279,18 @@ export async function getBatchOutreachCounts(
                 WHERE e.notification_type IN ('invited', 'reminder', 'failed_review_guidance', 'retake_approved')
               )::int AS emails_sent
             FROM training_notification_events e
-            INNER JOIN users u
-              ON LOWER(u.email) = LOWER(e.user_email)
-             AND u.batch_id = ${batchId}
             WHERE e.notification_type = ANY(${[...emailTypes]})
               AND (
                 e.batch_id = ${batchId}
-                OR e.batch_id IS NULL
+                OR (
+                  e.batch_id IS NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM user_batches ub
+                    WHERE ub.batch_id = ${batchId}
+                      AND LOWER(ub.user_email) = LOWER(e.user_email)
+                  )
+                )
               )
             GROUP BY LOWER(e.user_email), e.module_id
           `;
@@ -313,10 +323,13 @@ export async function getBatchOutreachCounts(
               n.module_id,
               n.sent_at AS assigned_at
             FROM course_notifications n
-            INNER JOIN users u
-              ON LOWER(u.email) = LOWER(n.user_email)
-             AND u.batch_id = ${batchId}
             WHERE n.notification_type = 'invited'
+              AND EXISTS (
+                SELECT 1
+                FROM user_batches ub
+                WHERE ub.batch_id = ${batchId}
+                  AND LOWER(ub.user_email) = LOWER(n.user_email)
+              )
           `
         : await sql`
             SELECT
@@ -324,10 +337,13 @@ export async function getBatchOutreachCounts(
               n.module_id,
               n.sent_at AS assigned_at
             FROM training_notifications n
-            INNER JOIN users u
-              ON LOWER(u.email) = LOWER(n.user_email)
-             AND u.batch_id = ${batchId}
             WHERE n.notification_type = 'invited'
+              AND EXISTS (
+                SELECT 1
+                FROM user_batches ub
+                WHERE ub.batch_id = ${batchId}
+                  AND LOWER(ub.user_email) = LOWER(n.user_email)
+              )
           `;
 
     for (const r of legacyInviteRows) {

@@ -16,15 +16,24 @@ export interface BatchAnalytics {
   id: string;
   label: string;
   memberCount: number;
+  /** Currently assigned courses/assessments for this batch. */
+  modulesAssigned: number;
+  /** memberCount × modulesAssigned — one person on one assigned course. */
+  seatCount: number;
+  /** completed seats / seatCount, capped at 100. */
+  seatCompletion: number;
   /** @deprecated Use learnersStarted in UI — raw progress row count */
   totalAttempts: number;
+  /** Distinct people who opened any course in this batch. */
   learnersStarted: number;
+  /** Completed progress rows (seats), not unique people. */
   completed: number;
   failed: number;
   inProgress: number;
   avgScore: number | null;
   passRate: number | null;
   failRate: number | null;
+  /** Attempt-based rate among existing progress rows (not roster-wide). */
   compliance: number;
 }
 

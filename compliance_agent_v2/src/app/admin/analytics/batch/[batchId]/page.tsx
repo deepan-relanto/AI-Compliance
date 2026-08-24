@@ -70,50 +70,55 @@ export default function BatchAnalyticsPage() {
     [replaceQuery],
   );
 
-  const load = useCallback(() => {
-    if (!batchId) return;
-    setLoading(true);
-    setError(null);
-    fetch(
-      `/api/analytics/batch/${encodeURIComponent(batchId)}?track=${track}`,
-    )
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.ok && json.batch) {
-          const modules = (json.modules ?? []).map(
-            (m: {
-              id: string;
-              title: string;
-              currentlyAssigned?: boolean;
-            }) => ({
-              id: m.id,
-              title: m.title,
-              currentlyAssigned: m.currentlyAssigned ?? true,
-            }),
-          );
-          setData({
-            batch: json.batch,
-            summary: {
-              ...json.summary,
-              failed: Number(json.summary?.failed ?? 0),
-              notStarted: Number(json.summary?.notStarted ?? 0),
-            },
-            modules,
-            moduleSummaries: json.moduleSummaries ?? [],
-            learners: json.learners ?? [],
-            generatedAt: json.generatedAt ?? new Date().toISOString(),
-          });
-        } else {
+  const load = useCallback(
+    (opts?: { silent?: boolean }) => {
+      if (!batchId) return;
+      if (!opts?.silent) setLoading(true);
+      setError(null);
+      fetch(
+        `/api/analytics/batch/${encodeURIComponent(batchId)}?track=${track}`,
+      )
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.ok && json.batch) {
+            const modules = (json.modules ?? []).map(
+              (m: {
+                id: string;
+                title: string;
+                currentlyAssigned?: boolean;
+              }) => ({
+                id: m.id,
+                title: m.title,
+                currentlyAssigned: m.currentlyAssigned ?? true,
+              }),
+            );
+            setData({
+              batch: json.batch,
+              summary: {
+                ...json.summary,
+                failed: Number(json.summary?.failed ?? 0),
+                notStarted: Number(json.summary?.notStarted ?? 0),
+              },
+              modules,
+              moduleSummaries: json.moduleSummaries ?? [],
+              learners: json.learners ?? [],
+              generatedAt: json.generatedAt ?? new Date().toISOString(),
+            });
+          } else {
+            setData(null);
+            setError(json.error ?? "Could not load batch performance.");
+          }
+        })
+        .catch(() => {
           setData(null);
-          setError(json.error ?? "Could not load batch performance.");
-        }
-      })
-      .catch(() => {
-        setData(null);
-        setError("Could not reach the server.");
-      })
-      .finally(() => setLoading(false));
-  }, [batchId, track]);
+          setError("Could not reach the server.");
+        })
+        .finally(() => {
+          if (!opts?.silent) setLoading(false);
+        });
+    },
+    [batchId, track],
+  );
 
   useEffect(() => {
     load();
@@ -169,6 +174,7 @@ export default function BatchAnalyticsPage() {
             track={track}
             selectedModuleId={selectedModuleId}
             onModuleChange={onModuleChange}
+            onOutreachSent={() => load({ silent: true })}
           />
         )}
       </AdminShell>
