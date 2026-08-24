@@ -426,7 +426,6 @@ export async function sendFailedReviewGuidanceEmails(
   moduleId: string,
   options?: SendFailedReviewGuidanceOptions,
 ): Promise<InvitationSendResult> {
-  const forceResend = options?.forceResend === true;
   const batchId = options?.batchId?.trim() || null;
   const triggeredBy = options?.triggeredBy?.trim().toLowerCase() || null;
   const cfg = getGraphMailConfig();
@@ -568,14 +567,6 @@ export async function sendFailedReviewGuidanceEmails(
       continue;
     }
 
-    if (
-      !forceResend &&
-      (await wasEventSentToday(sql, moduleId, email, "failed_review_guidance"))
-    ) {
-      skipped++;
-      continue;
-    }
-
     try {
       const loginUrl = trainingLoginUrl(moduleId, loginBase, email);
       await sendGraphMail({
@@ -630,7 +621,7 @@ export async function sendFailedReviewGuidanceEmails(
         : failed > 0
           ? `Failed to send ${failed} review-guidance email(s).`
           : skipped > 0
-            ? "No eligible failed learners matched this outreach (or already contacted today)."
+            ? "No locked learners in this batch matched this outreach."
             : batchId
               ? "No learners found in the selected batch."
               : "No learners found in assigned batches.",
@@ -772,36 +763,6 @@ export async function recordNotificationEvent(
       (module_id, user_email, notification_type, batch_id, triggered_by)
     VALUES (${moduleId}, ${email}, ${type}, ${batchId}, ${triggeredBy})
   `;
-}
-
-async function wasEventSentToday(
-  sql: Sql,
-  moduleId: string,
-  userEmail: string,
-  type: NotificationEventType,
-): Promise<boolean> {
-  const email = userEmail.trim().toLowerCase();
-  const isCourse = await isCourseModule(sql, moduleId);
-  const rows = isCourse
-    ? await sql`
-        SELECT 1
-        FROM course_notification_events
-        WHERE module_id = ${moduleId}
-          AND LOWER(user_email) = ${email}
-          AND notification_type = ${type}
-          AND sent_at >= date_trunc('day', NOW())
-        LIMIT 1
-      `
-    : await sql`
-        SELECT 1
-        FROM training_notification_events
-        WHERE module_id = ${moduleId}
-          AND LOWER(user_email) = ${email}
-          AND notification_type = ${type}
-          AND sent_at >= date_trunc('day', NOW())
-        LIMIT 1
-      `;
-  return rows.length > 0;
 }
 
 export interface InvitationSendResult {
@@ -978,17 +939,6 @@ export async function sendModuleInvitationEmails(
       continue;
     }
 
-    // Reminders are repeatable by design (unlike the one-shot invitation), so the
-    // guard is per day - otherwise a double-click re-mails the whole batch.
-    if (
-      !forceResend &&
-      reminderOnlyNotStarted &&
-      (await wasEventSentToday(sql, moduleId, email, "reminder"))
-    ) {
-      skipped++;
-      continue;
-    }
-
     // Claim the one-shot invite slot before sending so concurrent admin clicks
     // cannot both mail the learner. forceResend intentionally skips the claim.
     let inviteClaimed = false;
@@ -1087,7 +1037,7 @@ export async function sendModuleInvitationEmails(
             : `Failed to send ${failed} invitation email(s).`
           : skipped > 0
             ? reminderOnlyNotStarted
-              ? "No eligible not-started learners matched this reminder."
+              ? "No not-started learners in this batch matched this reminder."
               : "All learners were already notified."
             : batchId
               ? "No learners found in the selected batch."

@@ -165,7 +165,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
@@ -188,7 +199,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
@@ -226,7 +248,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
@@ -254,7 +287,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
@@ -283,7 +327,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (
@@ -307,7 +362,18 @@ export async function getEmailMonitoring(
           LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND (${batchId}::text IS NULL OR COALESCE(e.batch_id, u.batch_id) = ${batchId})
+            AND (
+              ${batchId}::text IS NULL
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
+            )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
             AND (

@@ -1,6 +1,11 @@
 "use client";
 
 import { MetricCard } from "@/components/admin/metric-card";
+import {
+  PulseStat,
+  SeatMixBar,
+  SeatMixLegend,
+} from "@/components/admin/batch-kpi-pulse";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type {
@@ -9,6 +14,7 @@ import type {
 } from "@/lib/batch-performance-types";
 import type { InviteSendResult } from "@/lib/invite-result";
 import { exportBatchPerformanceCsv } from "@/lib/batch-performance-export";
+import { assignedSeatCount, percentOf } from "@/lib/batch-seat-metrics";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { cn } from "@/lib/utils";
@@ -23,7 +29,6 @@ import {
   Loader2,
   Mail,
   Search,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -124,6 +129,8 @@ interface BatchPerformancePanelProps {
   /** null / "all" = batch overview; otherwise module detail. */
   selectedModuleId?: string | null;
   onModuleChange?: (moduleId: string | null) => void;
+  /** Silent refresh after reminder / locked-learner mail so counts update. */
+  onOutreachSent?: () => void;
 }
 
 export function BatchPerformancePanel({
@@ -131,6 +138,7 @@ export function BatchPerformancePanel({
   track = "compliance",
   selectedModuleId = null,
   onModuleChange,
+  onOutreachSent,
 }: BatchPerformancePanelProps) {
   const noun = track === "course" ? "course" : "assessment";
   const nounPlural = track === "course" ? "courses" : "assessments";
@@ -269,6 +277,29 @@ export function BatchPerformancePanel({
     });
   }, [data.moduleSummaries, data.modules, data.batch.memberCount, flatRows]);
 
+  const assignedSummaries = useMemo(() => {
+    const current = moduleSummaries.filter((m) => m.currentlyAssigned);
+    return current.length > 0 ? current : moduleSummaries;
+  }, [moduleSummaries]);
+
+  const seatMetrics = useMemo(() => {
+    const courseCount = assignedSummaries.length;
+    const seats = assignedSeatCount(data.batch.memberCount, courseCount);
+    const completed = assignedSummaries.reduce((n, m) => n + m.completed, 0);
+    const inProgress = assignedSummaries.reduce((n, m) => n + m.inProgress, 0);
+    const locked = assignedSummaries.reduce((n, m) => n + m.failed, 0);
+    const remaining = Math.max(0, seats - completed - inProgress - locked);
+    return {
+      courseCount,
+      seats,
+      completed,
+      inProgress,
+      locked,
+      remaining,
+      pct: percentOf(completed, seats),
+    };
+  }, [assignedSummaries, data.batch.memberCount]);
+
   const activeModule = useMemo(
     () =>
       activeModuleId
@@ -372,8 +403,12 @@ export function BatchPerformancePanel({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               batchId: data.batch.id,
-              mode: "not_started_reminder",
+              mode:
+                track === "course"
+                  ? "course_not_started_reminder"
+                  : "not_started_reminder",
               reminderOnlyNotStarted: true,
+              forceResend: true,
             }),
           },
         );
@@ -389,11 +424,14 @@ export function BatchPerformancePanel({
 
       aggregate.message =
         aggregate.sent > 0
-          ? `Reminder emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}.`
+          ? `Reminder emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}. Each send is logged — you can resend anytime.`
           : aggregate.failed > 0
             ? `Failed to send ${aggregate.failed} reminder email(s).`
-            : "No eligible not-started learners matched this reminder.";
+            : aggregate.skipped > 0
+              ? "Every remaining learner has already started this course."
+              : "No not-started learners in this batch.";
       setReminderResult(aggregate);
+      if (aggregate.sent > 0) onOutreachSent?.();
     } catch {
       setReminderError("Could not reach the server.");
     } finally {
@@ -425,7 +463,11 @@ export function BatchPerformancePanel({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               batchId: data.batch.id,
-              mode: "failed_review_guidance",
+              mode:
+                track === "course"
+                  ? "course_failed_review_guidance"
+                  : "failed_review_guidance",
+              forceResend: true,
             }),
           },
         );
@@ -441,11 +483,14 @@ export function BatchPerformancePanel({
 
       aggregate.message =
         aggregate.sent > 0
-          ? `Review-guidance emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}.`
+          ? `Review-guidance emails sent to ${aggregate.sent} learner${aggregate.sent === 1 ? "" : "s"}. Each send is logged — you can resend anytime.`
           : aggregate.failed > 0
             ? `Failed to send ${aggregate.failed} review-guidance email(s).`
-            : "No eligible locked learners matched this outreach.";
+            : aggregate.skipped > 0
+              ? "No locked learners in this batch matched this outreach."
+              : "No eligible locked learners matched this outreach.";
       setFailedResult(aggregate);
+      if (aggregate.sent > 0) onOutreachSent?.();
     } catch {
       setFailedError("Could not reach the server.");
     } finally {
@@ -458,6 +503,15 @@ export function BatchPerformancePanel({
     ? moduleSummaries.find((m) => m.id === activeModuleId)
     : null;
 
+  const courseSeats = batch.memberCount;
+  const courseRemaining = Math.max(
+    0,
+    courseSeats -
+      (detailSummary?.completed ?? 0) -
+      (detailSummary?.inProgress ?? 0) -
+      (detailSummary?.failed ?? 0),
+  );
+
   return (
     <div className="space-y-6">
       {/* Primary module navigator */}
@@ -468,7 +522,8 @@ export function BatchPerformancePanel({
               {nounPlural} in this batch
             </p>
             <p className="mt-0.5 text-sm text-zinc-600">
-              Overview for the batch, or open one {noun} for marks, outreach, and CSV.
+              A batch is the roster. Open one {noun} for marks, or stay on overview
+              to see seats across every assigned {noun}.
             </p>
           </div>
           {!isOverview && (
@@ -491,6 +546,16 @@ export function BatchPerformancePanel({
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
             Batch overview
+            {seatMetrics.seats > 0 && (
+              <span
+                className={cn(
+                  "tabular-nums opacity-80",
+                  isOverview ? "text-white/80" : "text-zinc-400",
+                )}
+              >
+                {seatMetrics.completed}/{seatMetrics.seats}
+              </span>
+            )}
           </FilterPill>
           {moduleSummaries.map((mod) => (
             <FilterPill
@@ -518,72 +583,150 @@ export function BatchPerformancePanel({
         </div>
       </div>
 
-      {/* KPI row — batch overview or selected module */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Members"
-          value={String(batch.memberCount)}
-          icon={Users}
-          trend={
-            isOverview
-              ? `${summary.modulesAssigned} ${noun}${summary.modulesAssigned !== 1 ? "s" : ""} assigned · current roster`
-              : activeModule?.title
-                ? `Scoped to ${activeModule.title}`
-                : `Selected ${noun}`
-          }
-        />
-        {isOverview ? (
-          <>
-            <MetricCard
-              label={nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)}
-              value={String(summary.modulesAssigned)}
-              icon={LayoutDashboard}
-              trend={`Assigned to this batch · open one ${noun} below for course-specific KPIs`}
-            />
-            <MetricCard
-              label="Started"
-              value={String(summary.learnersStarted)}
-              icon={CheckCircle2}
-              trend={`${summary.notStarted} have not started yet`}
-            />
-            <MetricCard
-              label="Locked"
-              value={String(summary.failed)}
-              icon={AlertTriangle}
-              accent="danger"
-              trend="Learners currently locked in this batch"
-            />
-            <MetricCard
-              label="Batch health"
-              value={summary.avgScore != null ? `${summary.avgScore}%` : "—"}
-              icon={Download}
-              trend={
-                summary.avgScore != null
-                  ? `${summary.passRate ?? 0}% pass rate across scored attempts`
-                  : "No scored results yet"
-              }
-            />
-          </>
-        ) : (
-          <>
+      {/* KPI — seat-based batch pulse, or per-course breakdown */}
+      {isOverview ? (
+        <div className="relative overflow-hidden rounded-2xl border border-[#2e3192]/12 bg-white shadow-[var(--shadow-card)]">
+          <div
+            className="pointer-events-none absolute -right-24 -top-28 h-56 w-56 rounded-full bg-[#2e3192]/10 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 left-1/4 h-48 w-48 rounded-full bg-[#f15a24]/10 blur-3xl"
+            aria-hidden
+          />
+          <div className="relative p-5 sm:p-6">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="section-label">Seat completion</p>
+                <p className="mt-1 max-w-xl text-sm text-zinc-600">
+                  {seatMetrics.courseCount === 0
+                    ? `No ${nounPlural} assigned yet — KPIs appear once this roster has work.`
+                    : `${batch.memberCount} people × ${seatMetrics.courseCount} ${
+                        seatMetrics.courseCount === 1 ? noun : nounPlural
+                      } = ${seatMetrics.seats} seats. One seat is one person on one ${noun}.`}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[2.35rem] font-semibold leading-none tracking-tight text-[#2e3192] tabular-nums">
+                  {seatMetrics.courseCount === 0 ? "—" : `${seatMetrics.pct}%`}
+                </p>
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  seats complete
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <SeatMixBar
+                seats={seatMetrics.seats}
+                completed={seatMetrics.completed}
+                inProgress={seatMetrics.inProgress}
+                locked={seatMetrics.locked}
+                size="md"
+              />
+              <div className="mt-2.5">
+                <SeatMixLegend
+                  completed={seatMetrics.completed}
+                  inProgress={seatMetrics.inProgress}
+                  locked={seatMetrics.locked}
+                  remaining={seatMetrics.remaining}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <PulseStat
+                label="People"
+                value={batch.memberCount}
+                hint="Current roster"
+              />
+              <PulseStat
+                label={nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)}
+                value={seatMetrics.courseCount}
+                hint={
+                  seatMetrics.courseCount === 1
+                    ? `Open the ${noun} below for marks`
+                    : `Assigned to this batch`
+                }
+              />
+              <PulseStat
+                label="Complete"
+                value={
+                  seatMetrics.seats > 0
+                    ? `${seatMetrics.completed}/${seatMetrics.seats}`
+                    : seatMetrics.completed
+                }
+                hint="Finished seats"
+              />
+              <PulseStat
+                label="Locked"
+                value={seatMetrics.locked}
+                hint="Need review to re-enter"
+              />
+            </div>
+
+            <p className="mt-4 text-xs text-zinc-500">
+              {summary.avgScore != null
+                ? `Avg score ${summary.avgScore}% · ${summary.passRate ?? 0}% pass rate among scored attempts — not the same as seat completion.`
+                : "Average score appears after the first scored attempt."}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-[var(--shadow-card)]">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="section-label">This {noun}</p>
+                <h3 className="mt-1 text-base font-semibold text-zinc-900">
+                  {activeModule?.title ?? "Selected module"}
+                </h3>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Counts are people in this batch on this {noun} only
+                  {` · ${batch.memberCount} on the roster`}.
+                </p>
+              </div>
+              <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#2e3192]">
+                {percentOf(detailSummary?.completed ?? 0, courseSeats)}%
+              </p>
+            </div>
+            <div className="mt-4">
+              <SeatMixBar
+                seats={courseSeats}
+                completed={detailSummary?.completed ?? 0}
+                inProgress={detailSummary?.inProgress ?? 0}
+                locked={detailSummary?.failed ?? 0}
+              />
+              <div className="mt-2.5">
+                <SeatMixLegend
+                  completed={detailSummary?.completed ?? 0}
+                  inProgress={detailSummary?.inProgress ?? 0}
+                  locked={detailSummary?.failed ?? 0}
+                  remaining={courseRemaining}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricCard
               label="Started"
               value={String(detailSummary?.started ?? 0)}
               icon={FileSpreadsheet}
-              trend="Learners who started this module"
+              trend={`Opened this ${noun} · ${detailSummary?.notStarted ?? 0} have not`}
             />
             <MetricCard
               label="Completed"
               value={String(detailSummary?.completed ?? 0)}
               icon={CheckCircle2}
-              trend={`${detailSummary?.inProgress ?? 0} in progress · ${detailSummary?.failed ?? 0} locked`}
+              accent="success"
+              trend={`${detailSummary?.inProgress ?? 0} still in progress`}
             />
             <MetricCard
               label="Locked"
               value={String(detailSummary?.failed ?? 0)}
               icon={AlertTriangle}
               accent="danger"
-              trend="Learners who need review to re-enter"
+              trend="Need review to re-enter"
             />
             <MetricCard
               label="Avg. score"
@@ -595,13 +738,13 @@ export function BatchPerformancePanel({
               icon={Download}
               trend={
                 detailSummary?.passRate != null
-                  ? `${detailSummary.passRate}% pass rate · ${detailSummary.compliance}% compliance`
+                  ? `${detailSummary.passRate}% pass rate on scored attempts`
                   : "No scored results yet"
               }
             />
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
 
       {isOverview ? (
         <Card>
@@ -613,8 +756,9 @@ export function BatchPerformancePanel({
                   {nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)} assigned
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Select a {noun} to view marks, send reminders or locked-learner emails,
-                  and download that {noun}&apos;s CSV.
+                  Each card is one {noun}. Select it for marks, reminders, locked-learner
+                  emails, and that {noun}&apos;s CSV. Overview KPIs above count seats
+                  across all of them.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -675,7 +819,16 @@ export function BatchPerformancePanel({
                       </div>
                       <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-zinc-300 transition-colors group-hover:text-[#2e3192]" />
                     </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2 border-t border-zinc-100 pt-3">
+                    <div className="mt-4">
+                      <SeatMixBar
+                        seats={batch.memberCount}
+                        completed={mod.completed}
+                        inProgress={mod.inProgress}
+                        locked={mod.failed}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-zinc-100 pt-3">
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                           Done
@@ -855,12 +1008,12 @@ export function BatchPerformancePanel({
                         ? `Reminder emails sent to ${reminderResult.sent} learner${reminderResult.sent === 1 ? "" : "s"}`
                         : reminderResult.failed > 0
                           ? "Reminder send completed with failures"
-                          : "No not-started learners needed a reminder"}
+                          : "No not-started learners in this batch"}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed opacity-90">
                       {reminderResult.message}
                       {reminderResult.skipped > 0
-                        ? ` ${reminderResult.skipped} learner${reminderResult.skipped === 1 ? "" : "s"} were skipped.`
+                        ? ` ${reminderResult.skipped} already started, so they were not emailed.`
                         : ""}
                     </p>
                   </div>
@@ -891,7 +1044,7 @@ export function BatchPerformancePanel({
                     <p className="mt-1 text-xs leading-relaxed opacity-90">
                       {failedResult.message}
                       {failedResult.skipped > 0
-                        ? ` ${failedResult.skipped} learner${failedResult.skipped === 1 ? "" : "s"} were skipped (already contacted today or not locked).`
+                        ? ` ${failedResult.skipped} were not locked, so they were not emailed.`
                         : ""}
                     </p>
                   </div>

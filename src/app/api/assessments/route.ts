@@ -151,10 +151,8 @@ export async function POST(req: NextRequest) {
           `;
         }
       } else {
-        await sql`
-          DELETE FROM module_batches WHERE module_id = ${String(reuseModuleId)}
-        `;
-
+        // Additive: reuse publishes the same assessment to more batches.
+        // Never wipe existing module_batches rows (that unassigned other cohorts).
         for (const batchId of resolvedBatchIds) {
           await sql`
             INSERT INTO module_batches (module_id, batch_id)

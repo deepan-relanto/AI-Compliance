@@ -8,6 +8,10 @@ import type {
   StatusBreakdown,
   TimeSeriesPoint,
 } from "@/lib/analytics-types";
+import {
+  assignedSeatCount,
+  batchSeatCompletion,
+} from "@/lib/batch-seat-metrics";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
@@ -108,6 +112,7 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
+        (SELECT COUNT(*)::int FROM module_batches mb WHERE mb.batch_id = b.id) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -204,6 +209,7 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
+        (SELECT COUNT(*)::int FROM course_module_batches cmb2 WHERE cmb2.batch_id = b.id) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -273,6 +279,7 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
+        (SELECT COUNT(*)::int FROM module_batches mb WHERE mb.batch_id = b.id) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -411,6 +418,7 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
+        (SELECT COUNT(*)::int FROM course_module_batches cmb2 WHERE cmb2.batch_id = b.id) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -539,13 +547,24 @@ function mapAnalyticsRows(
 
   const batches: BatchAnalytics[] = batchRows.map((r) => {
     const passRate = r.pass_rate != null ? Number(r.pass_rate) : null;
+    const memberCount = Number(r.member_count ?? 0);
+    const modulesAssigned = Number(r.modules_assigned ?? 0);
+    const completed = Number(r.completed ?? 0);
+    const seatCount = assignedSeatCount(memberCount, modulesAssigned);
     return {
       id: r.id as string,
       label: r.label as string,
-      memberCount: Number(r.member_count ?? 0),
+      memberCount,
+      modulesAssigned,
+      seatCount,
+      seatCompletion: batchSeatCompletion({
+        memberCount,
+        modulesAssigned,
+        completed,
+      }),
       totalAttempts: Number(r.total_attempts ?? 0),
       learnersStarted: Number(r.learners_started ?? 0),
-      completed: Number(r.completed ?? 0),
+      completed,
       failed: Number(r.failed ?? 0),
       inProgress: Number(r.in_progress ?? 0),
       avgScore: r.avg_score != null ? Number(r.avg_score) : null,

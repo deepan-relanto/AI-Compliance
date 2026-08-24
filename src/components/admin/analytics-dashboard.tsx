@@ -1,6 +1,7 @@
 "use client";
 
 import { MetricCard } from "@/components/admin/metric-card";
+import { SeatMixBar } from "@/components/admin/batch-kpi-pulse";
 import { TrackSegmentedControl } from "@/components/admin/track-segmented-control";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -88,13 +89,20 @@ function BatchComparisonChart({
               {batch.label}
             </Link>
             <span className="text-xs tabular-nums text-zinc-500">
-              {batch.learnersStarted} started · {batch.completed} passed
+              {batch.completed}/{batch.seatCount} seats · {batch.modulesAssigned}{" "}
+              {batch.modulesAssigned === 1
+                ? track === "course"
+                  ? "course"
+                  : "assessment"
+                : track === "course"
+                  ? "courses"
+                  : "assessments"}
             </span>
           </div>
           <div className="space-y-2">
             <MetricBar
-              label="Compliance"
-              value={clamp(batch.compliance)}
+              label="Seat completion"
+              value={clamp(batch.seatCompletion)}
               color="bg-[#2e3192]"
             />
             <MetricBar
@@ -573,7 +581,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
           value={summary.completedCount}
           icon={BarChart3}
           accent="success"
-          trend={`${summary.failedCount} failed · ${summary.inProgressCount} active`}
+          trend={`${summary.failedCount} locked · ${summary.inProgressCount} in progress`}
         />
         <MetricCard
           label="Total learners"
@@ -703,7 +711,9 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
             <div>
               <h2 className="text-sm font-semibold text-zinc-900">Batch deep dive</h2>
               <p className="mt-0.5 text-xs text-zinc-500">
-                Open a batch for learner marks, scores, and CSV export. Member lists stay under Batches.
+                A batch is a roster. Completion is seats: people × assigned{" "}
+                {track === "course" ? "courses" : "assessments"}. Open a batch for
+                marks and CSV. Member lists stay under Batches.
               </p>
             </div>
             <Link
@@ -736,35 +746,48 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
                     <span
                       className={cn(
                         "rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums",
-                        b.compliance >= 70
-                          ? "bg-emerald-50 text-emerald-700"
-                          : b.compliance > 0
-                            ? "bg-amber-50 text-amber-800"
-                            : "bg-zinc-100 text-zinc-500",
+                        b.seatCount <= 0
+                          ? "bg-zinc-100 text-zinc-500"
+                          : b.seatCompletion >= 70
+                            ? "bg-emerald-50 text-emerald-700"
+                            : b.seatCompletion > 0
+                              ? "bg-amber-50 text-amber-800"
+                              : "bg-zinc-100 text-zinc-500",
                       )}
                     >
-                      {b.compliance}%
+                      {b.seatCount <= 0 ? "—" : `${b.seatCompletion}%`}
                     </span>
                   </div>
+                  <SeatMixBar
+                    seats={b.seatCount}
+                    completed={b.completed}
+                    inProgress={b.inProgress}
+                    locked={b.failed}
+                    size="sm"
+                  />
                   <div className="grid grid-cols-3 gap-2 border-t border-zinc-100 pt-3 text-center">
-                    <BatchStat label="Members" value={b.memberCount} />
+                    <BatchStat label="People" value={b.memberCount} />
                     <BatchStat
-                      label="Started"
-                      value={b.learnersStarted}
-                      tone={b.learnersStarted > 0 ? "brand" : "muted"}
+                      label={track === "course" ? "Courses" : "Assessments"}
+                      value={b.modulesAssigned}
+                      tone={b.modulesAssigned > 0 ? "brand" : "muted"}
                     />
                     <BatchStat
-                      label="Avg score"
-                      value={b.avgScore != null ? `${b.avgScore}%` : "—"}
-                      tone={
-                        b.avgScore != null && b.avgScore > PASS_THRESHOLD_PERCENT
-                          ? "success"
-                          : b.avgScore != null
-                            ? "warning"
-                            : "muted"
+                      label="Complete"
+                      value={
+                        b.seatCount > 0
+                          ? `${b.completed}/${b.seatCount}`
+                          : b.completed
                       }
+                      tone={b.completed > 0 ? "success" : "muted"}
                     />
                   </div>
+                  <p className="text-[11px] text-zinc-500">
+                    {b.avgScore != null
+                      ? `Avg score ${b.avgScore}% among scored attempts`
+                      : "No scored attempts yet"}
+                    {b.failed > 0 ? ` · ${b.failed} locked` : ""}
+                  </p>
                   <span className="inline-flex items-center justify-end text-xs font-medium text-[#2e3192]">
                     View marks & export
                     <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />

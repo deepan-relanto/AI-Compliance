@@ -40,13 +40,16 @@ export function exportAnalyticsCsv(
 
   const batchRows = data.batches.map((b) => ({
     batch: b.label,
-    members: b.memberCount,
+    people: b.memberCount,
+    courses_assigned: b.modulesAssigned,
+    seats: b.seatCount,
+    seats_complete: b.completed,
+    seat_completion_percent: b.seatCompletion,
     learners_started: b.learnersStarted,
     progress_records: b.totalAttempts,
-    completed: b.completed,
-    failed: b.failed,
+    locked: b.failed,
     in_progress: b.inProgress,
-    compliance_percent: b.compliance,
+    attempt_completion_percent: b.compliance,
     avg_score: b.avgScore ?? "",
     pass_rate: b.passRate ?? "",
   }));
@@ -90,9 +93,9 @@ export function exportAnalyticsPdf(
         `<tr>
           <td>${escapeHtml(b.label)}</td>
           <td>${b.memberCount}</td>
-          <td>${b.learnersStarted}</td>
-          <td>${b.compliance}%</td>
-          <td>${b.passRate ?? "—"}%</td>
+          <td>${b.modulesAssigned}</td>
+          <td>${b.completed}/${b.seatCount}</td>
+          <td>${b.seatCompletion}%</td>
           <td>${b.avgScore ?? "—"}%</td>
         </tr>`,
     )
@@ -152,7 +155,7 @@ export function exportAnalyticsPdf(
 
   <h2>Batch comparison</h2>
   <table>
-    <thead><tr><th>Batch</th><th>Members</th><th>Started</th><th>Compliance</th><th>Pass rate</th><th>Avg score</th></tr></thead>
+    <thead><tr><th>Batch</th><th>People</th><th>Courses</th><th>Seats complete</th><th>Seat %</th><th>Avg score</th></tr></thead>
     <tbody>${batchRows || "<tr><td colspan='6'>No batch data</td></tr>"}</tbody>
   </table>
 
