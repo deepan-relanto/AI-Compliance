@@ -10,7 +10,7 @@ const SSO_PLACEHOLDER = "microsoft-sso";
 /**
  * Progress.batch_id is the batch where the attempt belongs.
  * Never rewrite it when a learner is added to another batch — that erased
- * Module_1 history when people were also enrolled in a new test batch.
+ * Support_Function_Batch_1 history when people were also enrolled in a new test batch.
  *
  * Only heal orphaned rows: progress points at a batch that does not have the
  * module assigned, while exactly one batch does → snap back to that batch.
@@ -176,6 +176,7 @@ async function assignEmployeesToBatch(
   const roles_arr = normalized.map(() => "user");
   const batches_arr = normalized.map(() => batchId);
 
+  // Never overwrite role — adding an admin to a batch must not demote them.
   // Never overwrite an existing primary batch_id — adding to a new batch must
   // not steal the learner from their previous batch(es).
   await sql`

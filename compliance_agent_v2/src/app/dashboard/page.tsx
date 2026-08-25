@@ -1,6 +1,7 @@
 "use client";
 
 import { RouteGuard } from "@/components/auth/route-guard";
+import { LEARNER_PAGE_ROLES } from "@/lib/access-policy";
 import { ModuleCard } from "@/components/employee/module-card";
 import { EmployeeShell } from "@/components/layout/employee-shell";
 import { Button } from "@/components/ui/button";
@@ -233,7 +234,7 @@ export default function DashboardPage() {
   const displayName = user?.displayName ?? "Learner";
 
   return (
-    <RouteGuard allowedRoles={["user"]}>
+    <RouteGuard allowedRoles={LEARNER_PAGE_ROLES}>
       <EmployeeShell
         title="My training"
         subtitle="Complete mandatory assessments and courses assigned to your batch. Progress is saved automatically."

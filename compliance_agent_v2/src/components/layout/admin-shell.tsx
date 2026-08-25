@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   BarChart3,
   ChevronLeft,
+  GraduationCap,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -71,6 +72,13 @@ const navItems = [
     label: "Feedback",
     icon: MessageSquare,
     isActive: (path: string) => path.startsWith("/admin/feedback"),
+  },
+  {
+    href: "/dashboard",
+    label: "My training",
+    icon: GraduationCap,
+    isActive: (path: string) =>
+      path === "/dashboard" || path.startsWith("/dashboard/") || path.startsWith("/training/"),
   },
 ];
 

@@ -56,7 +56,7 @@ async function listModuleOutreachLearners(
         ON LOWER(cp.user_email) = LOWER(u.email)
         AND cp.module_id = ${moduleId}
         AND cp.batch_id = ub.batch_id
-      WHERE u.role = 'user'
+      WHERE u.role IN ('user', 'admin')
         AND u.email IS NOT NULL
         AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
         AND (
@@ -94,7 +94,7 @@ async function listModuleOutreachLearners(
       ON LOWER(ap.user_email) = LOWER(u.email)
       AND ap.module_id = ${moduleId}
       AND ap.batch_id = ub.batch_id
-    WHERE u.role = 'user'
+    WHERE u.role IN ('user', 'admin')
       AND u.email IS NOT NULL
       AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
       AND (

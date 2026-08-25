@@ -131,7 +131,7 @@ export function BatchMembersList({
                   >
                     {member.role}
                   </span>
-                  {batchId && member.role !== "admin" && (
+                  {batchId && (
                     <Button
                       variant="ghost"
                       size="sm"

@@ -1,6 +1,7 @@
 "use client";
 
 import { RouteGuard } from "@/components/auth/route-guard";
+import { LEARNER_PAGE_ROLES } from "@/lib/access-policy";
 import { TrainingCompletedGate } from "@/components/employee/training-completed-gate";
 import type { CourseStepRow } from "@/lib/course-step-types";
 import type { CourseResumeCheckpoint } from "@/lib/course-resume";
@@ -133,7 +134,7 @@ export default function TrainingPage() {
 
   if (trainingModule.viewerMode === "already_completed") {
     return (
-      <RouteGuard allowedRoles={["user"]}>
+      <RouteGuard allowedRoles={LEARNER_PAGE_ROLES}>
         <TrainingCompletedGate moduleTitle={trainingModule.title} />
       </RouteGuard>
     );
@@ -145,7 +146,7 @@ export default function TrainingPage() {
 
   if (isCourseTraining) {
     return (
-      <RouteGuard allowedRoles={["user"]}>
+      <RouteGuard allowedRoles={LEARNER_PAGE_ROLES}>
         <CoursePlayer
           module={trainingModule}
           steps={steps}
@@ -158,7 +159,7 @@ export default function TrainingPage() {
   }
 
   return (
-    <RouteGuard allowedRoles={["user"]}>
+    <RouteGuard allowedRoles={LEARNER_PAGE_ROLES}>
       <SlideViewer module={trainingModule} mcqs={mcqs} freshStart={freshStart} />
     </RouteGuard>
   );

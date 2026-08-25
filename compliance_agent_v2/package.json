@@ -8,6 +8,7 @@
     "build": "node scripts/ensure-next-in-project.mjs && next build && node scripts/prepare-standalone.mjs",
     "start": "node scripts/start-production.mjs",
     "lint": "next lint",
+    "test": "npx --yes tsx --test src/lib/access-policy.test.ts src/lib/auth-routes.test.ts src/lib/admin-employee-record.test.ts",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:migrate:course": "node scripts/db-migrate-course.mjs",
     "db:migrate:course-data": "node scripts/db-migrate-course-data.mjs",

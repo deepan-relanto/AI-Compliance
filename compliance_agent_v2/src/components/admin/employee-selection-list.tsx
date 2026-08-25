@@ -11,6 +11,7 @@ export interface SelectedEmployeePreview {
   name: string;
   department: string | null;
   location: string | null;
+  isAdmin?: boolean;
 }
 
 interface EmployeeSelectionListProps {
@@ -115,7 +116,16 @@ export function EmployeeSelectionList({
                   {(member.name || member.workEmail).charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-900">{member.name}</p>
+                  <p className="truncate text-sm font-medium text-zinc-900">
+                    <span className="inline-flex items-center gap-2">
+                      {member.name}
+                      {member.isAdmin && (
+                        <span className="rounded-full bg-[#2e3192]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2e3192]">
+                          Admin
+                        </span>
+                      )}
+                    </span>
+                  </p>
                   <p className="mt-0.5 inline-flex items-center gap-1 font-mono text-xs text-zinc-500">
                     <Mail className="h-3 w-3 shrink-0" />
                     {member.workEmail}
