@@ -25,6 +25,95 @@ async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+/**
+ * Roster for invites / reminders / locked-learner mail.
+ * Publish (no batchId) stays on currently assigned batches.
+ * Batch outreach also includes previously assigned courses that still have
+ * marks for that batch — same seat list the admin marks table uses.
+ */
+async function listModuleOutreachLearners(
+  sql: Sql,
+  moduleId: string,
+  batchId: string | null,
+  isCourse: boolean,
+) {
+  if (isCourse) {
+    return sql`
+      SELECT DISTINCT
+        u.email,
+        u.display_name,
+        ub.batch_id AS learner_batch_id,
+        cp.status AS progress_status,
+        LEAST(cp.score_percent, 100) AS score_percent,
+        cp.completed_at,
+        cp.last_accessed_at,
+        cp.current_slide,
+        cp.warning_count,
+        cp.mcq_answers
+      FROM users u
+      INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+      LEFT JOIN course_progress cp
+        ON LOWER(cp.user_email) = LOWER(u.email)
+        AND cp.module_id = ${moduleId}
+        AND cp.batch_id = ub.batch_id
+      WHERE u.role = 'user'
+        AND u.email IS NOT NULL
+        AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
+        AND (
+          EXISTS (
+            SELECT 1 FROM course_module_batches mb
+            WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+          )
+          OR (
+            ${batchId}::text IS NOT NULL
+            AND EXISTS (
+              SELECT 1 FROM course_progress p
+              WHERE p.module_id = ${moduleId} AND p.batch_id = ub.batch_id
+            )
+          )
+        )
+      ORDER BY u.email
+    `;
+  }
+
+  return sql`
+    SELECT DISTINCT
+      u.email,
+      u.display_name,
+      ub.batch_id AS learner_batch_id,
+      ap.status AS progress_status,
+      LEAST(ap.score_percent, 100) AS score_percent,
+      ap.completed_at,
+      ap.last_accessed_at,
+      ap.current_slide,
+      ap.warning_count,
+      ap.mcq_answers
+    FROM users u
+    INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
+    LEFT JOIN assessment_progress ap
+      ON LOWER(ap.user_email) = LOWER(u.email)
+      AND ap.module_id = ${moduleId}
+      AND ap.batch_id = ub.batch_id
+    WHERE u.role = 'user'
+      AND u.email IS NOT NULL
+      AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
+      AND (
+        EXISTS (
+          SELECT 1 FROM module_batches mb
+          WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+        )
+        OR (
+          ${batchId}::text IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM assessment_progress p
+            WHERE p.module_id = ${moduleId} AND p.batch_id = ub.batch_id
+          )
+        )
+      )
+    ORDER BY u.email
+  `;
+}
+
 const COMPLIANCE_DURATION_LABEL = "approximately 15 min";
 const COURSE_DURATION_FALLBACK_MIN = 30;
 const ONE_STRETCH_NOTE =
@@ -481,57 +570,12 @@ export async function sendFailedReviewGuidanceEmails(
     ? "Relanto AI Course"
     : "Relanto Compliance Training";
 
-  const learners = isCourse
-    ? await sql`
-        SELECT DISTINCT
-          u.email,
-          u.display_name,
-          ub.batch_id AS learner_batch_id,
-          cp.status AS progress_status,
-          LEAST(cp.score_percent, 100) AS score_percent,
-          cp.completed_at,
-          cp.last_accessed_at,
-          cp.current_slide,
-          cp.warning_count,
-          cp.mcq_answers
-        FROM users u
-        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
-        INNER JOIN course_module_batches mb ON mb.batch_id = ub.batch_id
-        LEFT JOIN course_progress cp
-          ON LOWER(cp.user_email) = LOWER(u.email)
-          AND cp.module_id = ${moduleId}
-          AND cp.batch_id = ub.batch_id
-        WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
-          AND u.role = 'user'
-          AND u.email IS NOT NULL
-        ORDER BY u.email
-      `
-    : await sql`
-        SELECT DISTINCT
-          u.email,
-          u.display_name,
-          ub.batch_id AS learner_batch_id,
-          ap.status AS progress_status,
-          LEAST(ap.score_percent, 100) AS score_percent,
-          ap.completed_at,
-          ap.last_accessed_at,
-          ap.current_slide,
-          ap.warning_count,
-          ap.mcq_answers
-        FROM users u
-        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
-        INNER JOIN module_batches mb ON mb.batch_id = ub.batch_id
-        LEFT JOIN assessment_progress ap
-          ON LOWER(ap.user_email) = LOWER(u.email)
-          AND ap.module_id = ${moduleId}
-          AND ap.batch_id = ub.batch_id
-        WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
-          AND u.role = 'user'
-          AND u.email IS NOT NULL
-        ORDER BY u.email
-      `;
+  const learners = await listModuleOutreachLearners(
+    sql,
+    moduleId,
+    batchId,
+    isCourse,
+  );
 
   let sent = 0;
   let skipped = 0;
@@ -843,57 +887,12 @@ export async function sendModuleInvitationEmails(
     ? "Relanto AI Course"
     : "Relanto Compliance Training";
 
-  const learners = isCourse
-    ? await sql`
-        SELECT DISTINCT
-          u.email,
-          u.display_name,
-          ub.batch_id AS learner_batch_id,
-          cp.status AS progress_status,
-          LEAST(cp.score_percent, 100) AS score_percent,
-          cp.completed_at,
-          cp.last_accessed_at,
-          cp.current_slide,
-          cp.warning_count,
-          cp.mcq_answers
-        FROM users u
-        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
-        INNER JOIN course_module_batches mb ON mb.batch_id = ub.batch_id
-        LEFT JOIN course_progress cp
-          ON LOWER(cp.user_email) = LOWER(u.email)
-          AND cp.module_id = ${moduleId}
-          AND cp.batch_id = ub.batch_id
-        WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
-          AND u.role = 'user'
-          AND u.email IS NOT NULL
-        ORDER BY u.email
-      `
-    : await sql`
-        SELECT DISTINCT
-          u.email,
-          u.display_name,
-          ub.batch_id AS learner_batch_id,
-          ap.status AS progress_status,
-          LEAST(ap.score_percent, 100) AS score_percent,
-          ap.completed_at,
-          ap.last_accessed_at,
-          ap.current_slide,
-          ap.warning_count,
-          ap.mcq_answers
-        FROM users u
-        INNER JOIN user_batches ub ON LOWER(ub.user_email) = LOWER(u.email)
-        INNER JOIN module_batches mb ON mb.batch_id = ub.batch_id
-        LEFT JOIN assessment_progress ap
-          ON LOWER(ap.user_email) = LOWER(u.email)
-          AND ap.module_id = ${moduleId}
-          AND ap.batch_id = ub.batch_id
-        WHERE mb.module_id = ${moduleId}
-          AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
-          AND u.role = 'user'
-          AND u.email IS NOT NULL
-        ORDER BY u.email
-      `;
+  const learners = await listModuleOutreachLearners(
+    sql,
+    moduleId,
+    batchId,
+    isCourse,
+  );
 
   let sent = 0;
   let skipped = 0;
@@ -1085,6 +1084,28 @@ export async function sendRetakeApprovalEmail(
     ? "Relanto AI Course"
     : "Relanto Compliance Training";
 
+  const progressRows = isCourse
+    ? await sql`
+        SELECT batch_id
+        FROM course_progress
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = ${email}
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      `
+    : await sql`
+        SELECT batch_id
+        FROM assessment_progress
+        WHERE module_id = ${moduleId}
+          AND LOWER(user_email) = ${email}
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      `;
+  const eventBatchId =
+    typeof progressRows[0]?.batch_id === "string"
+      ? progressRows[0].batch_id.trim()
+      : null;
+
   try {
     await sendGraphMail({
       to: email,
@@ -1104,7 +1125,9 @@ export async function sendRetakeApprovalEmail(
         durationLabel,
       }),
     });
-    await recordNotificationEvent(sql, moduleId, email, "retake_approved");
+    await recordNotificationEvent(sql, moduleId, email, "retake_approved", {
+      batchId: eventBatchId,
+    });
     return { ok: true, message: "Retake approval email sent." };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";

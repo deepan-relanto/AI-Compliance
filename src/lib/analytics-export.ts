@@ -17,6 +17,11 @@ function historyRowsForExport(
   return options?.historyRows ?? data.history;
 }
 
+function exportStatusLabel(status: string): string {
+  if (status === "failed" || status === "permanently_failed") return "locked";
+  return status.replace(/_/g, " ");
+}
+
 export function exportAnalyticsCsv(
   data: AnalyticsPayload,
   options?: AnalyticsExportOptions,
@@ -27,7 +32,7 @@ export function exportAnalyticsCsv(
     assessment: r.moduleTitle,
     assessment_id: r.moduleId,
     batch: r.batchLabel,
-    status: r.status,
+    status: exportStatusLabel(r.status),
     score_percent: r.scorePercent ?? "",
     mcq_correct: r.mcqCorrect,
     mcq_total: r.mcqTotal,
@@ -109,7 +114,7 @@ export function exportAnalyticsPdf(
           <td>${escapeHtml(r.userEmail)}</td>
           <td>${escapeHtml(r.moduleTitle)}</td>
           <td>${escapeHtml(r.batchLabel)}</td>
-          <td>${escapeHtml(r.status.replace(/_/g, " "))}</td>
+          <td>${escapeHtml(exportStatusLabel(r.status))}</td>
           <td>${r.scorePercent != null ? `${r.scorePercent}%` : "—"}</td>
           <td>${r.acknowledged ? "Yes" : "No"}</td>
           <td>${formatDate(r.completedAt ?? r.updatedAt)}</td>

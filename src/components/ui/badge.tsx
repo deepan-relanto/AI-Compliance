@@ -13,8 +13,8 @@ const statusLabels: Record<ModuleStatus, string> = {
   not_started: "Not started",
   in_progress: "In progress",
   completed: "Completed",
-  failed: "Failed",
-  permanently_failed: "Permanently Failed",
+  failed: "Locked",
+  permanently_failed: "Locked",
 };
 
 export function StatusBadge({ status }: { status: ModuleStatus }) {

@@ -326,7 +326,7 @@ export function MonitoringPanel({
         <Card className="shadow-[var(--shadow-card)]">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Failed Attempts</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Locked</p>
               <h3 className="text-xl font-bold text-zinc-900">{failedAssessments}</h3>
               <p className="text-[9px] text-zinc-400">Lockout thresholds hit</p>
             </div>
@@ -352,7 +352,7 @@ export function MonitoringPanel({
         <Card className="shadow-[var(--shadow-card)]">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Permanently Failed</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Permanently locked</p>
               <h3 className="text-xl font-bold text-zinc-900">{permanentlyFailedCount}</h3>
               <p className="text-[9px] text-zinc-400">Retake limit exhausted</p>
             </div>
@@ -418,10 +418,10 @@ export function MonitoringPanel({
                   With warnings
                 </FilterPill>
                 <FilterPill active={violationFilter === "failed"} onClick={() => handleViolationFilterChange("failed")}>
-                  Failed
+                  Locked
                 </FilterPill>
                 <FilterPill active={violationFilter === "permanently_failed"} onClick={() => handleViolationFilterChange("permanently_failed")}>
-                  Perm. failed
+                  Perm. locked
                 </FilterPill>
               </div>
               {assessments.length > 0 && (
@@ -1023,8 +1023,8 @@ export function MonitoringPanel({
                   <p className="font-semibold text-red-800 flex items-center gap-1">
                     <XCircle className="h-3.5 w-3.5" />
                     {selectedRecord.status === "permanently_failed"
-                      ? "Assessment Permanently Failed"
-                      : "Automatic Failure Locked"}
+                      ? "Permanently locked"
+                      : "Locked"}
                   </p>
                   <p className="text-red-700 mt-0.5">
                     Reason: {selectedRecord.failedReason || "Maximum warning limit reached."}

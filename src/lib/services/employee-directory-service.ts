@@ -65,7 +65,13 @@ export async function listEmployees(
       AND (${workerTypes}::text[] IS NULL OR e.worker_type = ANY(${workerTypes}))
       AND (${dateFrom}::date IS NULL OR e.date_joined >= ${dateFrom}::date)
       AND (${dateTo}::date IS NULL OR e.date_joined <= ${dateTo}::date)
-      AND (${unassignedOnly}::boolean IS FALSE OR u.batch_id IS NULL)
+      AND (${unassignedOnly}::boolean IS FALSE OR (
+        u.batch_id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM user_batches ub
+          WHERE LOWER(ub.user_email) = LOWER(e.work_email)
+        )
+      ))
   `;
   const total = Number(countRows[0]?.total ?? 0);
 
@@ -74,7 +80,28 @@ export async function listEmployees(
       e.id, e.employee_number, e.name, e.work_email,
       e.date_of_birth::text, e.gender, e.location, e.department,
       e.sub_department, e.job_title, e.reporting_to, e.date_joined::text,
-      e.worker_type, u.batch_id, b.label AS batch_label
+      e.worker_type,
+      COALESCE(
+        u.batch_id,
+        (
+          SELECT ub.batch_id
+          FROM user_batches ub
+          WHERE LOWER(ub.user_email) = LOWER(e.work_email)
+          ORDER BY ub.created_at ASC
+          LIMIT 1
+        )
+      ) AS batch_id,
+      COALESCE(
+        b.label,
+        (
+          SELECT b2.label
+          FROM user_batches ub
+          INNER JOIN batches b2 ON b2.id = ub.batch_id
+          WHERE LOWER(ub.user_email) = LOWER(e.work_email)
+          ORDER BY ub.created_at ASC
+          LIMIT 1
+        )
+      ) AS batch_label
     FROM employees e
     LEFT JOIN users u ON LOWER(u.email) = LOWER(e.work_email)
     LEFT JOIN batches b ON b.id = u.batch_id
@@ -92,7 +119,13 @@ export async function listEmployees(
       AND (${workerTypes}::text[] IS NULL OR e.worker_type = ANY(${workerTypes}))
       AND (${dateFrom}::date IS NULL OR e.date_joined >= ${dateFrom}::date)
       AND (${dateTo}::date IS NULL OR e.date_joined <= ${dateTo}::date)
-      AND (${unassignedOnly}::boolean IS FALSE OR u.batch_id IS NULL)
+      AND (${unassignedOnly}::boolean IS FALSE OR (
+        u.batch_id IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM user_batches ub
+          WHERE LOWER(ub.user_email) = LOWER(e.work_email)
+        )
+      ))
     ORDER BY e.name
     LIMIT ${limit}
     OFFSET ${offset}

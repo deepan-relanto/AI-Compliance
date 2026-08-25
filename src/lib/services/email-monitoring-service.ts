@@ -435,15 +435,46 @@ export async function getEmailMonitoring(
         (
           SELECT DISTINCT
             m.id,
+            m.title,
+            'compliance'::text AS track
+          FROM training_modules m
+          INNER JOIN assessment_progress p ON p.module_id = m.id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
+            AND ${batchId}::text IS NOT NULL
+            AND p.batch_id = ${batchId}
+        )
+        UNION
+        (
+          SELECT DISTINCT
+            m.id,
+            m.title,
+            'course'::text AS track
+          FROM course_modules m
+          INNER JOIN course_progress p ON p.module_id = m.id
+          WHERE (${track}::text = 'all' OR ${track}::text = 'course')
+            AND ${batchId}::text IS NOT NULL
+            AND p.batch_id = ${batchId}
+        )
+        UNION
+        (
+          SELECT DISTINCT
+            m.id,
             COALESCE(m.title, e.module_id) AS title,
             'compliance'::text AS track
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (
               ${batchId}::text IS NULL
-              OR COALESCE(e.batch_id, u.batch_id) = ${batchId}
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
             )
         )
         UNION
@@ -454,11 +485,18 @@ export async function getEmailMonitoring(
             'course'::text AS track
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (
               ${batchId}::text IS NULL
-              OR COALESCE(e.batch_id, u.batch_id) = ${batchId}
+              OR e.batch_id = ${batchId}
+              OR (
+                e.batch_id IS NULL
+                AND EXISTS (
+                  SELECT 1 FROM user_batches ub
+                  WHERE ub.batch_id = ${batchId}
+                    AND LOWER(ub.user_email) = LOWER(e.user_email)
+                )
+              )
             )
         )
         ORDER BY title ASC

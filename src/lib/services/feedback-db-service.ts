@@ -105,10 +105,13 @@ export async function getUserBatchMap(
   sql: Sql,
 ): Promise<Record<string, { batchId: string; batchLabel: string }>> {
   const rows = await sql`
-    SELECT u.email, u.batch_id, b.label AS batch_label
-    FROM users u
-    LEFT JOIN batches b ON b.id = u.batch_id
-    WHERE u.batch_id IS NOT NULL
+    SELECT DISTINCT ON (LOWER(ub.user_email))
+      ub.user_email AS email,
+      ub.batch_id,
+      b.label AS batch_label
+    FROM user_batches ub
+    INNER JOIN batches b ON b.id = ub.batch_id
+    ORDER BY LOWER(ub.user_email), ub.created_at ASC
   `;
   const map: Record<string, { batchId: string; batchLabel: string }> = {};
   for (const r of rows) {
