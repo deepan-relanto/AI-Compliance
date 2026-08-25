@@ -45,8 +45,8 @@ interface AnalyticsDashboardProps {
 const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   in_progress: "In progress",
-  failed: "Failed",
-  permanently_failed: "Permanently failed",
+  failed: "Locked",
+  permanently_failed: "Locked",
   not_started: "Not started",
 };
 
@@ -201,7 +201,7 @@ function TimeSeriesChart({ points }: { points: TimeSeriesPoint[] }) {
         </div>
         <div className="rounded-lg border border-red-100 bg-red-50/40 px-3 py-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-red-600/70">
-            Failed
+            Locked
           </p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-red-600">{totalFailed}</p>
         </div>
@@ -225,7 +225,7 @@ function TimeSeriesChart({ points }: { points: TimeSeriesPoint[] }) {
             </span>
             <span className="inline-flex items-center gap-1 text-zinc-500">
               <span className="h-2 w-2 rounded-sm bg-red-400" />
-              Failed
+              Locked
             </span>
           </span>
         </div>
@@ -861,7 +861,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
                 tone="danger"
               >
                 <XCircle className="h-3 w-3" />
-                Failed
+                Locked
               </FilterPill>
               <FilterPill
                 active={statusFilter === "completed"}

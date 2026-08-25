@@ -77,11 +77,21 @@ export async function GET() {
               m.pdf_url, m.content_type, m.module_kind, m.created_at, m.feedback_required,
               ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
             FROM training_modules m
-            INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
             LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
-            WHERE mb_filter.batch_id = ANY(${membershipBatchIds})
-              AND m.mcq_generation_status = 'completed'
+            WHERE m.mcq_generation_status = 'completed'
               AND COALESCE(m.module_kind, 'compliance') = 'compliance'
+              AND (
+                EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = m.id
+                    AND mb.batch_id = ANY(${membershipBatchIds})
+                )
+                OR EXISTS (
+                  SELECT 1 FROM assessment_progress p
+                  WHERE p.module_id = m.id
+                    AND p.batch_id = ANY(${membershipBatchIds})
+                )
+              )
             GROUP BY m.id
             ORDER BY m.created_at DESC
           `,
@@ -92,10 +102,20 @@ export async function GET() {
               m.allow_save_exit,
               ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
             FROM course_modules m
-            INNER JOIN course_module_batches mb_filter ON mb_filter.module_id = m.id
             LEFT JOIN course_module_batches mb_all ON mb_all.module_id = m.id
-            WHERE mb_filter.batch_id = ANY(${membershipBatchIds})
-              AND m.mcq_generation_status = 'completed'
+            WHERE m.mcq_generation_status = 'completed'
+              AND (
+                EXISTS (
+                  SELECT 1 FROM course_module_batches mb
+                  WHERE mb.module_id = m.id
+                    AND mb.batch_id = ANY(${membershipBatchIds})
+                )
+                OR EXISTS (
+                  SELECT 1 FROM course_progress p
+                  WHERE p.module_id = m.id
+                    AND p.batch_id = ANY(${membershipBatchIds})
+                )
+              )
             GROUP BY m.id
             ORDER BY m.created_at DESC
           `,

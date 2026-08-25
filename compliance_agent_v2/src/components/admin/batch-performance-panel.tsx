@@ -277,20 +277,18 @@ export function BatchPerformancePanel({
     });
   }, [data.moduleSummaries, data.modules, data.batch.memberCount, flatRows]);
 
-  const assignedSummaries = useMemo(() => {
-    const current = moduleSummaries.filter((m) => m.currentlyAssigned);
-    return current.length > 0 ? current : moduleSummaries;
-  }, [moduleSummaries]);
-
   const seatMetrics = useMemo(() => {
-    const courseCount = assignedSummaries.length;
+    const courseCount = moduleSummaries.length;
+    const currentCount = moduleSummaries.filter((m) => m.currentlyAssigned).length;
     const seats = assignedSeatCount(data.batch.memberCount, courseCount);
-    const completed = assignedSummaries.reduce((n, m) => n + m.completed, 0);
-    const inProgress = assignedSummaries.reduce((n, m) => n + m.inProgress, 0);
-    const locked = assignedSummaries.reduce((n, m) => n + m.failed, 0);
+    const completed = moduleSummaries.reduce((n, m) => n + m.completed, 0);
+    const inProgress = moduleSummaries.reduce((n, m) => n + m.inProgress, 0);
+    const locked = moduleSummaries.reduce((n, m) => n + m.failed, 0);
     const remaining = Math.max(0, seats - completed - inProgress - locked);
     return {
       courseCount,
+      currentCount,
+      previousCount: Math.max(0, courseCount - currentCount),
       seats,
       completed,
       inProgress,
@@ -298,7 +296,7 @@ export function BatchPerformancePanel({
       remaining,
       pct: percentOf(completed, seats),
     };
-  }, [assignedSummaries, data.batch.memberCount]);
+  }, [moduleSummaries, data.batch.memberCount]);
 
   const activeModule = useMemo(
     () =>
@@ -603,7 +601,11 @@ export function BatchPerformancePanel({
                     ? `No ${nounPlural} assigned yet — KPIs appear once this roster has work.`
                     : `${batch.memberCount} people × ${seatMetrics.courseCount} ${
                         seatMetrics.courseCount === 1 ? noun : nounPlural
-                      } = ${seatMetrics.seats} seats. One seat is one person on one ${noun}.`}
+                      } = ${seatMetrics.seats} seats. One seat is one person on one ${noun}${
+                        seatMetrics.previousCount > 0
+                          ? `, including previously assigned ${nounPlural} that still have marks`
+                          : ""
+                      }.`}
                 </p>
               </div>
               <div className="text-right">
@@ -644,9 +646,11 @@ export function BatchPerformancePanel({
                 label={nounPlural.charAt(0).toUpperCase() + nounPlural.slice(1)}
                 value={seatMetrics.courseCount}
                 hint={
-                  seatMetrics.courseCount === 1
-                    ? `Open the ${noun} below for marks`
-                    : `Assigned to this batch`
+                  seatMetrics.previousCount > 0
+                    ? `${seatMetrics.currentCount} current · ${seatMetrics.previousCount} previously assigned`
+                    : seatMetrics.courseCount === 1
+                      ? `Open the ${noun} below for marks`
+                      : `Assigned to this batch`
                 }
               />
               <PulseStat

@@ -11,6 +11,7 @@ function downloadBlob(filename: string, blob: Blob) {
 }
 
 function formatStatus(status: string): string {
+  if (status === "failed" || status === "permanently_failed") return "locked";
   return status.replace(/_/g, " ");
 }
 
@@ -21,48 +22,41 @@ function slugify(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
-
 /**
- * Human-readable datetime that Excel will not turn into a serial date
- * (which shows as ######## when the column is narrow).
+ * IST timestamps so Excel does not depend on the admin's browser timezone.
+ * Prefixed as text so Excel will not turn the value into a serial date.
  */
 function formatExportDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const hours24 = d.getHours();
-  const hours12 = hours24 % 12 || 12;
-  const ampm = hours24 >= 12 ? "PM" : "AM";
-  return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${hours12}:${pad(d.getMinutes())} ${ampm}`;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(d);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  const day = pick("day");
+  const month = pick("month");
+  const year = pick("year");
+  const hour = pick("hour");
+  const minute = pick("minute");
+  const dayPeriod = pick("dayPeriod").toUpperCase();
+  return `${day} ${month} ${year}, ${hour}:${minute} ${dayPeriod} IST`;
 }
 
-/** Force Excel to treat the cell as text (avoids ######## date display). */
 function excelText(value: string): string {
   if (!value) return "";
   return `="${value.replace(/"/g, '""')}"`;
 }
 
-function emailCell(
-  available: boolean | undefined,
-  count: number | null | undefined,
-): string | number {
-  if (!available) return "Not available";
-  return Number(count ?? 0);
+function dateCell(iso: string | null | undefined): string {
+  return excelText(formatExportDate(iso));
 }
 
 type LearnerExportRow = {
@@ -74,15 +68,21 @@ type LearnerExportRow = {
   "Score (%)": string | number;
   Correct: number;
   "Total Questions": number;
-  "Retakes Used": number;
   "Date Assigned": string;
-  "Invite Emails": string | number;
-  "Reminder Emails": string | number;
-  "Guidance Emails": string | number;
-  "Total Emails Sent": string | number;
-  "Proctor Warnings": number;
+  "Date Started": string;
   "Completion Date": string;
   "Last Activity": string;
+  "Retakes Used (attempts)": number;
+  "Retake Emails Sent": number;
+  "Last Retake Email": string;
+  "Invite Emails": number;
+  "Last Invite Sent": string;
+  "Reminder Emails": number;
+  "Last Reminder Sent": string;
+  "Guidance Emails": number;
+  "Last Guidance Sent": string;
+  "Total Emails Sent": number;
+  "Proctor Warnings": number;
 };
 
 export function exportBatchPerformanceCsv(
@@ -118,15 +118,21 @@ export function exportBatchPerformanceCsv(
           "Score (%)": "",
           Correct: 0,
           "Total Questions": 0,
-          "Retakes Used": 0,
           "Date Assigned": "",
-          "Invite Emails": "Not available",
-          "Reminder Emails": "Not available",
-          "Guidance Emails": "Not available",
-          "Total Emails Sent": "Not available",
-          "Proctor Warnings": 0,
+          "Date Started": "",
           "Completion Date": "",
           "Last Activity": "",
+          "Retakes Used (attempts)": 0,
+          "Retake Emails Sent": 0,
+          "Last Retake Email": "",
+          "Invite Emails": 0,
+          "Last Invite Sent": "",
+          "Reminder Emails": 0,
+          "Last Reminder Sent": "",
+          "Guidance Emails": 0,
+          "Last Guidance Sent": "",
+          "Total Emails Sent": 0,
+          "Proctor Warnings": 0,
         },
       ];
     }
@@ -134,6 +140,8 @@ export function exportBatchPerformanceCsv(
     return assessments.map((a) => {
       const lastActivityIso =
         a.lastAccessedAt ?? a.updatedAt ?? a.completedAt ?? null;
+      const startedIso =
+        a.status === "not_started" ? null : (a.startedAt ?? lastActivityIso);
       return {
         Batch: data.batch.label,
         "Learner Name": learner.displayName,
@@ -143,21 +151,29 @@ export function exportBatchPerformanceCsv(
         "Score (%)": a.scorePercent ?? "",
         Correct: a.mcqCorrect,
         "Total Questions": a.mcqTotal,
-        "Retakes Used": a.retakeCount,
-        "Date Assigned": excelText(formatExportDate(a.assignedAt)),
-        "Invite Emails": emailCell(a.emailHistoryAvailable, a.inviteCount),
-        "Reminder Emails": emailCell(a.emailHistoryAvailable, a.reminderCount),
-        "Guidance Emails": emailCell(
-          a.emailHistoryAvailable,
-          a.failedGuidanceCount,
-        ),
-        "Total Emails Sent": emailCell(a.emailHistoryAvailable, a.emailsSent),
+        "Date Assigned": dateCell(a.assignedAt),
+        "Date Started": dateCell(startedIso),
+        "Completion Date": dateCell(a.completedAt),
+        "Last Activity": dateCell(lastActivityIso),
+        "Retakes Used (attempts)": a.retakeCount,
+        "Retake Emails Sent": a.retakeEmailCount ?? 0,
+        "Last Retake Email": dateCell(a.lastRetakeEmailAt),
+        "Invite Emails": a.inviteCount ?? 0,
+        "Last Invite Sent": dateCell(a.lastInvitedAt),
+        "Reminder Emails": a.reminderCount ?? 0,
+        "Last Reminder Sent": dateCell(a.lastRemindedAt),
+        "Guidance Emails": a.failedGuidanceCount ?? 0,
+        "Last Guidance Sent": dateCell(a.lastFailedGuidanceAt),
+        "Total Emails Sent": a.emailsSent ?? 0,
         "Proctor Warnings": a.warningCount ?? 0,
-        "Completion Date": excelText(formatExportDate(a.completedAt)),
-        "Last Activity": excelText(formatExportDate(lastActivityIso)),
       };
     });
   });
+
+  const totalReminders = rows.reduce((n, r) => n + r["Reminder Emails"], 0);
+  const totalRetakeEmails = rows.reduce((n, r) => n + r["Retake Emails Sent"], 0);
+  const totalInvites = rows.reduce((n, r) => n + r["Invite Emails"], 0);
+  const totalGuidance = rows.reduce((n, r) => n + r["Guidance Emails"], 0);
 
   const summaryRows = moduleSummary
     ? [
@@ -169,10 +185,14 @@ export function exportBatchPerformanceCsv(
           Completed: moduleSummary.completed,
           "In Progress": moduleSummary.inProgress,
           "Not Started": moduleSummary.notStarted,
-          Failed: moduleSummary.failed,
+          Locked: moduleSummary.failed,
           "Avg Score (%)": moduleSummary.avgScore ?? "",
           "Pass Rate (%)": moduleSummary.passRate ?? "",
-          "Compliance (%)": moduleSummary.compliance,
+          "Seat completion (%)": moduleSummary.compliance,
+          "Invite emails": totalInvites,
+          "Reminder emails": totalReminders,
+          "Guidance emails": totalGuidance,
+          "Retake emails": totalRetakeEmails,
         },
       ]
     : [
@@ -180,16 +200,17 @@ export function exportBatchPerformanceCsv(
           Batch: data.batch.label,
           Members: data.batch.memberCount,
           "Modules Assigned": data.summary.modulesAssigned,
-          Seats: data.batch.memberCount * Math.max(0, data.summary.modulesAssigned),
+          Seats:
+            data.batch.memberCount * Math.max(0, data.summary.modulesAssigned),
           "Seats Complete": data.summary.completed,
           "People started (any course)": data.summary.learnersStarted,
           Completed: data.summary.completed,
           "In Progress": data.summary.inProgress,
-          Failed: data.summary.failed ?? 0,
+          Locked: data.summary.failed ?? 0,
           "Not Started": data.summary.notStarted ?? "",
           "Avg Score (%)": data.summary.avgScore ?? "",
           "Pass Rate (%)": data.summary.passRate ?? "",
-          "Compliance (%)": data.summary.compliance,
+          "Seat completion (%)": data.summary.compliance,
         },
       ];
 
@@ -207,7 +228,9 @@ export function exportBatchPerformanceCsv(
     `Generated: ${formatExportDate(data.generatedAt)}`,
     ...(moduleId ? [`Module: ${moduleMeta?.title ?? moduleId}`] : []),
     `Batch: ${data.batch.label}`,
-    "Note: Email columns show Not available when invite/reminder history was not logged for this module (common for older assignments). New assignments record email history going forward.",
+    "Dates are India Standard Time (IST).",
+    "Date Assigned is when this learner got this course in this batch (later of joining the batch and the first invite wave). It is not the course created date.",
+    "Retakes Used (attempts) is how many times they retook the quiz. Retake Emails Sent is how many retake-approval emails we sent, with Last Retake Email as the most recent send.",
     "",
     moduleId ? "MODULE SUMMARY" : "BATCH SUMMARY",
     summaryCsv,

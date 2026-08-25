@@ -5,6 +5,8 @@ import type {
   BatchModuleSummary,
   BatchPerformancePayload,
 } from "@/lib/batch-performance-types";
+import { resolveAssignedAt } from "@/lib/batch-assigned-at";
+import { batchSeatCompletion } from "@/lib/batch-seat-metrics";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import {
   countMcqAnswers,
@@ -106,7 +108,7 @@ export async function getBatchPerformance(
         `,
     isCourse
       ? sql`
-          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni, ub.created_at AS joined_at
           FROM user_batches ub
           INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
           WHERE ub.batch_id = ${batchId}
@@ -114,7 +116,8 @@ export async function getBatchPerformance(
           SELECT DISTINCT
             LOWER(p.user_email) AS email,
             COALESCE(u.display_name, p.user_email) AS display_name,
-            TRUE AS is_alumni
+            TRUE AS is_alumni,
+            NULL::timestamptz AS joined_at
           FROM course_progress p
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
           WHERE p.batch_id = ${batchId}
@@ -125,7 +128,7 @@ export async function getBatchPerformance(
             )
         `
       : sql`
-          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni
+          SELECT LOWER(ub.user_email) AS email, u.display_name, FALSE AS is_alumni, ub.created_at AS joined_at
           FROM user_batches ub
           INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
           WHERE ub.batch_id = ${batchId}
@@ -133,7 +136,8 @@ export async function getBatchPerformance(
           SELECT DISTINCT
             LOWER(p.user_email) AS email,
             COALESCE(u.display_name, p.user_email) AS display_name,
-            TRUE AS is_alumni
+            TRUE AS is_alumni,
+            NULL::timestamptz AS joined_at
           FROM assessment_progress p
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
           WHERE p.batch_id = ${batchId}
@@ -194,10 +198,7 @@ export async function getBatchPerformance(
           LEFT JOIN course_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND (
-              ap.batch_id = ${batchId}
-              OR l.is_alumni = FALSE
-            )
+            AND ap.batch_id = ${batchId}
           ORDER BY l.email, bm.title
         `
       : sql`
@@ -251,10 +252,7 @@ export async function getBatchPerformance(
           LEFT JOIN assessment_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND (
-              ap.batch_id = ${batchId}
-              OR l.is_alumni = FALSE
-            )
+            AND ap.batch_id = ${batchId}
           ORDER BY l.email, bm.title
         `,
     isCourse
@@ -323,10 +321,7 @@ export async function getBatchPerformance(
           LEFT JOIN course_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND (
-              ap.batch_id = ${batchId}
-              OR l.is_alumni = FALSE
-            )
+            AND ap.batch_id = ${batchId}
         `
       : sql`
           SELECT
@@ -401,10 +396,7 @@ export async function getBatchPerformance(
           LEFT JOIN assessment_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND (
-              ap.batch_id = ${batchId}
-              OR l.is_alumni = FALSE
-            )
+            AND ap.batch_id = ${batchId}
         `,
     // Parallel with grid — batch-scoped outreach (no module-id dependency).
     getBatchOutreachCounts(sql, batchId, [], track),
@@ -414,15 +406,13 @@ export async function getBatchPerformance(
     id: m.id as string,
     title: m.title as string,
     currentlyAssigned: Boolean(m.currently_assigned),
-    createdAt: (m.created_at as string) ?? null,
   }));
-  const moduleCreatedAt = new Map(
-    modules.map((m) => [m.id, m.createdAt] as const),
-  );
 
+  const joinedAtByEmail = new Map<string, string | null>();
   const learnerMap = new Map<string, BatchLearnerPerformance>();
   for (const m of memberRows) {
     const email = m.email as string;
+    joinedAtByEmail.set(email, (m.joined_at as string) ?? null);
     learnerMap.set(email, {
       email,
       displayName: formatLearnerDisplayName(
@@ -484,16 +474,17 @@ export async function getBatchPerformance(
       completedAt: (row.completed_at as string) ?? null,
       updatedAt: (row.updated_at as string) ?? null,
       lastAccessedAt: (row.last_accessed_at as string) ?? null,
-      assignedAt:
-        (row.created_at as string) ??
-        moduleCreatedAt.get(row.module_id as string) ??
-        null,
+      startedAt: (row.created_at as string) ?? null,
+      assignedAt: null,
       warningCount: Number(row.warning_count ?? 0),
       reminderCount: 0,
       lastRemindedAt: null,
       failedGuidanceCount: 0,
       lastFailedGuidanceAt: null,
       inviteCount: 0,
+      lastInvitedAt: null,
+      retakeEmailCount: 0,
+      lastRetakeEmailAt: null,
       emailsSent: 0,
       emailHistoryAvailable: false,
     };
@@ -501,30 +492,46 @@ export async function getBatchPerformance(
   }
 
   const modulesWithEmailHistory = new Set<string>();
+  const moduleFirstInvite = new Map<string, string>();
   for (const [key, counts] of outreachCounts) {
     if (counts.hasEmailLog) {
       const moduleId = key.split("::")[1];
       if (moduleId) modulesWithEmailHistory.add(moduleId);
     }
-  }
-
-  for (const learner of learnerMap.values()) {
-    for (const a of learner.assessments) {
-      a.emailHistoryAvailable = modulesWithEmailHistory.has(a.moduleId);
-      const counts = outreachCounts.get(outreachCountKey(learner.email, a.moduleId));
-      if (!counts) continue;
-      a.reminderCount = counts.reminderCount;
-      a.lastRemindedAt = counts.lastRemindedAt;
-      a.failedGuidanceCount = counts.failedGuidanceCount;
-      a.lastFailedGuidanceAt = counts.lastFailedGuidanceAt;
-      a.inviteCount = counts.inviteCount;
-      a.emailsSent = counts.emailsSent;
-      // Prefer invite / legacy notification timestamp as date assigned.
-      if (counts.assignedAt) a.assignedAt = counts.assignedAt;
+    if (counts.assignedAt) {
+      const moduleId = key.split("::")[1];
+      if (!moduleId) continue;
+      const prev = moduleFirstInvite.get(moduleId);
+      if (!prev || new Date(counts.assignedAt).getTime() < new Date(prev).getTime()) {
+        moduleFirstInvite.set(moduleId, counts.assignedAt);
+      }
     }
   }
 
-  // Drop helper-only createdAt before returning modules (API shape).
+  for (const learner of learnerMap.values()) {
+    const joinedAt = joinedAtByEmail.get(learner.email) ?? null;
+    for (const a of learner.assessments) {
+      a.emailHistoryAvailable = modulesWithEmailHistory.has(a.moduleId);
+      const counts = outreachCounts.get(outreachCountKey(learner.email, a.moduleId));
+      if (counts) {
+        a.reminderCount = counts.reminderCount;
+        a.lastRemindedAt = counts.lastRemindedAt;
+        a.failedGuidanceCount = counts.failedGuidanceCount;
+        a.lastFailedGuidanceAt = counts.lastFailedGuidanceAt;
+        a.inviteCount = counts.inviteCount;
+        a.lastInvitedAt = counts.lastInvitedAt;
+        a.retakeEmailCount = counts.retakeEmailCount;
+        a.lastRetakeEmailAt = counts.lastRetakeEmailAt;
+        a.emailsSent = counts.emailsSent;
+      }
+      a.assignedAt = resolveAssignedAt({
+        userJoinedBatchAt: joinedAt,
+        firstInviteThisBatch: counts?.assignedAt ?? null,
+        moduleFirstInviteThisBatch: moduleFirstInvite.get(a.moduleId) ?? null,
+      });
+    }
+  }
+
   const modulesOut = modules.map(({ id, title, currentlyAssigned }) => ({
     id,
     title,
@@ -534,11 +541,6 @@ export async function getBatchPerformance(
   const s = summaryRows[0] ?? {};
   const currentRosterCount = memberRows.filter((m) => !m.is_alumni).length;
   const memberCount = Number(b.member_count ?? currentRosterCount);
-  const failedCount = Number(s.failed ?? 0);
-  const notStartedCount = Math.max(
-    0,
-    memberCount - Number(s.learners_started ?? 0),
-  );
 
   const moduleSummaries: BatchModuleSummary[] = modules.map((mod) => {
     let started = 0;
@@ -587,6 +589,11 @@ export async function getBatchPerformance(
     };
   });
 
+  const seatCompleted = moduleSummaries.reduce((n, m) => n + m.completed, 0);
+  const seatInProgress = moduleSummaries.reduce((n, m) => n + m.inProgress, 0);
+  const seatLocked = moduleSummaries.reduce((n, m) => n + m.failed, 0);
+  const seatNotStarted = moduleSummaries.reduce((n, m) => n + m.notStarted, 0);
+
   return {
     batch: {
       id: b.id as string,
@@ -595,15 +602,19 @@ export async function getBatchPerformance(
       memberCount,
     },
     summary: {
-      modulesAssigned: modulesOut.filter((m) => m.currentlyAssigned).length || modulesOut.length,
+      modulesAssigned: modulesOut.length,
       learnersStarted: Number(s.learners_started ?? 0),
-      completed: Number(s.completed ?? 0),
-      inProgress: Number(s.in_progress ?? 0),
-      failed: failedCount,
-      notStarted: notStartedCount,
+      completed: seatCompleted,
+      inProgress: seatInProgress,
+      failed: seatLocked,
+      notStarted: seatNotStarted,
       avgScore: s.avg_score != null ? Number(s.avg_score) : null,
       passRate: s.pass_rate != null ? Number(s.pass_rate) : null,
-      compliance: Number(s.compliance ?? 0),
+      compliance: batchSeatCompletion({
+        memberCount,
+        modulesAssigned: modulesOut.length,
+        completed: seatCompleted,
+      }),
     },
     modules: modulesOut,
     moduleSummaries,

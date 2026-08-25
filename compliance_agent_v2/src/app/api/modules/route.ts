@@ -45,13 +45,19 @@ export async function GET(req: NextRequest) {
 
     if (!isAdmin) {
       const sql = getSql();
-      const me = await sql`
-        SELECT batch_id FROM users
+      const membership = await sql`
+        SELECT 1
+        FROM user_batches
+        WHERE LOWER(user_email) = LOWER(${session.email})
+          AND batch_id = ${batchId}
+        UNION
+        SELECT 1
+        FROM users
         WHERE LOWER(email) = LOWER(${session.email})
+          AND batch_id = ${batchId}
         LIMIT 1
       `;
-      const myBatch = (me[0]?.batch_id as string | null) ?? null;
-      if (!myBatch || myBatch !== batchId) {
+      if (membership.length === 0) {
         return NextResponse.json(
           { ok: false, error: "You can only list modules for your own batch." },
           { status: 403 },
@@ -69,10 +75,18 @@ export async function GET(req: NextRequest) {
             m.*,
             ARRAY_AGG(DISTINCT mb_all.batch_id) FILTER (WHERE mb_all.batch_id IS NOT NULL) AS batch_ids
           FROM training_modules m
-          INNER JOIN module_batches mb_filter ON mb_filter.module_id = m.id
           LEFT JOIN module_batches mb_all ON mb_all.module_id = m.id
-          WHERE mb_filter.batch_id = ${batchId}
-            AND m.mcq_generation_status = 'completed'
+          WHERE m.mcq_generation_status = 'completed'
+            AND (
+              EXISTS (
+                SELECT 1 FROM module_batches mb
+                WHERE mb.module_id = m.id AND mb.batch_id = ${batchId}
+              )
+              OR EXISTS (
+                SELECT 1 FROM assessment_progress p
+                WHERE p.module_id = m.id AND p.batch_id = ${batchId}
+              )
+            )
           GROUP BY m.id
           ORDER BY m.created_at DESC
         `;

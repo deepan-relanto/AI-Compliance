@@ -9,8 +9,10 @@ export interface BatchAssessmentResult {
   completedAt: string | null;
   updatedAt: string | null;
   lastAccessedAt: string | null;
-  /** First invite email sent (or progress created_at fallback). */
+  /** First invite email sent for this learner × module in this batch. */
   assignedAt: string | null;
+  /** When the progress row was created (first open), not the assignment date. */
+  startedAt: string | null;
   /** Proctor integrity warnings on the attempt. */
   warningCount: number;
   reminderCount: number;
@@ -19,6 +21,10 @@ export interface BatchAssessmentResult {
   lastFailedGuidanceAt: string | null;
   /** Invite emails recorded for this learner × module. */
   inviteCount: number;
+  lastInvitedAt: string | null;
+  /** Retake-approval emails sent (not the same as attempts used). */
+  retakeEmailCount: number;
+  lastRetakeEmailAt: string | null;
   /** All outreach emails (invite + reminder + guidance + retake). */
   emailsSent: number;
   /**

@@ -183,7 +183,10 @@ export async function getBatchOutreachCounts(
       failedGuidanceCount: number;
       lastFailedGuidanceAt: string | null;
       inviteCount: number;
+      lastInvitedAt: string | null;
       assignedAt: string | null;
+      retakeEmailCount: number;
+      lastRetakeEmailAt: string | null;
       emailsSent: number;
       /** True when any email log exists for this learner×module. */
       hasEmailLog: boolean;
@@ -196,7 +199,10 @@ export async function getBatchOutreachCounts(
     failedGuidanceCount: number;
     lastFailedGuidanceAt: string | null;
     inviteCount: number;
+    lastInvitedAt: string | null;
     assignedAt: string | null;
+    retakeEmailCount: number;
+    lastRetakeEmailAt: string | null;
     emailsSent: number;
     hasEmailLog: boolean;
   };
@@ -212,7 +218,10 @@ export async function getBatchOutreachCounts(
         failedGuidanceCount: 0,
         lastFailedGuidanceAt: null,
         inviteCount: 0,
+        lastInvitedAt: null,
         assignedAt: null,
+        retakeEmailCount: 0,
+        lastRetakeEmailAt: null,
         emailsSent: 0,
         hasEmailLog: false,
       };
@@ -245,7 +254,25 @@ export async function getBatchOutreachCounts(
               COUNT(*) FILTER (WHERE e.notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'failed_review_guidance') AS last_failed_guidance_at,
               COUNT(*) FILTER (WHERE e.notification_type = 'invited')::int AS invite_count,
-              MIN(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS assigned_at,
+              MAX(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS last_invited_at,
+              MIN(e.sent_at) FILTER (
+                WHERE e.notification_type = 'invited'
+                  AND (
+                    e.batch_id = ${batchId}
+                    OR (
+                      e.batch_id IS NULL
+                      AND EXISTS (
+                        SELECT 1
+                        FROM user_batches ub
+                        WHERE ub.batch_id = ${batchId}
+                          AND LOWER(ub.user_email) = LOWER(e.user_email)
+                          AND e.sent_at >= ub.created_at - INTERVAL '1 day'
+                      )
+                    )
+                  )
+              ) AS assigned_at,
+              COUNT(*) FILTER (WHERE e.notification_type = 'retake_approved')::int AS retake_email_count,
+              MAX(e.sent_at) FILTER (WHERE e.notification_type = 'retake_approved') AS last_retake_email_at,
               COUNT(*) FILTER (
                 WHERE e.notification_type IN ('invited', 'reminder', 'failed_review_guidance', 'retake_approved')
               )::int AS emails_sent
@@ -274,7 +301,25 @@ export async function getBatchOutreachCounts(
               COUNT(*) FILTER (WHERE e.notification_type = 'failed_review_guidance')::int AS failed_guidance_count,
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'failed_review_guidance') AS last_failed_guidance_at,
               COUNT(*) FILTER (WHERE e.notification_type = 'invited')::int AS invite_count,
-              MIN(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS assigned_at,
+              MAX(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS last_invited_at,
+              MIN(e.sent_at) FILTER (
+                WHERE e.notification_type = 'invited'
+                  AND (
+                    e.batch_id = ${batchId}
+                    OR (
+                      e.batch_id IS NULL
+                      AND EXISTS (
+                        SELECT 1
+                        FROM user_batches ub
+                        WHERE ub.batch_id = ${batchId}
+                          AND LOWER(ub.user_email) = LOWER(e.user_email)
+                          AND e.sent_at >= ub.created_at - INTERVAL '1 day'
+                      )
+                    )
+                  )
+              ) AS assigned_at,
+              COUNT(*) FILTER (WHERE e.notification_type = 'retake_approved')::int AS retake_email_count,
+              MAX(e.sent_at) FILTER (WHERE e.notification_type = 'retake_approved') AS last_retake_email_at,
               COUNT(*) FILTER (
                 WHERE e.notification_type IN ('invited', 'reminder', 'failed_review_guidance', 'retake_approved')
               )::int AS emails_sent
@@ -309,7 +354,10 @@ export async function getBatchOutreachCounts(
       row.failedGuidanceCount = Number(r.failed_guidance_count ?? 0);
       row.lastFailedGuidanceAt = (r.last_failed_guidance_at as string) ?? null;
       row.inviteCount = Number(r.invite_count ?? 0);
+      row.lastInvitedAt = (r.last_invited_at as string) ?? null;
       row.assignedAt = (r.assigned_at as string) ?? null;
+      row.retakeEmailCount = Number(r.retake_email_count ?? 0);
+      row.lastRetakeEmailAt = (r.last_retake_email_at as string) ?? null;
       row.emailsSent = Number(r.emails_sent ?? 0);
       row.hasEmailLog = row.emailsSent > 0;
     }
@@ -356,9 +404,6 @@ export async function getBatchOutreachCounts(
       const key = outreachCountKey(r.user_email as string, r.module_id as string);
       const row = ensure(key);
       row.hasEmailLog = true;
-      if (!row.assignedAt && r.assigned_at) {
-        row.assignedAt = r.assigned_at as string;
-      }
       if (row.inviteCount === 0) {
         row.inviteCount = 1;
         row.emailsSent = Math.max(row.emailsSent, 1);
