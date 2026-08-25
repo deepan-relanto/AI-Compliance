@@ -4,7 +4,7 @@ import { RelantoLogo } from "@/components/brand/relanto-logo";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
 import { signOutCompletely } from "@/lib/auth-sign-out";
 import Link from "next/link";
 
@@ -29,6 +29,15 @@ export function EmployeeShell({ children, title, subtitle }: EmployeeShellProps)
             <RelantoLogo size="sm" showTagline className="justify-start" />
           </Link>
           <div className="flex items-center gap-3">
+            {user?.role === "admin" && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#2e3192]/20 bg-[#2e3192]/6 px-3 py-1.5 text-xs font-semibold text-[#2e3192] transition-colors hover:bg-[#2e3192]/12"
+              >
+                <Shield className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Back to admin console
+              </Link>
+            )}
             {user && (
               <div className="hidden items-center gap-3 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-1.5 sm:flex">
                 <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#2e3192] text-[11px] font-semibold text-white">

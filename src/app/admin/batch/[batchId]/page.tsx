@@ -5,6 +5,7 @@ import { BatchMembersList, type BatchMember } from "@/components/admin/batch-mem
 import { RouteGuard } from "@/components/auth/route-guard";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/lib/auth-store";
 import { BarChart3, Loader2, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -26,6 +27,10 @@ export default function BatchDetailPage() {
   const batchId = typeof params.batchId === "string" ? params.batchId : "";
   const [showAdd, setShowAdd] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addingSelf, setAddingSelf] = useState(false);
+  const [selfError, setSelfError] = useState<string | null>(null);
+  const sessionEmail =
+    useAuthStore((s) => s.user?.username)?.trim().toLowerCase() ?? "";
 
   const { data, isLoading, mutate } = useSWR(
     batchId ? `/api/batches/${encodeURIComponent(batchId)}` : null,
@@ -45,6 +50,32 @@ export default function BatchDetailPage() {
   } : null;
 
   const members: BatchMember[] = data?.ok && Array.isArray(data.users) ? data.users : [];
+  const alreadyMember = Boolean(
+    sessionEmail && members.some((m) => m.email.toLowerCase() === sessionEmail),
+  );
+
+  const handleAddMyself = async () => {
+    if (!sessionEmail || alreadyMember) return;
+    setAddingSelf(true);
+    setSelfError(null);
+    try {
+      const res = await fetch(`/api/batches/${encodeURIComponent(batchId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add", employeeEmails: [sessionEmail] }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) {
+        setSelfError(payload.error ?? "Could not add you to this batch.");
+        return;
+      }
+      void mutate();
+    } catch {
+      setSelfError("Network error.");
+    } finally {
+      setAddingSelf(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !batch) router.replace("/admin/batches");
@@ -88,6 +119,19 @@ export default function BatchDetailPage() {
             {members.length} member{members.length !== 1 ? "s" : ""}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleAddMyself()}
+              disabled={alreadyMember || addingSelf || !sessionEmail}
+            >
+              {addingSelf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <UserPlus className="h-3.5 w-3.5" />
+              )}
+              {alreadyMember ? "You are in this batch" : "Add myself"}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowAdd((v) => !v)}>
               <UserPlus className="h-3.5 w-3.5" />
               {showAdd ? "Close" : "Add members"}
@@ -111,6 +155,12 @@ export default function BatchDetailPage() {
             </Button>
           </div>
         </div>
+
+        {selfError && (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {selfError}
+          </p>
+        )}
 
         {showAdd && (
           <div className="mb-6">

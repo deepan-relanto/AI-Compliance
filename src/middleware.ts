@@ -1,4 +1,10 @@
 import { auth } from "@/auth";
+import {
+  canOpenAdminPages,
+  canOpenLearnerPages,
+  isAdminAppPath,
+  isLearnerAppPath,
+} from "@/lib/access-policy";
 import { NextResponse } from "next/server";
 
 const PUBLIC_PREFIXES = [
@@ -45,25 +51,20 @@ export default auth((req) => {
   }
 
   const role = req.auth.user?.role;
-  const isAdminPath =
-    pathname === "/admin" || pathname.startsWith("/admin/");
-  const isLearnerPath =
-    pathname === "/dashboard" ||
-    pathname.startsWith("/dashboard/") ||
-    pathname.startsWith("/training/");
 
   // Server-side role gate — do not rely on client RouteGuard alone.
-  if (isAdminPath && role !== "admin") {
+  // Admins may also open learner pages so they can take assigned training.
+  if (isAdminAppPath(pathname) && !canOpenAdminPages(role)) {
     const dest = role === "user" ? "/dashboard" : "/login";
     return NextResponse.redirect(new URL(dest, req.nextUrl.origin));
   }
 
-  if (isAdminApiPath(pathname) && role !== "admin") {
+  if (isAdminApiPath(pathname) && !canOpenAdminPages(role)) {
     return NextResponse.json({ ok: false, error: "Admin only." }, { status: 403 });
   }
 
-  if (isLearnerPath && role === "admin") {
-    return NextResponse.redirect(new URL("/admin", req.nextUrl.origin));
+  if (isLearnerAppPath(pathname) && role && !canOpenLearnerPages(role)) {
+    return NextResponse.redirect(new URL("/login", req.nextUrl.origin));
   }
 
   return NextResponse.next();

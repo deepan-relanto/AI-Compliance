@@ -14,6 +14,8 @@ export interface EmployeeRecord {
   workerType: string | null;
   batchId: string | null;
   batchLabel: string | null;
+  /** True when this person is an app admin (may also sit on a batch roster). */
+  isAdmin?: boolean;
 }
 
 export interface EmployeeFacets {

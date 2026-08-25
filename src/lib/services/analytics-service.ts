@@ -88,7 +88,15 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
     WITH
     summary AS (
       SELECT
-        (SELECT COUNT(*)::int FROM users WHERE role = 'user') AS total_learners,
+        (SELECT COUNT(*)::int FROM users u
+         WHERE u.role = 'user'
+            OR (
+              u.role = 'admin'
+              AND EXISTS (
+                SELECT 1 FROM user_batches ub
+                WHERE LOWER(ub.user_email) = LOWER(u.email)
+              )
+            )) AS total_learners,
         (SELECT COUNT(*)::int FROM batches) AS total_batches,
         (SELECT COUNT(*)::int FROM training_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
@@ -185,7 +193,7 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       SELECT
         (SELECT COUNT(DISTINCT LOWER(ub.user_email))::int
          FROM user_batches ub
-         INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email) AND u.role = 'user'
+         INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
          WHERE (
              EXISTS (
                SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
@@ -272,7 +280,15 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
     WITH
     summary AS (
       SELECT
-        (SELECT COUNT(*)::int FROM users WHERE role = 'user') AS total_learners,
+        (SELECT COUNT(*)::int FROM users u
+         WHERE u.role = 'user'
+            OR (
+              u.role = 'admin'
+              AND EXISTS (
+                SELECT 1 FROM user_batches ub
+                WHERE LOWER(ub.user_email) = LOWER(u.email)
+              )
+            )) AS total_learners,
         (SELECT COUNT(*)::int FROM batches) AS total_batches,
         (SELECT COUNT(*)::int FROM training_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
@@ -412,7 +428,7 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       SELECT
         (SELECT COUNT(DISTINCT LOWER(ub.user_email))::int
          FROM user_batches ub
-         INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email) AND u.role = 'user'
+         INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
          WHERE (
              EXISTS (
                SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id

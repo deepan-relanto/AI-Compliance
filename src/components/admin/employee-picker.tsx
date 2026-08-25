@@ -43,6 +43,7 @@ function toPreview(emp: EmployeeRecord): SelectedEmployeePreview {
     name: emp.name,
     department: emp.department,
     location: emp.location,
+    isAdmin: Boolean(emp.isAdmin),
   };
 }
 
@@ -389,7 +390,16 @@ export function EmployeePicker({
                           className="rounded border-zinc-300 text-[#2e3192]"
                         />
                       </td>
-                      <td className="px-3 py-3 font-medium text-zinc-900">{emp.name}</td>
+                      <td className="px-3 py-3 font-medium text-zinc-900">
+                        <span className="inline-flex items-center gap-2">
+                          {emp.name}
+                          {emp.isAdmin && (
+                            <span className="rounded-full bg-[#2e3192]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#2e3192]">
+                              Admin
+                            </span>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-3 py-3 font-mono text-xs text-zinc-500">{emp.workEmail}</td>
                       <td className="px-3 py-3 text-zinc-600">{emp.department ?? "—"}</td>
                       <td className="px-3 py-3 text-zinc-600">{emp.location ?? "—"}</td>
