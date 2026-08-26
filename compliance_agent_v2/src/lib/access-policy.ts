@@ -15,6 +15,14 @@ export function canOpenLearnerPages(
   return role === "admin" || role === "user";
 }
 
+/** Prefer admin if any source says so — never demote an admin in the client store. */
+export function preferredClientRole(
+  ...roles: Array<UserRole | string | null | undefined>
+): UserRole {
+  if (roles.some((role) => role === "admin")) return "admin";
+  return "user";
+}
+
 /** Anyone who can sit on a batch roster and receive outreach. */
 export function isRosterMemberRole(
   role: UserRole | string | null | undefined,

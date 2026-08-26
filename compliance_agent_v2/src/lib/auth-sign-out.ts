@@ -2,12 +2,14 @@
 
 import { useAuthStore } from "@/lib/auth-store";
 import { signOut } from "next-auth/react";
+import { invalidateLearnerDashboardClientCache } from "@/lib/progress-api";
 
 /**
  * Clear app + NextAuth session and land on login.
  * Next Microsoft sign-in uses prompt=select_account so the account picker appears.
  */
 export async function signOutCompletely(): Promise<void> {
+  invalidateLearnerDashboardClientCache();
   useAuthStore.getState().logout();
   useAuthStore.persist.clearStorage();
   await signOut({ redirect: false });

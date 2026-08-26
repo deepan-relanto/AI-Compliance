@@ -68,7 +68,9 @@ async function listModuleOutreachLearners(
             ${batchId}::text IS NOT NULL
             AND EXISTS (
               SELECT 1 FROM course_progress p
-              WHERE p.module_id = ${moduleId} AND p.batch_id = ub.batch_id
+              WHERE p.module_id = ${moduleId}
+                AND p.batch_id = ub.batch_id
+                AND LOWER(p.user_email) = LOWER(u.email)
             )
           )
         )
@@ -104,10 +106,12 @@ async function listModuleOutreachLearners(
         )
         OR (
           ${batchId}::text IS NOT NULL
-          AND EXISTS (
-            SELECT 1 FROM assessment_progress p
-            WHERE p.module_id = ${moduleId} AND p.batch_id = ub.batch_id
-          )
+            AND EXISTS (
+              SELECT 1 FROM assessment_progress p
+              WHERE p.module_id = ${moduleId}
+                AND p.batch_id = ub.batch_id
+                AND LOWER(p.user_email) = LOWER(u.email)
+            )
         )
       )
     ORDER BY u.email

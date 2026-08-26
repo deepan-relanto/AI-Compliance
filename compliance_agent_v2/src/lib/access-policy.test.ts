@@ -6,6 +6,7 @@ import {
   canOpenLearnerPages,
   isRosterMemberRole,
   LEARNER_PAGE_ROLES,
+  preferredClientRole,
 } from "./access-policy";
 
 describe("access-policy", () => {
@@ -23,6 +24,12 @@ describe("access-policy", () => {
     assert.equal(canAccessAppPath("/admin", "user"), false);
     assert.equal(canAccessAppPath("/admin/batches", "user"), false);
     assert.equal(canAccessAppPath("/admin", "admin"), true);
+  });
+
+  it("never demotes an admin when merging client role sources", () => {
+    assert.equal(preferredClientRole("user", "admin"), "admin");
+    assert.equal(preferredClientRole(undefined, "admin", "user"), "admin");
+    assert.equal(preferredClientRole("user", undefined, null), "user");
   });
 
   it("treats admin as a roster member role for outreach", () => {

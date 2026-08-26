@@ -18,7 +18,20 @@ export async function getUserByEmail(
   email: string,
 ): Promise<DbAuthUser | null> {
   const rows = await sql`
-    SELECT email, role, batch_id, display_name
+    SELECT
+      email,
+      role,
+      COALESCE(
+        batch_id,
+        (
+          SELECT ub.batch_id
+          FROM user_batches ub
+          WHERE LOWER(ub.user_email) = LOWER(users.email)
+          ORDER BY ub.created_at ASC
+          LIMIT 1
+        )
+      ) AS batch_id,
+      display_name
     FROM users
     WHERE LOWER(email) = LOWER(${email.trim()})
     LIMIT 1

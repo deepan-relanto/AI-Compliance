@@ -66,7 +66,11 @@ export type FetchLearnerDashboardResult =
 /** Load dashboard data — batch and profile are resolved on the server from the session. */
 const LEARNER_DASH_CLIENT_TTL_MS = 20_000;
 let learnerDashCache:
-  | { at: number; result: Extract<FetchLearnerDashboardResult, { ok: true }> }
+  | {
+      at: number;
+      email: string;
+      result: Extract<FetchLearnerDashboardResult, { ok: true }>;
+    }
   | null = null;
 
 export function invalidateLearnerDashboardClientCache(): void {
@@ -111,7 +115,7 @@ export async function fetchLearnerDashboard(
         role: data.role === "admin" ? "admin" : "user",
       },
     };
-    learnerDashCache = { at: Date.now(), result };
+    learnerDashCache = { at: Date.now(), email, result };
     return result;
   } catch {
     return { ok: false, error: "Network error while loading assessments." };

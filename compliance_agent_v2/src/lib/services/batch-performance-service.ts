@@ -16,7 +16,6 @@ import {
   getBatchOutreachCounts,
   outreachCountKey,
 } from "@/lib/services/notification-events-service";
-import { healOrphanedProgressBatchIds } from "@/lib/services/batch-management-service";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 type Sql = ReturnType<typeof getSql>;
@@ -57,11 +56,6 @@ export async function getBatchPerformance(
 
   const b = batchRows[0];
   const isCourse = track === "course";
-
-  // Restore progress that was wrongly re-tagged when learners moved batches.
-  await healOrphanedProgressBatchIds(sql).catch((err) =>
-    console.warn("[batch-performance heal]", err),
-  );
 
   /**
    * Modules ever tied to this batch: current assignments UNION modules that

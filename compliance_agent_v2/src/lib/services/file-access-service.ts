@@ -42,7 +42,9 @@ export async function canAccessCourseAsset(
             )
             OR EXISTS (
               SELECT 1 FROM course_progress p
-              WHERE p.module_id = s.module_id AND p.batch_id = ub.batch_id
+              WHERE p.module_id = s.module_id
+                AND p.batch_id = ub.batch_id
+                AND LOWER(p.user_email) = LOWER(${email})
             )
           )
       )
@@ -86,7 +88,9 @@ export async function canAccessUploadPdf(
             )
             OR EXISTS (
               SELECT 1 FROM assessment_progress p
-              WHERE p.module_id = m.id AND p.batch_id = ub.batch_id
+              WHERE p.module_id = m.id
+                AND p.batch_id = ub.batch_id
+                AND LOWER(p.user_email) = LOWER(${email})
             )
           )
       )

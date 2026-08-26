@@ -121,9 +121,15 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.label,
         b.member_count,
         (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT module_id FROM module_batches WHERE batch_id = b.id
+          SELECT mb.module_id
+          FROM module_batches mb
+          INNER JOIN training_modules m ON m.id = mb.module_id
+          WHERE mb.batch_id = b.id AND m.mcq_generation_status = 'completed'
           UNION
-          SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = b.id
+          SELECT DISTINCT ap.module_id
+          FROM assessment_progress ap
+          INNER JOIN training_modules m ON m.id = ap.module_id
+          WHERE ap.batch_id = b.id AND m.mcq_generation_status = 'completed'
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
@@ -207,7 +213,7 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
            UNION
            SELECT batch_id FROM course_progress WHERE batch_id IS NOT NULL
          ) t) AS total_batches,
-        (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
+        (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
         COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
         COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
@@ -230,9 +236,15 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.label,
         b.member_count,
         (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT module_id FROM course_module_batches WHERE batch_id = b.id
+          SELECT cmb.module_id
+          FROM course_module_batches cmb
+          INNER JOIN course_modules m ON m.id = cmb.module_id
+          WHERE cmb.batch_id = b.id AND m.mcq_generation_status = 'completed'
           UNION
-          SELECT DISTINCT module_id FROM course_progress WHERE batch_id = b.id
+          SELECT DISTINCT cp.module_id
+          FROM course_progress cp
+          INNER JOIN course_modules m ON m.id = cp.module_id
+          WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
@@ -313,9 +325,15 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.label,
         b.member_count,
         (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT module_id FROM module_batches WHERE batch_id = b.id
+          SELECT mb.module_id
+          FROM module_batches mb
+          INNER JOIN training_modules m ON m.id = mb.module_id
+          WHERE mb.batch_id = b.id AND m.mcq_generation_status = 'completed'
           UNION
-          SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = b.id
+          SELECT DISTINCT ap.module_id
+          FROM assessment_progress ap
+          INNER JOIN training_modules m ON m.id = ap.module_id
+          WHERE ap.batch_id = b.id AND m.mcq_generation_status = 'completed'
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
@@ -442,7 +460,7 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
            UNION
            SELECT batch_id FROM course_progress WHERE batch_id IS NOT NULL
          ) t) AS total_batches,
-        (SELECT COUNT(*)::int FROM course_modules) AS published_modules,
+        (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
         COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
         COUNT(*) FILTER (WHERE status IN ('failed', 'permanently_failed'))::int AS failed_count,
@@ -465,9 +483,15 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.label,
         b.member_count,
         (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT module_id FROM course_module_batches WHERE batch_id = b.id
+          SELECT cmb.module_id
+          FROM course_module_batches cmb
+          INNER JOIN course_modules m ON m.id = cmb.module_id
+          WHERE cmb.batch_id = b.id AND m.mcq_generation_status = 'completed'
           UNION
-          SELECT DISTINCT module_id FROM course_progress WHERE batch_id = b.id
+          SELECT DISTINCT cp.module_id
+          FROM course_progress cp
+          INNER JOIN course_modules m ON m.id = cp.module_id
+          WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,

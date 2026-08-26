@@ -102,8 +102,16 @@ export function AdminShell({
   const user = useAuthStore((s) => s.user);
   const pathname = usePathname();
 
-  // Warm hot admin API caches on first shell mount (SWR serves later navigations instantly).
+  // Warm hot admin API caches once per tab (AdminShell remounts on every page).
   useEffect(() => {
+    const flagKey = "relanto-admin-api-warmed";
+    try {
+      const prev = Number(sessionStorage.getItem(flagKey) ?? "0");
+      if (prev && Date.now() - prev < 60_000) return;
+      sessionStorage.setItem(flagKey, String(Date.now()));
+    } catch {
+      /* private mode / blocked storage — still warm this mount */
+    }
     const warm = [
       "/api/analytics?track=compliance&view=home",
       "/api/analytics?track=course&view=home",
