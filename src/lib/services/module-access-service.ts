@@ -67,7 +67,9 @@ export async function verifyModuleAccess(
             )
             OR EXISTS (
               SELECT 1 FROM course_progress p
-              WHERE p.batch_id = ub.batch_id AND p.module_id = ${moduleId}
+              WHERE p.batch_id = ub.batch_id
+                AND p.module_id = ${moduleId}
+                AND LOWER(p.user_email) = LOWER(${userEmail})
             )
           )
         ORDER BY
@@ -92,7 +94,9 @@ export async function verifyModuleAccess(
             )
             OR EXISTS (
               SELECT 1 FROM assessment_progress p
-              WHERE p.batch_id = ub.batch_id AND p.module_id = ${moduleId}
+              WHERE p.batch_id = ub.batch_id
+                AND p.module_id = ${moduleId}
+                AND LOWER(p.user_email) = LOWER(${userEmail})
             )
           )
         ORDER BY

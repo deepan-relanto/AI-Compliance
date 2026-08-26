@@ -1,7 +1,9 @@
 "use client";
 
 import { useAuthStore } from "@/lib/auth-store";
+import { preferredClientRole } from "@/lib/access-policy";
 import type { AuthUser } from "@/lib/types";
+import { invalidateLearnerDashboardClientCache } from "@/lib/progress-api";
 import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect } from "react";
 
@@ -21,14 +23,20 @@ function SessionSync({ children }: { children: React.ReactNode }) {
         setHydrated();
         return;
       }
+      const nextEmail = u.email!;
+      const current = useAuthStore.getState().user;
+      if (current?.username && current.username.toLowerCase() !== nextEmail.toLowerCase()) {
+        invalidateLearnerDashboardClientCache();
+      }
       const authUser: AuthUser = {
-        username: u.email!,
-        role,
-        batchId: u.batchId ?? "",
-        displayName: u.displayName ?? u.name ?? u.email!.split("@")[0],
+        username: nextEmail,
+        role: preferredClientRole(role, current?.role),
+        batchId: (u.batchId && u.batchId.trim()) || current?.batchId || "",
+        displayName: u.displayName ?? u.name ?? nextEmail.split("@")[0],
       };
       setUser(authUser);
     } else if (status === "unauthenticated") {
+      invalidateLearnerDashboardClientCache();
       setUser(null);
     }
     setHydrated();

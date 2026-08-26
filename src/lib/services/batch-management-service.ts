@@ -71,7 +71,7 @@ export async function syncProgressBatchForEmails(
   return compliance.length + course.length;
 }
 
-/** Heal orphaned progress for every learner (used on analytics read / admin ops). */
+/** Heal orphaned progress for every learner. Maintenance only — not on analytics reads. */
 export async function healOrphanedProgressBatchIds(sql: Sql): Promise<number> {
   const [compliance, course] = await Promise.all([
     sql`

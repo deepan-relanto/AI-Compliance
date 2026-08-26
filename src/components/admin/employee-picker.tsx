@@ -113,23 +113,6 @@ export function EmployeePicker({
   }, [filters]);
 
   useEffect(() => {
-    let cancelled = false;
-    const t = setTimeout(() => {
-      void (async () => {
-        const res = await fetch(`/api/employees?${buildQuery(filters, 1, true)}`);
-        const data = await res.json();
-        if (!cancelled && data.ok) {
-          setFilteredEmployees((data.employees ?? []) as EmployeeRecord[]);
-        }
-      })();
-    }, 250);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [filters]);
-
-  useEffect(() => {
     setSelectedDetails((prev) => {
       const next = new Map<string, SelectedEmployeePreview>();
       for (const [key, value] of prev) {

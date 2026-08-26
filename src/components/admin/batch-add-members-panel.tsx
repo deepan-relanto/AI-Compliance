@@ -3,6 +3,7 @@
 import { EmployeePicker } from "@/components/admin/employee-picker";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
+import { invalidateLearnerDashboardClientCache } from "@/lib/progress-api";
 import { Loader2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
@@ -38,6 +39,7 @@ export function BatchAddMembersPanel({
     if (!res.ok || !data.ok) {
       throw new Error(data.error ?? "Could not add members.");
     }
+    invalidateLearnerDashboardClientCache();
   };
 
   const handleAdd = async () => {

@@ -4,7 +4,7 @@ import { firstNameFromEmail } from "@/lib/auth-env";
 import { mapTrainingModuleRow } from "@/lib/map-training-module";
 import { listProgressForUser as listCourseProgressForUser } from "@/lib/services/course-progress-db-service";
 import { listProgressForUser as listComplianceProgressForUser } from "@/lib/services/progress-db-service";
-import { cachedFetch, CACHE_TTL } from "@/lib/api-cache";
+import { cachedFetch, CACHE_TTL, cacheInvalidate } from "@/lib/api-cache";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +42,14 @@ export async function GET() {
         SELECT batch_id
         FROM user_batches
         WHERE LOWER(user_email) = LOWER(${userEmail})
+        ORDER BY created_at ASC
       `;
       const membershipBatchIds = [
         ...new Set(
-          membershipRows
-            .map((r) => r.batch_id as string)
-            .filter(Boolean)
-            .concat(primaryBatchId ? [primaryBatchId] : []),
+          [
+            ...(primaryBatchId ? [primaryBatchId] : []),
+            ...membershipRows.map((r) => r.batch_id as string).filter(Boolean),
+          ],
         ),
       ];
       const batchId = primaryBatchId || membershipBatchIds[0] || "";
@@ -90,6 +91,7 @@ export async function GET() {
                   SELECT 1 FROM assessment_progress p
                   WHERE p.module_id = m.id
                     AND p.batch_id = ANY(${membershipBatchIds})
+                    AND LOWER(p.user_email) = LOWER(${userEmail})
                 )
               )
             GROUP BY m.id
@@ -114,6 +116,7 @@ export async function GET() {
                   SELECT 1 FROM course_progress p
                   WHERE p.module_id = m.id
                     AND p.batch_id = ANY(${membershipBatchIds})
+                    AND LOWER(p.user_email) = LOWER(${userEmail})
                 )
               )
             GROUP BY m.id
@@ -157,10 +160,16 @@ export async function GET() {
     });
 
     if (!data.ok) {
+      cacheInvalidate(cacheKey);
       return NextResponse.json(
         { ok: false, error: (data as { error: string }).error },
         { status: (data as { status: number }).status },
       );
+    }
+
+    // Empty dashboards must not stick in SWR — roster changes would look like "no courses".
+    if (!Array.isArray(data.modules) || data.modules.length === 0) {
+      cacheInvalidate(cacheKey);
     }
 
     return NextResponse.json(data, {

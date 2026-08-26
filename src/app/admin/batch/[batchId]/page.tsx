@@ -6,6 +6,7 @@ import { RouteGuard } from "@/components/auth/route-guard";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
+import { invalidateLearnerDashboardClientCache } from "@/lib/progress-api";
 import { BarChart3, Loader2, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -69,6 +70,7 @@ export default function BatchDetailPage() {
         setSelfError(payload.error ?? "Could not add you to this batch.");
         return;
       }
+      invalidateLearnerDashboardClientCache();
       void mutate();
     } catch {
       setSelfError("Network error.");
@@ -168,6 +170,7 @@ export default function BatchDetailPage() {
               batchId={batchId}
               existingEmails={members.map((m) => m.email)}
               onAdded={() => {
+                invalidateLearnerDashboardClientCache();
                 setShowAdd(false);
                 void mutate();
               }}
@@ -181,7 +184,10 @@ export default function BatchDetailPage() {
           batchLabel={batch.label}
           batchId={batchId}
           analyticsHref={`/admin/analytics/batch/${encodeURIComponent(batchId)}?track=compliance`}
-          onMemberRemoved={() => void mutate()}
+          onMemberRemoved={() => {
+            invalidateLearnerDashboardClientCache();
+            void mutate();
+          }}
         />
       </AdminShell>
     </RouteGuard>

@@ -146,7 +146,7 @@ export async function listEmployees(
             LIMIT 1
           )
         ) AS batch_label,
-        (u.role = 'admin') AS is_admin
+        COALESCE(u.role = 'admin', FALSE) AS is_admin
       FROM employees e
       LEFT JOIN users u ON LOWER(u.email) = LOWER(e.work_email)
       LEFT JOIN batches b ON b.id = u.batch_id

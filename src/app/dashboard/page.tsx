@@ -1,7 +1,7 @@
 "use client";
 
 import { RouteGuard } from "@/components/auth/route-guard";
-import { LEARNER_PAGE_ROLES } from "@/lib/access-policy";
+import { LEARNER_PAGE_ROLES, preferredClientRole } from "@/lib/access-policy";
 import { ModuleCard } from "@/components/employee/module-card";
 import { EmployeeShell } from "@/components/layout/employee-shell";
 import { Button } from "@/components/ui/button";
@@ -79,14 +79,20 @@ export default function DashboardPage() {
       }
 
       const { profile } = result;
+      const nextRole = preferredClientRole(
+        session?.user?.role,
+        profile.role,
+        user?.role,
+      );
       if (
-        user?.username !== profile.email ||
+        !emailsMatch(user?.username, profile.email) ||
         user?.batchId !== profile.batchId ||
-        user?.displayName !== profile.displayName
+        user?.displayName !== profile.displayName ||
+        user?.role !== nextRole
       ) {
         setUser({
           username: profile.email,
-          role: session?.user?.role ?? user?.role ?? "user",
+          role: nextRole,
           batchId: profile.batchId,
           displayName: profile.displayName,
         });
@@ -167,7 +173,7 @@ export default function DashboardPage() {
       setLoading(true);
       return;
     }
-    void loadModules();
+    void loadModules({ force: true });
   }, [authReady, loadModules, sessionEmail]);
 
   useEffect(() => {
