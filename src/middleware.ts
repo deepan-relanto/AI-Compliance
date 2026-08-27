@@ -12,6 +12,8 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/submitted",
   "/avatars",
+  "/icon",
+  "/apple-icon",
 ];
 
 /** Admin-only API prefixes (defense in depth; routes also call requireAdminSession). */
@@ -72,6 +74,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|mjs)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon(?:\\.png)?|apple-icon(?:\\.png)?|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|mjs)$).*)",
   ],
 };

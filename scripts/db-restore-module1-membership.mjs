@@ -1,5 +1,5 @@
 /**
- * Restore Manisha & Sharmila on Module_1 as completed for AI Basics,
+ * Restore Manisha & Sharmila on Support_Function_Batch_1 as completed for AI Basics,
  * keep Relanto Academy membership, and resync member counts.
  *
  * Usage: node scripts/db-restore-module1-membership.mjs
@@ -57,7 +57,7 @@ for (const batchId of [MODULE1, ACADEMY]) {
   `;
 }
 
-// Point AI Basics completion back at Module_1 (not Academy)
+// Point AI Basics completion back at Support_Function_Batch_1 (not Academy)
 const aiBasicsIds = await sql`
   SELECT DISTINCT module_id
   FROM course_progress
@@ -84,7 +84,7 @@ for (const row of aiBasicsIds) {
   console.log("progress restored:", updated);
 }
 
-// Prefer Module_1 as primary roster pointer so admin lists stay intuitive;
+// Prefer Support_Function_Batch_1 as primary roster pointer so admin lists stay intuitive;
 // Academy membership remains via user_batches.
 await sql`
   UPDATE users

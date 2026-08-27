@@ -1,6 +1,6 @@
 /**
  * Clear course assignments + course monitoring/progress for all batches
- * EXCEPT Module_1_AI_Basics_Batch_1 and Relanto Leaders.
+ * EXCEPT Support_Function_Batch_1 and Relanto Leaders.
  * Never touches compliance tables.
  *
  * Usage:
@@ -46,7 +46,7 @@ const { dryRun } = requireDestructiveConfirm("db-clear-course-except-kept-batche
   description: "Clears course data for all batches except kept batch IDs.",
 });
 
-/** Keep Module_1 AI Basics + Relanto Leaders intact. */
+/** Keep Support_Function_Batch_1 + Relanto Leaders intact. */
 const KEEP_BATCH_IDS = [
   "module_1_ai_basics_batch_1_glvf",
   "relanto_leaders_8osk",
