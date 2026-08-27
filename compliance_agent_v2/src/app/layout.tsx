@@ -17,6 +17,14 @@ export const metadata: Metadata = {
   title: "Compliance Agent V2 | Relanto",
   description:
     "Micro-LMS for mandatory training compliance — interactive gates, live admin control, AI insights.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "192x192" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport = {

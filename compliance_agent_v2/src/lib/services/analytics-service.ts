@@ -205,13 +205,23 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
                SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
              )
              OR EXISTS (
-               SELECT 1 FROM course_progress cp WHERE cp.batch_id = ub.batch_id
+               SELECT 1 FROM course_progress cp
+               WHERE cp.batch_id = ub.batch_id
+                 AND (
+                   cp.score_percent IS NOT NULL
+                   OR cp.status IN ('completed', 'failed', 'permanently_failed')
+                 )
              )
            )) AS total_learners,
         (SELECT COUNT(DISTINCT batch_id)::int FROM (
            SELECT batch_id FROM course_module_batches
            UNION
-           SELECT batch_id FROM course_progress WHERE batch_id IS NOT NULL
+           SELECT batch_id FROM course_progress
+           WHERE batch_id IS NOT NULL
+             AND (
+               score_percent IS NOT NULL
+               OR status IN ('completed', 'failed', 'permanently_failed')
+             )
          ) t) AS total_batches,
         (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
@@ -245,6 +255,10 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           FROM course_progress cp
           INNER JOIN course_modules m ON m.id = cp.module_id
           WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
+            AND (
+              cp.score_percent IS NOT NULL
+              OR cp.status IN ('completed', 'failed', 'permanently_failed')
+            )
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
@@ -266,7 +280,14 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       FROM batches b
       LEFT JOIN course_progress ap ON ap.batch_id = b.id
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
-         OR EXISTS (SELECT 1 FROM course_progress cp WHERE cp.batch_id = b.id)
+         OR EXISTS (
+           SELECT 1 FROM course_progress cp
+           WHERE cp.batch_id = b.id
+             AND (
+               cp.score_percent IS NOT NULL
+               OR cp.status IN ('completed', 'failed', 'permanently_failed')
+             )
+         )
       GROUP BY b.id, b.label, b.member_count
     )
     SELECT
@@ -452,13 +473,23 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
                SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
              )
              OR EXISTS (
-               SELECT 1 FROM course_progress cp WHERE cp.batch_id = ub.batch_id
+               SELECT 1 FROM course_progress cp
+               WHERE cp.batch_id = ub.batch_id
+                 AND (
+                   cp.score_percent IS NOT NULL
+                   OR cp.status IN ('completed', 'failed', 'permanently_failed')
+                 )
              )
            )) AS total_learners,
         (SELECT COUNT(DISTINCT batch_id)::int FROM (
            SELECT batch_id FROM course_module_batches
            UNION
-           SELECT batch_id FROM course_progress WHERE batch_id IS NOT NULL
+           SELECT batch_id FROM course_progress
+           WHERE batch_id IS NOT NULL
+             AND (
+               score_percent IS NOT NULL
+               OR status IN ('completed', 'failed', 'permanently_failed')
+             )
          ) t) AS total_batches,
         (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
@@ -492,6 +523,10 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           FROM course_progress cp
           INNER JOIN course_modules m ON m.id = cp.module_id
           WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
+            AND (
+              cp.score_percent IS NOT NULL
+              OR cp.status IN ('completed', 'failed', 'permanently_failed')
+            )
         ) mods) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
@@ -513,7 +548,14 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
       FROM batches b
       LEFT JOIN course_progress ap ON ap.batch_id = b.id
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
-         OR EXISTS (SELECT 1 FROM course_progress cp WHERE cp.batch_id = b.id)
+         OR EXISTS (
+           SELECT 1 FROM course_progress cp
+           WHERE cp.batch_id = b.id
+             AND (
+               cp.score_percent IS NOT NULL
+               OR cp.status IN ('completed', 'failed', 'permanently_failed')
+             )
+         )
       GROUP BY b.id, b.label, b.member_count
     ),
     series AS (

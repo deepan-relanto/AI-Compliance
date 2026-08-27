@@ -1,10 +1,10 @@
 /**
- * Clear all course + compliance assignments and monitoring logs
- * for the Anumeha batch (anumeha_4rk4).
+ * Clear assignments and monitoring logs for the Anumeha batch (anumeha_4rk4).
  *
  * Usage:
  *   node scripts/db-clear-anumeha-batch.mjs --dry-run
  *   node scripts/db-clear-anumeha-batch.mjs --confirm
+ *   node scripts/db-clear-anumeha-batch.mjs --confirm --courses-only
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +14,7 @@ import { requireDestructiveConfirm } from "./lib/destructive-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
+const coursesOnly = process.argv.includes("--courses-only");
 
 function loadEnv() {
   const envPath = path.join(root, ".env");
@@ -42,7 +43,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 const { dryRun } = requireDestructiveConfirm("db-clear-anumeha-batch.mjs", {
-  description: "Clears course + compliance assignments and monitoring for the Anumeha batch.",
+  description: coursesOnly
+    ? "Clears COURSE assignments/progress/notifications for the Anumeha batch only (compliance untouched)."
+    : "Clears course + compliance assignments and monitoring for the Anumeha batch.",
 });
 
 const sql = postgres(process.env.DATABASE_URL, { ssl: "require", max: 1 });
@@ -77,7 +80,7 @@ const memberEmails = (
   await sql`SELECT LOWER(email) AS email FROM users WHERE batch_id = ${batchId}`
 ).map((r) => r.email);
 
-console.log(`\nClearing batch: ${batchLabel} (${batchId})`);
+console.log(`\nClearing batch: ${batchLabel} (${batchId})${coursesOnly ? " [courses-only]" : ""}`);
 console.log(`Members: ${memberEmails.length} → ${memberEmails.join(", ")}`);
 
 const courseAssignments = await sql`
@@ -86,50 +89,67 @@ const courseAssignments = await sql`
   INNER JOIN course_modules cm ON cm.id = mb.module_id
   WHERE mb.batch_id = ${batchId}
 `;
-const complianceAssignments = await sql`
-  SELECT mb.module_id, tm.title
-  FROM module_batches mb
-  INNER JOIN training_modules tm ON tm.id = mb.module_id
-  WHERE mb.batch_id = ${batchId}
-`;
+const complianceAssignments = coursesOnly
+  ? []
+  : await sql`
+      SELECT mb.module_id, tm.title
+      FROM module_batches mb
+      INNER JOIN training_modules tm ON tm.id = mb.module_id
+      WHERE mb.batch_id = ${batchId}
+    `;
 
 console.log("\nCourse assignments:");
 for (const row of courseAssignments) console.log(`  · ${row.title}`);
 if (!courseAssignments.length) console.log("  (none)");
-console.log("Compliance assignments:");
-for (const row of complianceAssignments) console.log(`  · ${row.title}`);
-if (!complianceAssignments.length) console.log("  (none)");
+if (!coursesOnly) {
+  console.log("Compliance assignments:");
+  for (const row of complianceAssignments) console.log(`  · ${row.title}`);
+  if (!complianceAssignments.length) console.log("  (none)");
+}
 
 const before = {
   course_assignments: courseAssignments.length,
-  compliance_assignments: complianceAssignments.length,
   course_progress: (
     await sql`SELECT COUNT(*)::int AS c FROM course_progress WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}`
-  )[0].c,
-  assessment_progress: (
-    await sql`SELECT COUNT(*)::int AS c FROM assessment_progress WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}`
   )[0].c,
   course_notifications: (
     await sql`SELECT COUNT(*)::int AS c FROM course_notifications WHERE LOWER(user_email) = ANY(${memberEmails})`
   )[0].c,
-  training_notifications: (
-    await sql`SELECT COUNT(*)::int AS c FROM training_notifications WHERE LOWER(user_email) = ANY(${memberEmails})`
-  )[0].c,
   course_reviews: (
     await sql`SELECT COUNT(*)::int AS c FROM course_review_requests WHERE LOWER(username) = ANY(${memberEmails})`
-  )[0].c,
-  review_requests: (
-    await sql`SELECT COUNT(*)::int AS c FROM review_requests WHERE LOWER(username) = ANY(${memberEmails})`
   )[0].c,
   course_feedback: (
     await sql`SELECT COUNT(*)::int AS c FROM course_feedback_entries WHERE LOWER(user_id) = ANY(${memberEmails})`
   )[0].c,
-  feedback: (
-    await sql`SELECT COUNT(*)::int AS c FROM feedback_entries WHERE LOWER(user_id) = ANY(${memberEmails})`
-  )[0].c,
 };
 
-// audit logs may or may not have batch_id / user_email — probe columns
+try {
+  before.course_notification_events = (
+    await sql`
+      SELECT COUNT(*)::int AS c FROM course_notification_events
+      WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}
+    `
+  )[0].c;
+} catch {
+  before.course_notification_events = 0;
+}
+
+if (!coursesOnly) {
+  before.compliance_assignments = complianceAssignments.length;
+  before.assessment_progress = (
+    await sql`SELECT COUNT(*)::int AS c FROM assessment_progress WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}`
+  )[0].c;
+  before.training_notifications = (
+    await sql`SELECT COUNT(*)::int AS c FROM training_notifications WHERE LOWER(user_email) = ANY(${memberEmails})`
+  )[0].c;
+  before.review_requests = (
+    await sql`SELECT COUNT(*)::int AS c FROM review_requests WHERE LOWER(username) = ANY(${memberEmails})`
+  )[0].c;
+  before.feedback = (
+    await sql`SELECT COUNT(*)::int AS c FROM feedback_entries WHERE LOWER(user_id) = ANY(${memberEmails})`
+  )[0].c;
+}
+
 const auditCols = await sql`
   SELECT column_name FROM information_schema.columns
   WHERE table_schema = 'public' AND table_name = 'course_audit_logs'
@@ -158,16 +178,8 @@ if (dryRun) {
 const removedCourseBatches = await sql`
   DELETE FROM course_module_batches WHERE batch_id = ${batchId} RETURNING module_id
 `;
-const removedComplianceBatches = await sql`
-  DELETE FROM module_batches WHERE batch_id = ${batchId} RETURNING module_id
-`;
 const courseProgress = await sql`
   DELETE FROM course_progress
-  WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}
-  RETURNING id
-`;
-const complianceProgress = await sql`
-  DELETE FROM assessment_progress
   WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}
   RETURNING id
 `;
@@ -176,18 +188,8 @@ const courseNotifs = await sql`
   WHERE LOWER(user_email) = ANY(${memberEmails})
   RETURNING id
 `;
-const trainingNotifs = await sql`
-  DELETE FROM training_notifications
-  WHERE LOWER(user_email) = ANY(${memberEmails})
-  RETURNING id
-`;
 const courseReviews = await sql`
   DELETE FROM course_review_requests
-  WHERE LOWER(username) = ANY(${memberEmails})
-  RETURNING id
-`;
-const complianceReviews = await sql`
-  DELETE FROM review_requests
   WHERE LOWER(username) = ANY(${memberEmails})
   RETURNING id
 `;
@@ -196,11 +198,17 @@ const courseFeedback = await sql`
   WHERE LOWER(user_id) = ANY(${memberEmails})
   RETURNING id
 `;
-const complianceFeedback = await sql`
-  DELETE FROM feedback_entries
-  WHERE LOWER(user_id) = ANY(${memberEmails})
-  RETURNING id
-`;
+
+let courseEvents = [];
+try {
+  courseEvents = await sql`
+    DELETE FROM course_notification_events
+    WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}
+    RETURNING id
+  `;
+} catch {
+  /* table may not exist */
+}
 
 let courseAudit = [];
 if (auditColSet.has("user_email")) {
@@ -217,18 +225,49 @@ if (auditColSet.has("user_email")) {
   `;
 }
 
-console.log("\nCleared:");
+console.log("\nCleared (courses):");
 console.log(`  course_module_batches: ${removedCourseBatches.length}`);
-console.log(`  module_batches: ${removedComplianceBatches.length}`);
 console.log(`  course_progress: ${courseProgress.length}`);
-console.log(`  assessment_progress: ${complianceProgress.length}`);
 console.log(`  course_notifications: ${courseNotifs.length}`);
-console.log(`  training_notifications: ${trainingNotifs.length}`);
+console.log(`  course_notification_events: ${courseEvents.length}`);
 console.log(`  course_review_requests: ${courseReviews.length}`);
-console.log(`  review_requests: ${complianceReviews.length}`);
 console.log(`  course_feedback_entries: ${courseFeedback.length}`);
-console.log(`  feedback_entries: ${complianceFeedback.length}`);
 console.log(`  course_audit_logs: ${courseAudit.length}`);
-console.log(`\n✅ Batch "${batchLabel}" is clear for retesting.`);
+
+if (!coursesOnly) {
+  const removedComplianceBatches = await sql`
+    DELETE FROM module_batches WHERE batch_id = ${batchId} RETURNING module_id
+  `;
+  const complianceProgress = await sql`
+    DELETE FROM assessment_progress
+    WHERE LOWER(user_email) = ANY(${memberEmails}) OR batch_id = ${batchId}
+    RETURNING id
+  `;
+  const trainingNotifs = await sql`
+    DELETE FROM training_notifications
+    WHERE LOWER(user_email) = ANY(${memberEmails})
+    RETURNING id
+  `;
+  const complianceReviews = await sql`
+    DELETE FROM review_requests
+    WHERE LOWER(username) = ANY(${memberEmails})
+    RETURNING id
+  `;
+  const complianceFeedback = await sql`
+    DELETE FROM feedback_entries
+    WHERE LOWER(user_id) = ANY(${memberEmails})
+    RETURNING id
+  `;
+  console.log("\nCleared (compliance):");
+  console.log(`  module_batches: ${removedComplianceBatches.length}`);
+  console.log(`  assessment_progress: ${complianceProgress.length}`);
+  console.log(`  training_notifications: ${trainingNotifs.length}`);
+  console.log(`  review_requests: ${complianceReviews.length}`);
+  console.log(`  feedback_entries: ${complianceFeedback.length}`);
+}
+
+console.log(
+  `\n✅ Batch "${batchLabel}" course assignments cleared${coursesOnly ? " (compliance untouched)" : ""}.`,
+);
 
 await sql.end();
