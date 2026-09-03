@@ -27,8 +27,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+import { adminFetcher, adminSwrConfig } from "@/lib/swr-config";
 import { cn } from "@/lib/utils";
+
+const monitoringSwrConfig = {
+  ...adminSwrConfig,
+  revalidateOnFocus: false,
+  dedupingInterval: 20_000,
+};
 
 type TabType = "violations" | "reviews" | "audit";
 
@@ -138,12 +144,12 @@ export function MonitoringPanel({
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [actionError, setActionError] = useState("");
 
-  const { data: summaryData, mutate: mutateSummary } = useSWR(`${apiBase}?summary=1`, fetcher, {
-    keepPreviousData: true,
-    revalidateOnFocus: false,
-    dedupingInterval: 20_000,
-  });
-  const summary = summaryData?.ok ? (summaryData as Summary) : null;
+  const { data: summaryData, mutate: mutateSummary } = useSWR(
+    `${apiBase}?summary=1`,
+    adminFetcher,
+    monitoringSwrConfig,
+  );
+  const summary = summaryData?.ok ? (summaryData as unknown as Summary) : null;
 
   const activeFilter =
     activeTab === "violations"
@@ -154,12 +160,8 @@ export function MonitoringPanel({
 
   const { data: tabData, isLoading: tabLoading, isValidating: tabRefreshing, mutate: mutateTab } = useSWR(
     buildMonitoringUrl(apiBase, activeTab, page, activeFilter, assessmentFilter, sortMode),
-    fetcher,
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 20_000,
-    },
+    adminFetcher,
+    monitoringSwrConfig,
   );
 
   const records: AssessmentProgress[] = activeTab === "violations" && tabData?.ok && Array.isArray(tabData.records) ? tabData.records : [];

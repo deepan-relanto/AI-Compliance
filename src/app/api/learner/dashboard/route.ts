@@ -4,7 +4,8 @@ import { firstNameFromEmail } from "@/lib/auth-env";
 import { mapTrainingModuleRow } from "@/lib/map-training-module";
 import { listProgressForUser as listCourseProgressForUser } from "@/lib/services/course-progress-db-service";
 import { listProgressForUser as listComplianceProgressForUser } from "@/lib/services/progress-db-service";
-import { cachedFetch, CACHE_TTL, cacheInvalidate } from "@/lib/api-cache";
+import { swrLoad, CACHE_TTL, cacheInvalidate } from "@/lib/api-cache";
+import { jsonError, jsonOk } from "@/lib/api-json";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +18,13 @@ export async function GET() {
 
     const userEmail = access.email;
     const cacheKey = `learner-dashboard:${userEmail.toLowerCase()}`;
+    const softSec = Math.ceil(CACHE_TTL.learnerDashboard / 1000);
 
-    const data = await cachedFetch(cacheKey, CACHE_TTL.learnerDashboard, async () => {
+    const { data, status } = await swrLoad(
+      cacheKey,
+      softSec,
+      softSec * 3,
+      async () => {
       const sql = getSql();
 
       const users = await sql`
@@ -172,11 +178,9 @@ export async function GET() {
       cacheInvalidate(cacheKey);
     }
 
-    return NextResponse.json(data, {
-      headers: { "Cache-Control": "private, no-cache" },
-    });
+    return jsonOk(data, { cache: status });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load dashboard";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return jsonError(message);
   }
 }

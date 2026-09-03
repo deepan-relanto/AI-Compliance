@@ -15,6 +15,7 @@ import {
   exportAnalyticsPdf,
 } from "@/lib/analytics-export";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
+import { adminFetcher, adminSwrConfig } from "@/lib/swr-config";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -36,7 +37,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const analyticsSwrConfig = {
+  ...adminSwrConfig,
+  revalidateOnFocus: false,
+  dedupingInterval: 30_000,
+};
 
 interface AnalyticsDashboardProps {
   initialBatchId?: string;
@@ -365,19 +370,11 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
   // Paint quickly from the lightweight home payload, then upgrade to full.
   const { data: homeRaw, isLoading: homeLoading } = useSWR(
     `/api/analytics?track=${track}&view=home`,
-    fetcher,
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 30_000,
-    },
+    adminFetcher,
+    analyticsSwrConfig,
   );
   const { data: fullRaw, error: rawError, isLoading: fullLoading, mutate, isValidating } =
-    useSWR(`/api/analytics?track=${track}`, fetcher, {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 30_000,
-    });
+    useSWR(`/api/analytics?track=${track}`, adminFetcher, analyticsSwrConfig);
 
   // Warm the opposite track so Compliance ↔ Courses switches hit cache.
   useEffect(() => {
@@ -395,10 +392,10 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
   const [historyPage, setHistoryPage] = useState(1);
   const HISTORY_PAGE_SIZE = 25;
 
-  const data = rawData?.ok ? (rawData as AnalyticsPayload) : null;
+  const data = rawData?.ok ? (rawData as unknown as AnalyticsPayload) : null;
   const error = rawError
     ? "Network error loading analytics."
-    : !rawData?.ok && rawData?.error
+    : !rawData?.ok && typeof rawData?.error === "string"
       ? rawData.error
       : "";
   const loading = homeLoading && fullLoading && !data;

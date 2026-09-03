@@ -2,10 +2,9 @@
 
 import type { BatchInfo } from "@/lib/types";
 import { ArrowRight, Loader2, Users } from "lucide-react";
+import { adminFetcher, adminSwrConfig } from "@/lib/swr-config";
 import Link from "next/link";
 import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function mapBatch(row: Record<string, unknown>): BatchInfo {
   return {
@@ -21,7 +20,7 @@ function mapBatch(row: Record<string, unknown>): BatchInfo {
 }
 
 export function BatchPicker() {
-  const { data, error, isLoading } = useSWR("/api/batches", fetcher);
+  const { data, error, isLoading } = useSWR("/api/batches", adminFetcher, adminSwrConfig);
 
   if (isLoading) {
     return (

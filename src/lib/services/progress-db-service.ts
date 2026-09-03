@@ -229,22 +229,18 @@ export async function getProgressRow(
   moduleId: string,
   batchId?: string | null,
 ): Promise<ProgressRow | null> {
-  const rows = batchId
-    ? await sql`
-        SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
-               status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
-               mcq_answers, failed_reason, completed_at
-        FROM assessment_progress
-        WHERE user_email = ${userEmail} AND module_id = ${moduleId} AND batch_id = ${batchId}
-        LIMIT 1
-      `
-    : await sql`
+  const rows = await sql`
         SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
                status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
                mcq_answers, failed_reason, completed_at
         FROM assessment_progress
         WHERE user_email = ${userEmail} AND module_id = ${moduleId}
-        ORDER BY updated_at DESC NULLS LAST
+        ORDER BY
+          CASE
+            WHEN ${batchId ?? ""}::text <> '' AND batch_id = ${batchId ?? ""} THEN 0
+            ELSE 1
+          END,
+          updated_at DESC NULLS LAST
         LIMIT 1
       `;
   if (rows.length === 0) return null;
@@ -265,10 +261,20 @@ export async function startTrainingSessionDb(
     currentSlide?: number;
   },
 ): Promise<ProgressRow> {
-  const resolvedBatchId = params.batchId.trim();
-  if (!resolvedBatchId) {
+  const requestedBatchId = params.batchId.trim();
+  if (!requestedBatchId) {
     throw new Error("batchId is required to start training.");
   }
+
+  // Reuse the existing user+module row if the stamp is on another batch
+  // (multi-batch mis-attribution). Do not rewrite stored batch_id.
+  const existingForModule = await getProgressRow(
+    sql,
+    params.userEmail,
+    params.moduleId,
+    requestedBatchId,
+  );
+  const resolvedBatchId = existingForModule?.batch_id || requestedBatchId;
 
   // Normalize impossible state: max retakes used but no finalized score.
   await sql`
@@ -1356,8 +1362,25 @@ export async function listProgressForBatch(sql: Sql, batchId: string) {
     SELECT user_email, module_id, module_title, batch_id, current_slide, total_slides,
            status, warning_count, retake_count, mcq_correct, mcq_total, score_percent,
            failed_reason, completed_at
-    FROM assessment_progress
-    WHERE batch_id = ${batchId}
+    FROM assessment_progress p
+    WHERE COALESCE(
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM module_batches mb
+            WHERE mb.module_id = p.module_id AND mb.batch_id = p.batch_id
+          ) THEN p.batch_id
+        END,
+        (
+          SELECT ub.batch_id
+          FROM user_batches ub
+          INNER JOIN module_batches mb
+            ON mb.batch_id = ub.batch_id AND mb.module_id = p.module_id
+          WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+          ORDER BY ub.created_at ASC
+          LIMIT 1
+        ),
+        p.batch_id
+      ) = ${batchId}
     ORDER BY module_title, user_email
   `;
   return rows.map((r) => ({

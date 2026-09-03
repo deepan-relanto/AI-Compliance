@@ -86,6 +86,29 @@ export async function getAnalytics(
 async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
   const rows = await sql`
     WITH
+    attributed_assessment_progress AS (
+      SELECT
+        ap.*,
+        COALESCE(
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM module_batches mb
+              WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+            ) THEN ap.batch_id
+          END,
+          (
+            SELECT ub.batch_id
+            FROM user_batches ub
+            INNER JOIN module_batches mb
+              ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+            WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+            ORDER BY ub.created_at ASC
+            LIMIT 1
+          ),
+          ap.batch_id
+        ) AS attributed_batch_id
+      FROM assessment_progress ap
+    ),
     summary AS (
       SELECT
         (SELECT COUNT(*)::int FROM users u
@@ -120,17 +143,11 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
-        (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT mb.module_id
+        (SELECT COUNT(DISTINCT mb.module_id)::int
           FROM module_batches mb
           INNER JOIN training_modules m ON m.id = mb.module_id
           WHERE mb.batch_id = b.id AND m.mcq_generation_status = 'completed'
-          UNION
-          SELECT DISTINCT ap.module_id
-          FROM assessment_progress ap
-          INNER JOIN training_modules m ON m.id = ap.module_id
-          WHERE ap.batch_id = b.id AND m.mcq_generation_status = 'completed'
-        ) mods) AS modules_assigned,
+        ) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -149,7 +166,8 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN assessment_progress ap ON ap.batch_id = b.id
+      LEFT JOIN attributed_assessment_progress ap ON ap.attributed_batch_id = b.id
+      WHERE EXISTS (SELECT 1 FROM module_batches mb WHERE mb.batch_id = b.id)
       GROUP BY b.id, b.label, b.member_count
     ),
     history AS (
@@ -157,8 +175,8 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.user_email,
         ap.module_id,
         ap.module_title,
-        ap.batch_id,
-        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.attributed_batch_id AS batch_id,
+        COALESCE(b.label, ap.attributed_batch_id) AS batch_label,
         ap.status,
         LEAST(ap.score_percent, 100) AS score_percent,
         ap.mcq_correct,
@@ -170,8 +188,8 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.last_accessed_at,
         ap.current_slide,
         ap.warning_count
-      FROM assessment_progress ap
-      LEFT JOIN batches b ON b.id = ap.batch_id
+      FROM attributed_assessment_progress ap
+      LEFT JOIN batches b ON b.id = ap.attributed_batch_id
       ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
       LIMIT 8
     )
@@ -195,34 +213,38 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
 async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
   const rows = await sql`
     WITH
+    attributed_course_progress AS (
+      SELECT
+        cp.*,
+        COALESCE(
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM course_module_batches cmb
+              WHERE cmb.module_id = cp.module_id AND cmb.batch_id = cp.batch_id
+            ) THEN cp.batch_id
+          END,
+          (
+            SELECT ub.batch_id
+            FROM user_batches ub
+            INNER JOIN course_module_batches cmb
+              ON cmb.batch_id = ub.batch_id AND cmb.module_id = cp.module_id
+            WHERE LOWER(ub.user_email) = LOWER(cp.user_email)
+            ORDER BY ub.created_at ASC
+            LIMIT 1
+          ),
+          cp.batch_id
+        ) AS attributed_batch_id
+      FROM course_progress cp
+    ),
     summary AS (
       SELECT
         (SELECT COUNT(DISTINCT LOWER(ub.user_email))::int
          FROM user_batches ub
          INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
-         WHERE (
-             EXISTS (
-               SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
-             )
-             OR EXISTS (
-               SELECT 1 FROM course_progress cp
-               WHERE cp.batch_id = ub.batch_id
-                 AND (
-                   cp.score_percent IS NOT NULL
-                   OR cp.status IN ('completed', 'failed', 'permanently_failed')
-                 )
-             )
-           )) AS total_learners,
-        (SELECT COUNT(DISTINCT batch_id)::int FROM (
-           SELECT batch_id FROM course_module_batches
-           UNION
-           SELECT batch_id FROM course_progress
-           WHERE batch_id IS NOT NULL
-             AND (
-               score_percent IS NOT NULL
-               OR status IN ('completed', 'failed', 'permanently_failed')
-             )
-         ) t) AS total_batches,
+         WHERE EXISTS (
+           SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
+         )) AS total_learners,
+        (SELECT COUNT(DISTINCT batch_id)::int FROM course_module_batches) AS total_batches,
         (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
         COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
@@ -238,28 +260,18 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         )::int AS pass_rate,
         COALESCE(SUM(warning_count), 0)::int AS total_warnings,
         COALESCE(SUM(retake_count), 0)::int AS total_retakes
-      FROM course_progress
+      FROM attributed_course_progress
     ),
     batch_stats AS (
       SELECT
         b.id,
         b.label,
         b.member_count,
-        (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT cmb.module_id
+        (SELECT COUNT(DISTINCT cmb.module_id)::int
           FROM course_module_batches cmb
           INNER JOIN course_modules m ON m.id = cmb.module_id
           WHERE cmb.batch_id = b.id AND m.mcq_generation_status = 'completed'
-          UNION
-          SELECT DISTINCT cp.module_id
-          FROM course_progress cp
-          INNER JOIN course_modules m ON m.id = cp.module_id
-          WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
-            AND (
-              cp.score_percent IS NOT NULL
-              OR cp.status IN ('completed', 'failed', 'permanently_failed')
-            )
-        ) mods) AS modules_assigned,
+        ) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -278,16 +290,8 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN course_progress ap ON ap.batch_id = b.id
+      LEFT JOIN attributed_course_progress ap ON ap.attributed_batch_id = b.id
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
-         OR EXISTS (
-           SELECT 1 FROM course_progress cp
-           WHERE cp.batch_id = b.id
-             AND (
-               cp.score_percent IS NOT NULL
-               OR cp.status IN ('completed', 'failed', 'permanently_failed')
-             )
-         )
       GROUP BY b.id, b.label, b.member_count
     )
     SELECT
@@ -311,6 +315,29 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
   // serverless HTTP serialization / connection overhead.
   const rows = await sql`
     WITH
+    attributed_assessment_progress AS (
+      SELECT
+        ap.*,
+        COALESCE(
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM module_batches mb
+              WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+            ) THEN ap.batch_id
+          END,
+          (
+            SELECT ub.batch_id
+            FROM user_batches ub
+            INNER JOIN module_batches mb
+              ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+            WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+            ORDER BY ub.created_at ASC
+            LIMIT 1
+          ),
+          ap.batch_id
+        ) AS attributed_batch_id
+      FROM assessment_progress ap
+    ),
     summary AS (
       SELECT
         (SELECT COUNT(*)::int FROM users u
@@ -345,17 +372,11 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         b.id,
         b.label,
         b.member_count,
-        (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT mb.module_id
+        (SELECT COUNT(DISTINCT mb.module_id)::int
           FROM module_batches mb
           INNER JOIN training_modules m ON m.id = mb.module_id
           WHERE mb.batch_id = b.id AND m.mcq_generation_status = 'completed'
-          UNION
-          SELECT DISTINCT ap.module_id
-          FROM assessment_progress ap
-          INNER JOIN training_modules m ON m.id = ap.module_id
-          WHERE ap.batch_id = b.id AND m.mcq_generation_status = 'completed'
-        ) mods) AS modules_assigned,
+        ) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -374,9 +395,8 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN assessment_progress ap ON ap.batch_id = b.id
+      LEFT JOIN attributed_assessment_progress ap ON ap.attributed_batch_id = b.id
       WHERE EXISTS (SELECT 1 FROM module_batches mb WHERE mb.batch_id = b.id)
-         OR EXISTS (SELECT 1 FROM assessment_progress ap2 WHERE ap2.batch_id = b.id)
       GROUP BY b.id, b.label, b.member_count
     ),
     series AS (
@@ -422,8 +442,8 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.user_email,
         ap.module_id,
         ap.module_title,
-        ap.batch_id,
-        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.attributed_batch_id AS batch_id,
+        COALESCE(b.label, ap.attributed_batch_id) AS batch_label,
         ap.status,
         LEAST(ap.score_percent, 100) AS score_percent,
         ap.mcq_correct,
@@ -435,8 +455,8 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.last_accessed_at,
         ap.current_slide,
         ap.warning_count
-      FROM assessment_progress ap
-      LEFT JOIN batches b ON b.id = ap.batch_id
+      FROM attributed_assessment_progress ap
+      LEFT JOIN batches b ON b.id = ap.attributed_batch_id
       ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
       LIMIT 100
     )
@@ -463,34 +483,38 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
 async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
   const rows = await sql`
     WITH
+    attributed_course_progress AS (
+      SELECT
+        cp.*,
+        COALESCE(
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM course_module_batches cmb
+              WHERE cmb.module_id = cp.module_id AND cmb.batch_id = cp.batch_id
+            ) THEN cp.batch_id
+          END,
+          (
+            SELECT ub.batch_id
+            FROM user_batches ub
+            INNER JOIN course_module_batches cmb
+              ON cmb.batch_id = ub.batch_id AND cmb.module_id = cp.module_id
+            WHERE LOWER(ub.user_email) = LOWER(cp.user_email)
+            ORDER BY ub.created_at ASC
+            LIMIT 1
+          ),
+          cp.batch_id
+        ) AS attributed_batch_id
+      FROM course_progress cp
+    ),
     summary AS (
       SELECT
         (SELECT COUNT(DISTINCT LOWER(ub.user_email))::int
          FROM user_batches ub
          INNER JOIN users u ON LOWER(u.email) = LOWER(ub.user_email)
-         WHERE (
-             EXISTS (
-               SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
-             )
-             OR EXISTS (
-               SELECT 1 FROM course_progress cp
-               WHERE cp.batch_id = ub.batch_id
-                 AND (
-                   cp.score_percent IS NOT NULL
-                   OR cp.status IN ('completed', 'failed', 'permanently_failed')
-                 )
-             )
-           )) AS total_learners,
-        (SELECT COUNT(DISTINCT batch_id)::int FROM (
-           SELECT batch_id FROM course_module_batches
-           UNION
-           SELECT batch_id FROM course_progress
-           WHERE batch_id IS NOT NULL
-             AND (
-               score_percent IS NOT NULL
-               OR status IN ('completed', 'failed', 'permanently_failed')
-             )
-         ) t) AS total_batches,
+         WHERE EXISTS (
+           SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = ub.batch_id
+         )) AS total_learners,
+        (SELECT COUNT(DISTINCT batch_id)::int FROM course_module_batches) AS total_batches,
         (SELECT COUNT(*)::int FROM course_modules WHERE mcq_generation_status = 'completed') AS published_modules,
         COUNT(*)::int AS total_attempts,
         COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_count,
@@ -506,28 +530,18 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         )::int AS pass_rate,
         COALESCE(SUM(warning_count), 0)::int AS total_warnings,
         COALESCE(SUM(retake_count), 0)::int AS total_retakes
-      FROM course_progress
+      FROM attributed_course_progress
     ),
     batch_stats AS (
       SELECT
         b.id,
         b.label,
         b.member_count,
-        (SELECT COUNT(DISTINCT module_id)::int FROM (
-          SELECT cmb.module_id
+        (SELECT COUNT(DISTINCT cmb.module_id)::int
           FROM course_module_batches cmb
           INNER JOIN course_modules m ON m.id = cmb.module_id
           WHERE cmb.batch_id = b.id AND m.mcq_generation_status = 'completed'
-          UNION
-          SELECT DISTINCT cp.module_id
-          FROM course_progress cp
-          INNER JOIN course_modules m ON m.id = cp.module_id
-          WHERE cp.batch_id = b.id AND m.mcq_generation_status = 'completed'
-            AND (
-              cp.score_percent IS NOT NULL
-              OR cp.status IN ('completed', 'failed', 'permanently_failed')
-            )
-        ) mods) AS modules_assigned,
+        ) AS modules_assigned,
         COUNT(ap.id)::int AS total_attempts,
         COUNT(DISTINCT ap.user_email) FILTER (WHERE ap.id IS NOT NULL)::int AS learners_started,
         COUNT(*) FILTER (WHERE ap.status = 'completed')::int AS completed,
@@ -546,16 +560,8 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN course_progress ap ON ap.batch_id = b.id
+      LEFT JOIN attributed_course_progress ap ON ap.attributed_batch_id = b.id
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
-         OR EXISTS (
-           SELECT 1 FROM course_progress cp
-           WHERE cp.batch_id = b.id
-             AND (
-               cp.score_percent IS NOT NULL
-               OR cp.status IN ('completed', 'failed', 'permanently_failed')
-             )
-         )
       GROUP BY b.id, b.label, b.member_count
     ),
     series AS (
@@ -601,8 +607,8 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.user_email,
         ap.module_id,
         ap.module_title,
-        ap.batch_id,
-        COALESCE(b.label, ap.batch_id) AS batch_label,
+        ap.attributed_batch_id AS batch_id,
+        COALESCE(b.label, ap.attributed_batch_id) AS batch_label,
         ap.status,
         LEAST(ap.score_percent, 100) AS score_percent,
         ap.mcq_correct,
@@ -614,8 +620,8 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
         ap.last_accessed_at,
         ap.current_slide,
         ap.warning_count
-      FROM course_progress ap
-      LEFT JOIN batches b ON b.id = ap.batch_id
+      FROM attributed_course_progress ap
+      LEFT JOIN batches b ON b.id = ap.attributed_batch_id
       ORDER BY COALESCE(ap.last_accessed_at, ap.completed_at, ap.updated_at) DESC NULLS LAST
       LIMIT 100
     )

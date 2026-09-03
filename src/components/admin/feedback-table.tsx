@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { exportFeedbackCsv, type FeedbackDisplayRow } from "@/lib/feedback-export";
 import { parseRating } from "@/lib/feedback-store";
+import { adminFetcher, adminSwrConfig } from "@/lib/swr-config";
 import { cn } from "@/lib/utils";
 import {
   Download,
@@ -22,7 +23,10 @@ import {
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const feedbackSwrConfig = {
+  ...adminSwrConfig,
+  revalidateOnFocus: false,
+};
 
 interface BatchOption {
   id: string;
@@ -109,8 +113,16 @@ export function FeedbackTable() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const feedbackUrl = track === "course" ? "/api/course-feedback" : "/api/feedback";
-  const { data: fbData, isLoading: fbLoading, mutate: mutateFb } = useSWR(feedbackUrl, fetcher);
-  const { data: batchData, isLoading: batchLoading } = useSWR("/api/batches", fetcher);
+  const { data: fbData, isLoading: fbLoading, mutate: mutateFb } = useSWR(
+    feedbackUrl,
+    adminFetcher,
+    feedbackSwrConfig,
+  );
+  const { data: batchData, isLoading: batchLoading } = useSWR(
+    "/api/batches",
+    adminFetcher,
+    adminSwrConfig,
+  );
 
   const batches: BatchOption[] =
     batchData?.ok && Array.isArray(batchData.batches)

@@ -58,9 +58,8 @@ export async function getBatchPerformance(
   const isCourse = track === "course";
 
   /**
-   * Modules ever tied to this batch: current assignments UNION modules that
-   * already have progress rows for this batch_id (historical / unassigned).
-   * Read-only — never deletes junction or progress rows.
+   * Modules currently assigned to this batch. Progress stamped on a different
+   * batch is remapped at read time when that batch does not own the module.
    */
   const [moduleRows, memberRows, gridRows, summaryRows, outreachCounts] =
     await Promise.all([
@@ -77,8 +76,6 @@ export async function getBatchPerformance(
           FROM course_modules m
           WHERE m.id IN (
             SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
-            UNION
-            SELECT DISTINCT module_id FROM course_progress WHERE batch_id = ${batchId}
           )
           ORDER BY m.title
         `
@@ -95,8 +92,6 @@ export async function getBatchPerformance(
           WHERE m.mcq_generation_status = 'completed'
             AND m.id IN (
               SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
-              UNION
-              SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = ${batchId}
             )
           ORDER BY m.title
         `,
@@ -114,7 +109,24 @@ export async function getBatchPerformance(
             NULL::timestamptz AS joined_at
           FROM course_progress p
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
-          WHERE p.batch_id = ${batchId}
+          WHERE COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = p.module_id AND cmb.batch_id = p.batch_id
+                ) THEN p.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = p.module_id
+                WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              p.batch_id
+            ) = ${batchId}
             AND NOT EXISTS (
               SELECT 1 FROM user_batches cur
               WHERE cur.batch_id = ${batchId}
@@ -134,7 +146,24 @@ export async function getBatchPerformance(
             NULL::timestamptz AS joined_at
           FROM assessment_progress p
           LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
-          WHERE p.batch_id = ${batchId}
+          WHERE COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = p.module_id AND mb.batch_id = p.batch_id
+                ) THEN p.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = p.module_id
+                WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              p.batch_id
+            ) = ${batchId}
             AND NOT EXISTS (
               SELECT 1 FROM user_batches cur
               WHERE cur.batch_id = ${batchId}
@@ -173,7 +202,24 @@ export async function getBatchPerformance(
               TRUE AS is_alumni
             FROM course_progress p
             LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
-            WHERE p.batch_id = ${batchId}
+            WHERE COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = p.module_id AND cmb.batch_id = p.batch_id
+                  ) THEN p.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = p.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                p.batch_id
+              ) = ${batchId}
               AND NOT EXISTS (
                 SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
@@ -185,14 +231,29 @@ export async function getBatchPerformance(
             FROM course_modules m
             WHERE m.id IN (
               SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
-              UNION
-              SELECT DISTINCT module_id FROM course_progress WHERE batch_id = ${batchId}
             )
           ) bm
           LEFT JOIN course_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND ap.batch_id = ${batchId}
+            AND COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
+                ) THEN ap.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
+                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              ap.batch_id
+            ) = ${batchId}
           ORDER BY l.email, bm.title
         `
       : sql`
@@ -226,7 +287,24 @@ export async function getBatchPerformance(
               TRUE AS is_alumni
             FROM assessment_progress p
             LEFT JOIN users u ON LOWER(u.email) = LOWER(p.user_email)
-            WHERE p.batch_id = ${batchId}
+            WHERE COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = p.module_id AND mb.batch_id = p.batch_id
+                  ) THEN p.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = p.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                p.batch_id
+              ) = ${batchId}
               AND NOT EXISTS (
                 SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
@@ -239,14 +317,29 @@ export async function getBatchPerformance(
             WHERE m.mcq_generation_status = 'completed'
               AND m.id IN (
                 SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
-                UNION
-                SELECT DISTINCT module_id FROM assessment_progress WHERE batch_id = ${batchId}
               )
           ) bm
           LEFT JOIN assessment_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND ap.batch_id = ${batchId}
+            AND COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+                ) THEN ap.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              ap.batch_id
+            ) = ${batchId}
           ORDER BY l.email, bm.title
         `,
     isCourse
@@ -300,7 +393,24 @@ export async function getBatchPerformance(
             UNION
             SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
             FROM course_progress p
-            WHERE p.batch_id = ${batchId}
+            WHERE COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = p.module_id AND cmb.batch_id = p.batch_id
+                  ) THEN p.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = p.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                p.batch_id
+              ) = ${batchId}
               AND NOT EXISTS (
                 SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
@@ -309,13 +419,28 @@ export async function getBatchPerformance(
           ) l
           CROSS JOIN (
             SELECT module_id AS id FROM course_module_batches WHERE batch_id = ${batchId}
-            UNION
-            SELECT DISTINCT module_id AS id FROM course_progress WHERE batch_id = ${batchId}
           ) bm
           LEFT JOIN course_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND ap.batch_id = ${batchId}
+            AND COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
+                ) THEN ap.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
+                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              ap.batch_id
+            ) = ${batchId}
         `
       : sql`
           SELECT
@@ -367,7 +492,24 @@ export async function getBatchPerformance(
             UNION
             SELECT DISTINCT LOWER(p.user_email) AS email, TRUE AS is_alumni
             FROM assessment_progress p
-            WHERE p.batch_id = ${batchId}
+            WHERE COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = p.module_id AND mb.batch_id = p.batch_id
+                  ) THEN p.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = p.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                p.batch_id
+              ) = ${batchId}
               AND NOT EXISTS (
                 SELECT 1 FROM user_batches cur
                 WHERE cur.batch_id = ${batchId}
@@ -380,17 +522,28 @@ export async function getBatchPerformance(
             INNER JOIN training_modules tm
               ON tm.id = mb.module_id AND tm.mcq_generation_status = 'completed'
             WHERE mb.batch_id = ${batchId}
-            UNION
-            SELECT DISTINCT ap.module_id AS id
-            FROM assessment_progress ap
-            INNER JOIN training_modules tm
-              ON tm.id = ap.module_id AND tm.mcq_generation_status = 'completed'
-            WHERE ap.batch_id = ${batchId}
           ) bm
           LEFT JOIN assessment_progress ap
             ON LOWER(ap.user_email) = l.email
             AND ap.module_id = bm.id
-            AND ap.batch_id = ${batchId}
+            AND COALESCE(
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+                ) THEN ap.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              ap.batch_id
+            ) = ${batchId}
         `,
     // Parallel with grid — batch-scoped outreach (no module-id dependency).
     getBatchOutreachCounts(sql, batchId, [], track),

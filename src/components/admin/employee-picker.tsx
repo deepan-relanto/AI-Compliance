@@ -55,6 +55,9 @@ function applyExclude(
   return employees.filter((e) => !excludeEmails.has(e.workEmail.toLowerCase()));
 }
 
+const FACETS_CLIENT_TTL_MS = 300_000;
+let facetsClientCache: { at: number; facets: EmployeeFacets } | null = null;
+
 interface EmployeePickerProps {
   selectedEmails: Set<string>;
   onSelectionChange: (emails: Set<string>) => void;
@@ -81,10 +84,20 @@ export function EmployeePicker({
   const [filteredEmployees, setFilteredEmployees] = useState<EmployeeRecord[] | null>(null);
 
   useEffect(() => {
+    if (
+      facetsClientCache &&
+      Date.now() - facetsClientCache.at < FACETS_CLIENT_TTL_MS
+    ) {
+      setFacets(facetsClientCache.facets);
+      return;
+    }
     fetch("/api/employees?facets=1")
       .then((r) => r.json())
       .then((d) => {
-        if (d.ok) setFacets(d.facets);
+        if (d.ok) {
+          facetsClientCache = { at: Date.now(), facets: d.facets };
+          setFacets(d.facets);
+        }
       });
   }, []);
 

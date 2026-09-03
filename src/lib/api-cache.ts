@@ -108,6 +108,8 @@ export const CACHE_TTL = {
   emailMonitoring: 90_000,
   learnerDashboard: 90_000,
   monitoring: 45_000,
+  employeeFacets: 300_000,
+  feedbackList: 60_000,
 } as const;
 
 /** Fetch-through cache used by content library routes. */
@@ -192,4 +194,7 @@ export const CACHE_KEYS = {
   batchPerformance: (id: string, track = "compliance") => `batch:perf:${id}:${track}`,
   moduleDetail: (id: string, email: string) =>
     `module:detail:${id}:${email.toLowerCase()}`,
+  employeeFacets: "employees:facets",
+  feedbackList: "feedback:list",
+  courseFeedbackList: "course-feedback:list",
 } as const;

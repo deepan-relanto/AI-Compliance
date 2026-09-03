@@ -4,7 +4,13 @@ import {
   getEmployeeFacets,
   listEmployees,
 } from "@/lib/services/employee-directory-service";
-import { NextRequest, NextResponse } from "next/server";
+import {
+  CACHE_KEYS,
+  CACHE_TTL,
+  swrLoad,
+} from "@/lib/api-cache";
+import { jsonError, jsonOk } from "@/lib/api-json";
+import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +31,14 @@ export async function GET(req: NextRequest) {
   try {
     const sql = getSql();
     if (facetsOnly) {
-      const facets = await getEmployeeFacets(sql);
-      return NextResponse.json({ ok: true, facets });
+      const softSec = Math.ceil(CACHE_TTL.employeeFacets / 1000);
+      const { data, status } = await swrLoad(
+        CACHE_KEYS.employeeFacets,
+        softSec,
+        softSec * 3,
+        () => getEmployeeFacets(sql),
+      );
+      return jsonOk({ facets: data }, { cache: status });
     }
 
     const result = await listEmployees(sql, {
@@ -44,9 +56,9 @@ export async function GET(req: NextRequest) {
       all: sp.get("all") === "1",
     });
 
-    return NextResponse.json({ ok: true, ...result });
+    return jsonOk(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load employees";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return jsonError(message);
   }
 }

@@ -12,7 +12,7 @@ type CachedAccess = {
 };
 
 const cache = new Map<string, CachedAccess>();
-const TTL_MS = 60_000;
+const TTL_MS = 90_000;
 
 function key(email: string, moduleId: string): string {
   return `${email.toLowerCase()}::${moduleId}`;
