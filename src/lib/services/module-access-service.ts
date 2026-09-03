@@ -53,7 +53,7 @@ export async function verifyModuleAccess(
   const primaryBatchId = (userRows[0].primary_batch_id as string | null) ?? null;
   const isCourse = courseModuleRows.length > 0;
 
-  // Membership ∩ (currently assigned OR previously assigned with marks).
+  // Membership ∩ (currently assigned OR invite history OR marks on this batch).
   // Prefer a batch that already has this learner's progress, then primary.
   const assigned = isCourse
     ? await sql`
@@ -64,6 +64,13 @@ export async function verifyModuleAccess(
             EXISTS (
               SELECT 1 FROM course_module_batches cmb
               WHERE cmb.batch_id = ub.batch_id AND cmb.module_id = ${moduleId}
+            )
+            OR EXISTS (
+              SELECT 1 FROM course_notification_events e
+              WHERE e.batch_id = ub.batch_id
+                AND e.module_id = ${moduleId}
+                AND e.notification_type = 'invited'
+                AND LOWER(e.user_email) = LOWER(${userEmail})
             )
             OR EXISTS (
               SELECT 1 FROM course_progress p
@@ -95,6 +102,13 @@ export async function verifyModuleAccess(
             EXISTS (
               SELECT 1 FROM module_batches mb
               WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+            )
+            OR EXISTS (
+              SELECT 1 FROM training_notification_events e
+              WHERE e.batch_id = ub.batch_id
+                AND e.module_id = ${moduleId}
+                AND e.notification_type = 'invited'
+                AND LOWER(e.user_email) = LOWER(${userEmail})
             )
             OR EXISTS (
               SELECT 1 FROM assessment_progress p

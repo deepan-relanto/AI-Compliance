@@ -29,7 +29,7 @@ async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
  * Roster for invites / reminders / locked-learner mail.
  * Publish (no batchId) stays on currently assigned batches.
  * Batch outreach also includes previously assigned courses that still have
- * marks for that batch — same seat list the admin marks table uses.
+ * marks or invite history for that batch — same visibility analytics uses.
  */
 async function listModuleOutreachLearners(
   sql: Sql,
@@ -63,6 +63,16 @@ async function listModuleOutreachLearners(
           EXISTS (
             SELECT 1 FROM course_module_batches mb
             WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+          )
+          OR (
+            ${batchId}::text IS NOT NULL
+            AND EXISTS (
+              SELECT 1 FROM course_notification_events e
+              WHERE e.module_id = ${moduleId}
+                AND e.batch_id = ub.batch_id
+                AND e.notification_type = 'invited'
+                AND LOWER(e.user_email) = LOWER(u.email)
+            )
           )
           OR (
             ${batchId}::text IS NOT NULL
@@ -106,12 +116,22 @@ async function listModuleOutreachLearners(
         )
         OR (
           ${batchId}::text IS NOT NULL
-            AND EXISTS (
-              SELECT 1 FROM assessment_progress p
-              WHERE p.module_id = ${moduleId}
-                AND p.batch_id = ub.batch_id
-                AND LOWER(p.user_email) = LOWER(u.email)
-            )
+          AND EXISTS (
+            SELECT 1 FROM training_notification_events e
+            WHERE e.module_id = ${moduleId}
+              AND e.batch_id = ub.batch_id
+              AND e.notification_type = 'invited'
+              AND LOWER(e.user_email) = LOWER(u.email)
+          )
+        )
+        OR (
+          ${batchId}::text IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM assessment_progress p
+            WHERE p.module_id = ${moduleId}
+              AND p.batch_id = ub.batch_id
+              AND LOWER(p.user_email) = LOWER(u.email)
+          )
         )
       )
     ORDER BY u.email

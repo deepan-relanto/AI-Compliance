@@ -58,8 +58,9 @@ export async function getBatchPerformance(
   const isCourse = track === "course";
 
   /**
-   * Modules currently assigned to this batch. Progress stamped on a different
-   * batch is remapped at read time when that batch does not own the module.
+   * Modules for this batch: current junction ∪ invite history ∪ orphan progress
+   * (progress stamped here only when the module is not assigned to another batch).
+   * Progress stamped on a different batch is remapped at read time.
    */
   const [moduleRows, memberRows, gridRows, summaryRows, outreachCounts] =
     await Promise.all([
@@ -76,6 +77,16 @@ export async function getBatchPerformance(
           FROM course_modules m
           WHERE m.id IN (
             SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
+            UNION
+            SELECT DISTINCT module_id FROM course_notification_events
+            WHERE batch_id = ${batchId} AND notification_type = 'invited'
+            UNION
+            SELECT DISTINCT p.module_id FROM course_progress p
+            WHERE p.batch_id = ${batchId}
+              AND NOT EXISTS (
+                SELECT 1 FROM course_module_batches cmb
+                WHERE cmb.module_id = p.module_id AND cmb.batch_id <> ${batchId}
+              )
           )
           ORDER BY m.title
         `
@@ -92,6 +103,16 @@ export async function getBatchPerformance(
           WHERE m.mcq_generation_status = 'completed'
             AND m.id IN (
               SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM training_notification_events
+              WHERE batch_id = ${batchId} AND notification_type = 'invited'
+              UNION
+              SELECT DISTINCT p.module_id FROM assessment_progress p
+              WHERE p.batch_id = ${batchId}
+                AND NOT EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = p.module_id AND mb.batch_id <> ${batchId}
+                )
             )
           ORDER BY m.title
         `,
@@ -231,6 +252,16 @@ export async function getBatchPerformance(
             FROM course_modules m
             WHERE m.id IN (
               SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM course_notification_events
+              WHERE batch_id = ${batchId} AND notification_type = 'invited'
+              UNION
+              SELECT DISTINCT p.module_id FROM course_progress p
+              WHERE p.batch_id = ${batchId}
+                AND NOT EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = p.module_id AND cmb.batch_id <> ${batchId}
+                )
             )
           ) bm
           LEFT JOIN course_progress ap
@@ -317,6 +348,16 @@ export async function getBatchPerformance(
             WHERE m.mcq_generation_status = 'completed'
               AND m.id IN (
                 SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
+                UNION
+                SELECT DISTINCT module_id FROM training_notification_events
+                WHERE batch_id = ${batchId} AND notification_type = 'invited'
+                UNION
+                SELECT DISTINCT p.module_id FROM assessment_progress p
+                WHERE p.batch_id = ${batchId}
+                  AND NOT EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = p.module_id AND mb.batch_id <> ${batchId}
+                  )
               )
           ) bm
           LEFT JOIN assessment_progress ap
@@ -418,7 +459,19 @@ export async function getBatchPerformance(
               )
           ) l
           CROSS JOIN (
-            SELECT module_id AS id FROM course_module_batches WHERE batch_id = ${batchId}
+            SELECT module_id AS id FROM (
+              SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM course_notification_events
+              WHERE batch_id = ${batchId} AND notification_type = 'invited'
+              UNION
+              SELECT DISTINCT p.module_id FROM course_progress p
+              WHERE p.batch_id = ${batchId}
+                AND NOT EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = p.module_id AND cmb.batch_id <> ${batchId}
+                )
+            ) visible_modules
           ) bm
           LEFT JOIN course_progress ap
             ON LOWER(ap.user_email) = l.email
@@ -517,11 +570,22 @@ export async function getBatchPerformance(
               )
           ) l
           CROSS JOIN (
-            SELECT mb.module_id AS id
-            FROM module_batches mb
+            SELECT visible.module_id AS id
+            FROM (
+              SELECT module_id FROM module_batches WHERE batch_id = ${batchId}
+              UNION
+              SELECT DISTINCT module_id FROM training_notification_events
+              WHERE batch_id = ${batchId} AND notification_type = 'invited'
+              UNION
+              SELECT DISTINCT p.module_id FROM assessment_progress p
+              WHERE p.batch_id = ${batchId}
+                AND NOT EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = p.module_id AND mb.batch_id <> ${batchId}
+                )
+            ) visible
             INNER JOIN training_modules tm
-              ON tm.id = mb.module_id AND tm.mcq_generation_status = 'completed'
-            WHERE mb.batch_id = ${batchId}
+              ON tm.id = visible.module_id AND tm.mcq_generation_status = 'completed'
           ) bm
           LEFT JOIN assessment_progress ap
             ON LOWER(ap.user_email) = l.email

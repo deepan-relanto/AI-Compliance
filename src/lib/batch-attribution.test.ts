@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { resolveAttributedBatchId } from "./batch-attribution";
+import {
+  moduleVisibleOnBatch,
+  resolveAttributedBatchId,
+} from "./batch-attribution";
 
 describe("resolveAttributedBatchId", () => {
   it("keeps the stored batch when that batch still has the module assigned", () => {
@@ -44,6 +47,56 @@ describe("resolveAttributedBatchId", () => {
         membershipAssignedBatchIds: [],
       }),
       "hyderabad",
+    );
+  });
+});
+
+describe("moduleVisibleOnBatch", () => {
+  it("shows currently assigned modules", () => {
+    assert.equal(
+      moduleVisibleOnBatch({
+        currentlyAssigned: true,
+        hasInviteForBatch: false,
+        hasProgressOnBatch: false,
+        assignedToOtherBatch: false,
+      }),
+      true,
+    );
+  });
+
+  it("shows previously invited modules after republish moved the junction", () => {
+    assert.equal(
+      moduleVisibleOnBatch({
+        currentlyAssigned: false,
+        hasInviteForBatch: true,
+        hasProgressOnBatch: true,
+        assignedToOtherBatch: true,
+      }),
+      true,
+    );
+  });
+
+  it("hides mis-stamped progress when another batch owns the assignment and there was no invite", () => {
+    assert.equal(
+      moduleVisibleOnBatch({
+        currentlyAssigned: false,
+        hasInviteForBatch: false,
+        hasProgressOnBatch: true,
+        assignedToOtherBatch: true,
+      }),
+      false,
+    );
+  });
+
+  it("shows orphan progress when the module is not assigned elsewhere", () => {
+    assert.equal(
+      moduleVisibleOnBatch({
+        currentlyAssigned: false,
+        hasInviteForBatch: false,
+        hasProgressOnBatch: true,
+        assignedToOtherBatch: false,
+      }),
+      true,
     );
   });
 });

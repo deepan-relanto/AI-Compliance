@@ -10,6 +10,11 @@
  * 1. Keep the stored batch if that batch currently has the module assigned.
  * 2. Otherwise use the learner's membership ∩ module assignment (oldest first).
  * 3. Otherwise keep the stored batch (historical / unassigned modules).
+ *
+ * Module list on a batch (analytics Courses / Compliance):
+ * Show currently assigned modules, plus historically invited ones, plus
+ * progress stamped on this batch only when the module is not assigned to a
+ * different batch (avoids Hyderabad false positives after republish).
  */
 
 export function resolveAttributedBatchId(input: {
@@ -28,4 +33,17 @@ export function resolveAttributedBatchId(input: {
     return assigned[0];
   }
   return stored;
+}
+
+/** Whether admin analytics should list a module on a batch roster. */
+export function moduleVisibleOnBatch(input: {
+  currentlyAssigned: boolean;
+  hasInviteForBatch: boolean;
+  hasProgressOnBatch: boolean;
+  assignedToOtherBatch: boolean;
+}): boolean {
+  if (input.currentlyAssigned) return true;
+  if (input.hasInviteForBatch) return true;
+  if (input.hasProgressOnBatch && !input.assignedToOtherBatch) return true;
+  return false;
 }
