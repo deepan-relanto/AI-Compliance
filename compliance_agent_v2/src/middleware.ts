@@ -19,6 +19,7 @@ const PUBLIC_PREFIXES = [
 /** Admin-only API prefixes (defense in depth; routes also call requireAdminSession). */
 const ADMIN_API_PREFIXES = [
   "/api/assessments",
+  "/api/batches",
   "/api/courses",
   "/api/monitoring",
   "/api/course-monitoring",
@@ -29,6 +30,7 @@ const ADMIN_API_PREFIXES = [
   "/api/convert",
   "/api/employees",
   "/api/mail",
+  "/api/email-monitoring",
 ];
 
 function isAdminApiPath(pathname: string): boolean {

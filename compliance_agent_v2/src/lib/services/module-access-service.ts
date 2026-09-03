@@ -74,6 +74,10 @@ export async function verifyModuleAccess(
           )
         ORDER BY
           CASE WHEN EXISTS (
+            SELECT 1 FROM course_module_batches cmb
+            WHERE cmb.batch_id = ub.batch_id AND cmb.module_id = ${moduleId}
+          ) THEN 0 ELSE 1 END,
+          CASE WHEN EXISTS (
             SELECT 1 FROM course_progress p
             WHERE p.batch_id = ub.batch_id
               AND p.module_id = ${moduleId}
@@ -100,6 +104,10 @@ export async function verifyModuleAccess(
             )
           )
         ORDER BY
+          CASE WHEN EXISTS (
+            SELECT 1 FROM module_batches mb
+            WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
+          ) THEN 0 ELSE 1 END,
           CASE WHEN EXISTS (
             SELECT 1 FROM assessment_progress p
             WHERE p.batch_id = ub.batch_id

@@ -240,8 +240,8 @@ export async function getBatchOutreachCounts(
     ] as const;
 
     /**
-     * Count every logged send for this batch. Membership is user_batches
-     * (learners can sit in several batches; users.batch_id is only a primary).
+     * Count logged sends attributed to this batch via module assignment —
+     * never by primary users.batch_id or bare multi-batch membership.
      */
     const eventRows =
       isCourse
@@ -257,19 +257,24 @@ export async function getBatchOutreachCounts(
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS last_invited_at,
               MIN(e.sent_at) FILTER (
                 WHERE e.notification_type = 'invited'
-                  AND (
-                    e.batch_id = ${batchId}
-                    OR (
-                      e.batch_id IS NULL
-                      AND EXISTS (
-                        SELECT 1
-                        FROM user_batches ub
-                        WHERE ub.batch_id = ${batchId}
-                          AND LOWER(ub.user_email) = LOWER(e.user_email)
-                          AND e.sent_at >= ub.created_at - INTERVAL '1 day'
-                      )
-                    )
-                  )
+                  AND COALESCE(
+                    CASE
+                      WHEN e.batch_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM course_module_batches cmb
+                        WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                      ) THEN e.batch_id
+                    END,
+                    (
+                      SELECT ub.batch_id
+                      FROM user_batches ub
+                      INNER JOIN course_module_batches cmb
+                        ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                      WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                      ORDER BY ub.created_at ASC
+                      LIMIT 1
+                    ),
+                    e.batch_id
+                  ) = ${batchId}
               ) AS assigned_at,
               COUNT(*) FILTER (WHERE e.notification_type = 'retake_approved')::int AS retake_email_count,
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'retake_approved') AS last_retake_email_at,
@@ -278,18 +283,24 @@ export async function getBatchOutreachCounts(
               )::int AS emails_sent
             FROM course_notification_events e
             WHERE e.notification_type = ANY(${[...emailTypes]})
-              AND (
-                e.batch_id = ${batchId}
-                OR (
-                  e.batch_id IS NULL
-                  AND EXISTS (
-                    SELECT 1
-                    FROM user_batches ub
-                    WHERE ub.batch_id = ${batchId}
-                      AND LOWER(ub.user_email) = LOWER(e.user_email)
-                  )
-                )
-              )
+              AND COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             GROUP BY LOWER(e.user_email), e.module_id
           `
         : await sql`
@@ -304,19 +315,24 @@ export async function getBatchOutreachCounts(
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'invited') AS last_invited_at,
               MIN(e.sent_at) FILTER (
                 WHERE e.notification_type = 'invited'
-                  AND (
-                    e.batch_id = ${batchId}
-                    OR (
-                      e.batch_id IS NULL
-                      AND EXISTS (
-                        SELECT 1
-                        FROM user_batches ub
-                        WHERE ub.batch_id = ${batchId}
-                          AND LOWER(ub.user_email) = LOWER(e.user_email)
-                          AND e.sent_at >= ub.created_at - INTERVAL '1 day'
-                      )
-                    )
-                  )
+                  AND COALESCE(
+                    CASE
+                      WHEN e.batch_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM module_batches mb
+                        WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                      ) THEN e.batch_id
+                    END,
+                    (
+                      SELECT ub.batch_id
+                      FROM user_batches ub
+                      INNER JOIN module_batches mb
+                        ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                      WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                      ORDER BY ub.created_at ASC
+                      LIMIT 1
+                    ),
+                    e.batch_id
+                  ) = ${batchId}
               ) AS assigned_at,
               COUNT(*) FILTER (WHERE e.notification_type = 'retake_approved')::int AS retake_email_count,
               MAX(e.sent_at) FILTER (WHERE e.notification_type = 'retake_approved') AS last_retake_email_at,
@@ -325,18 +341,24 @@ export async function getBatchOutreachCounts(
               )::int AS emails_sent
             FROM training_notification_events e
             WHERE e.notification_type = ANY(${[...emailTypes]})
-              AND (
-                e.batch_id = ${batchId}
-                OR (
-                  e.batch_id IS NULL
-                  AND EXISTS (
-                    SELECT 1
-                    FROM user_batches ub
-                    WHERE ub.batch_id = ${batchId}
-                      AND LOWER(ub.user_email) = LOWER(e.user_email)
-                  )
-                )
-              )
+              AND COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             GROUP BY LOWER(e.user_email), e.module_id
           `;
 

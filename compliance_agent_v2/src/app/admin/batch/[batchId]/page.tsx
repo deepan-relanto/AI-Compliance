@@ -7,19 +7,43 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/lib/auth-store";
 import { invalidateLearnerDashboardClientCache } from "@/lib/progress-api";
+import { adminFetcher, adminSwrConfig } from "@/lib/swr-config";
 import { BarChart3, Loader2, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const batchDetailSwrConfig = {
+  ...adminSwrConfig,
+  revalidateOnFocus: false,
+  dedupingInterval: 15_000,
+};
 
 interface BatchMeta {
   id: string;
   label: string;
   description: string;
   memberCount: number;
+}
+
+function parseBatchDetail(data: Record<string, unknown> | undefined): {
+  batch: BatchMeta | null;
+  members: BatchMember[];
+} {
+  if (!data?.ok) return { batch: null, members: [] };
+  const rawBatch = data.batch;
+  const batch =
+    rawBatch && typeof rawBatch === "object"
+      ? {
+          id: String((rawBatch as Record<string, unknown>).id ?? ""),
+          label: String((rawBatch as Record<string, unknown>).label ?? ""),
+          description: String((rawBatch as Record<string, unknown>).description ?? ""),
+          memberCount: Number((rawBatch as Record<string, unknown>).memberCount ?? 0),
+        }
+      : null;
+  const members = Array.isArray(data.users) ? (data.users as BatchMember[]) : [];
+  return { batch, members };
 }
 
 export default function BatchDetailPage() {
@@ -35,22 +59,11 @@ export default function BatchDetailPage() {
 
   const { data, isLoading, mutate } = useSWR(
     batchId ? `/api/batches/${encodeURIComponent(batchId)}` : null,
-    fetcher,
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 15_000,
-    },
+    adminFetcher,
+    batchDetailSwrConfig,
   );
 
-  const batch = data?.ok && data.batch ? {
-    id: data.batch.id,
-    label: data.batch.label,
-    description: data.batch.description ?? "",
-    memberCount: Number(data.batch.memberCount ?? 0),
-  } : null;
-
-  const members: BatchMember[] = data?.ok && Array.isArray(data.users) ? data.users : [];
+  const { batch, members } = parseBatchDetail(data);
   const alreadyMember = Boolean(
     sessionEmail && members.some((m) => m.email.toLowerCase() === sessionEmail),
   );

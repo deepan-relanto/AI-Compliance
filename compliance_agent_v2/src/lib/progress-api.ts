@@ -64,7 +64,8 @@ export type FetchLearnerDashboardResult =
   | { ok: false; error: string };
 
 /** Load dashboard data — batch and profile are resolved on the server from the session. */
-const LEARNER_DASH_CLIENT_TTL_MS = 20_000;
+const LEARNER_DASH_SOFT_TTL_MS = 30_000;
+const LEARNER_DASH_HARD_TTL_MS = 90_000;
 let learnerDashCache:
   | {
       at: number;
@@ -72,21 +73,62 @@ let learnerDashCache:
       result: Extract<FetchLearnerDashboardResult, { ok: true }>;
     }
   | null = null;
+let learnerDashRefresh: Promise<void> | null = null;
 
 export function invalidateLearnerDashboardClientCache(): void {
   learnerDashCache = null;
+  learnerDashRefresh = null;
+}
+
+async function refreshLearnerDashboardInBackground(): Promise<void> {
+  if (learnerDashRefresh) return learnerDashRefresh;
+  learnerDashRefresh = (async () => {
+    try {
+      const res = await fetch("/api/learner/dashboard", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return;
+      const email = String(data.email ?? "").trim().toLowerCase();
+      learnerDashCache = {
+        at: Date.now(),
+        email,
+        result: {
+          ok: true,
+          modules: Array.isArray(data.modules) ? data.modules : [],
+          progress: Array.isArray(data.progress) ? data.progress : [],
+          profile: {
+            email,
+            batchId: String(data.batchId ?? ""),
+            displayName: String(data.displayName ?? email.split("@")[0] ?? "Learner"),
+            role: data.role === "admin" ? "admin" : "user",
+          },
+        },
+      };
+    } catch {
+      /* ignore background refresh errors */
+    } finally {
+      learnerDashRefresh = null;
+    }
+  })();
+  return learnerDashRefresh;
 }
 
 export async function fetchLearnerDashboard(
   options?: { force?: boolean },
 ): Promise<FetchLearnerDashboardResult> {
   try {
-    if (
-      !options?.force &&
-      learnerDashCache &&
-      Date.now() - learnerDashCache.at < LEARNER_DASH_CLIENT_TTL_MS
-    ) {
-      return learnerDashCache.result;
+    const now = Date.now();
+    if (!options?.force && learnerDashCache) {
+      const age = now - learnerDashCache.at;
+      if (age < LEARNER_DASH_SOFT_TTL_MS) {
+        return learnerDashCache.result;
+      }
+      if (age < LEARNER_DASH_HARD_TTL_MS) {
+        void refreshLearnerDashboardInBackground();
+        return learnerDashCache.result;
+      }
     }
 
     const res = await fetch("/api/learner/dashboard", {

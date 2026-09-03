@@ -1,6 +1,11 @@
 import { requireLearnerModuleAccess } from "@/lib/api-session";
 import { getSql } from "@/lib/db";
 import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
+import {
+  checkRateLimit,
+  rateLimitKey,
+  rateLimitResponse,
+} from "@/lib/request-rate-limit";
 import { validateAndRecordMcqAnswerDb as validateCourseMcqAnswerDb } from "@/lib/services/course-progress-db-service";
 import { validateAndRecordMcqAnswerDb as validateComplianceMcqAnswerDb } from "@/lib/services/progress-db-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -44,6 +49,14 @@ export async function POST(
     // Access check is TTL-cached after the first hit of this quiz session.
     const access = await requireLearnerModuleAccess(moduleId, userEmail);
     if (!access.ok) return access.response;
+
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    const rate = checkRateLimit(
+      rateLimitKey("mcq-answer", ip, `${access.email}:${moduleId}`),
+      90,
+      60_000,
+    );
+    if (!rate.ok) return rateLimitResponse(rate.retryAfterMs);
 
     const sql = getSql();
     const courseModule = moduleId.startsWith("course-");

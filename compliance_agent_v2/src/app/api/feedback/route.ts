@@ -6,6 +6,9 @@ import {
   getUserBatchMap,
   listFeedback,
 } from "@/lib/services/feedback-db-service";
+import { CACHE_KEYS, swrLoad } from "@/lib/api-cache";
+import { jsonError, jsonOk } from "@/lib/api-json";
+import { invalidateAdminCachesAsync } from "@/lib/invalidate-admin-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -17,14 +20,22 @@ export async function GET() {
 
   try {
     const sql = getSql();
-    const [entries, userBatches] = await Promise.all([
-      listFeedback(sql),
-      getUserBatchMap(sql),
-    ]);
-    return NextResponse.json({ ok: true, entries, userBatches });
+    const { data, status } = await swrLoad(
+      CACHE_KEYS.feedbackList,
+      30,
+      90,
+      async () => {
+        const [entries, userBatches] = await Promise.all([
+          listFeedback(sql),
+          getUserBatchMap(sql),
+        ]);
+        return { entries, userBatches };
+      },
+    );
+    return jsonOk(data, { cache: status });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to load feedback";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return jsonError(message);
   }
 }
 
@@ -57,6 +68,7 @@ export async function POST(req: NextRequest) {
       feedbackText: feedbackText.trim(),
     });
 
+    invalidateAdminCachesAsync();
     return NextResponse.json({ ok: true, entry });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save feedback";

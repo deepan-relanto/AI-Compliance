@@ -132,8 +132,10 @@ function mapSummary(row: Record<string, unknown> | undefined): EmailMonitoringSu
 
 /**
  * Full email outreach monitoring — event log + per-learner aggregates.
- * Resolves batch from users.batch_id when the event row has a null batch_id
- * (legacy publish invites), so batch filters and labels stay accurate.
+ *
+ * Batch labels/filters use module assignment ∩ learner membership, never
+ * `users.batch_id` (primary). That prevents dual-batch learners from showing
+ * Hyderabad labels while a Planning filter is active.
  */
 export async function getEmailMonitoring(
   sql: Sql,
@@ -156,26 +158,89 @@ export async function getEmailMonitoring(
             'compliance'::text AS track,
             e.user_email,
             e.notification_type,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(b.label, e.batch_id, u.batch_id, '') AS batch_label
+            COALESCE(
+              b.label,
+              COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ),
+              ''
+            ) AS batch_label
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM module_batches mb
+                WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN module_batches mb
+                ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -183,33 +248,96 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
           UNION ALL
           SELECT
             'course'::text AS track,
             e.user_email,
             e.notification_type,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(b.label, e.batch_id, u.batch_id, '') AS batch_label
+            COALESCE(
+              b.label,
+              COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ),
+              ''
+            ) AS batch_label
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM course_module_batches cmb
+                WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN course_module_batches cmb
+                ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -217,7 +345,7 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         SELECT
@@ -239,26 +367,68 @@ export async function getEmailMonitoring(
             COALESCE(m.title, e.module_id) AS module_title,
             LOWER(e.user_email) AS user_email,
             e.notification_type,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             COALESCE(b.label, '—') AS batch_label,
             e.triggered_by,
             e.sent_at
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM module_batches mb
+                WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN module_batches mb
+                ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -266,7 +436,7 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         UNION ALL
@@ -278,26 +448,68 @@ export async function getEmailMonitoring(
             COALESCE(m.title, e.module_id) AS module_title,
             LOWER(e.user_email) AS user_email,
             e.notification_type,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             COALESCE(b.label, '—') AS batch_label,
             e.triggered_by,
             e.sent_at
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM course_module_batches cmb
+                WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN course_module_batches cmb
+                ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -305,7 +517,7 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         ORDER BY sent_at DESC
@@ -318,26 +530,68 @@ export async function getEmailMonitoring(
             LOWER(e.user_email) AS user_email,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM module_batches mb
+                  WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN module_batches mb
+                  ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             COALESCE(b.label, '—') AS batch_label,
             e.notification_type,
             e.sent_at
           FROM training_notification_events e
           LEFT JOIN training_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM module_batches mb
+                WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN module_batches mb
+                ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -345,7 +599,7 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
           UNION ALL
           SELECT
@@ -353,26 +607,68 @@ export async function getEmailMonitoring(
             LOWER(e.user_email) AS user_email,
             e.module_id,
             COALESCE(m.title, e.module_id) AS module_title,
-            COALESCE(e.batch_id, u.batch_id) AS batch_id,
+            COALESCE(
+              CASE
+                WHEN e.batch_id IS NOT NULL AND EXISTS (
+                  SELECT 1 FROM course_module_batches cmb
+                  WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                ) THEN e.batch_id
+              END,
+              (
+                SELECT ub.batch_id
+                FROM user_batches ub
+                INNER JOIN course_module_batches cmb
+                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                ORDER BY ub.created_at ASC
+                LIMIT 1
+              ),
+              e.batch_id
+            ) AS batch_id,
             COALESCE(b.label, '—') AS batch_label,
             e.notification_type,
             e.sent_at
           FROM course_notification_events e
           LEFT JOIN course_modules m ON m.id = e.module_id
-          LEFT JOIN users u ON LOWER(u.email) = LOWER(e.user_email)
-          LEFT JOIN batches b ON b.id = COALESCE(e.batch_id, u.batch_id)
+          LEFT JOIN batches b ON b.id = COALESCE(
+            CASE
+              WHEN e.batch_id IS NOT NULL AND EXISTS (
+                SELECT 1 FROM course_module_batches cmb
+                WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+              ) THEN e.batch_id
+            END,
+            (
+              SELECT ub.batch_id
+              FROM user_batches ub
+              INNER JOIN course_module_batches cmb
+                ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+              WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+              ORDER BY ub.created_at ASC
+              LIMIT 1
+            ),
+            e.batch_id
+          )
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
             AND (${moduleId}::text IS NULL OR e.module_id = ${moduleId})
             AND (${type}::text IS NULL OR e.notification_type = ${type})
@@ -380,7 +676,7 @@ export async function getEmailMonitoring(
               ${search}::text IS NULL
               OR LOWER(e.user_email) LIKE ${"%" + (search ?? "") + "%"}
               OR LOWER(COALESCE(m.title, e.module_id)) LIKE ${"%" + (search ?? "") + "%"}
-              OR LOWER(COALESCE(b.label, e.batch_id, u.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
+              OR LOWER(COALESCE(b.label, e.batch_id, '')) LIKE ${"%" + (search ?? "") + "%"}
             )
         )
         SELECT
@@ -435,30 +731,6 @@ export async function getEmailMonitoring(
         (
           SELECT DISTINCT
             m.id,
-            m.title,
-            'compliance'::text AS track
-          FROM training_modules m
-          INNER JOIN assessment_progress p ON p.module_id = m.id
-          WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
-            AND ${batchId}::text IS NOT NULL
-            AND p.batch_id = ${batchId}
-        )
-        UNION
-        (
-          SELECT DISTINCT
-            m.id,
-            m.title,
-            'course'::text AS track
-          FROM course_modules m
-          INNER JOIN course_progress p ON p.module_id = m.id
-          WHERE (${track}::text = 'all' OR ${track}::text = 'course')
-            AND ${batchId}::text IS NOT NULL
-            AND p.batch_id = ${batchId}
-        )
-        UNION
-        (
-          SELECT DISTINCT
-            m.id,
             COALESCE(m.title, e.module_id) AS title,
             'compliance'::text AS track
           FROM training_notification_events e
@@ -466,15 +738,24 @@ export async function getEmailMonitoring(
           WHERE (${track}::text = 'all' OR ${track}::text = 'compliance')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = e.module_id AND mb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
         )
         UNION
@@ -488,15 +769,24 @@ export async function getEmailMonitoring(
           WHERE (${track}::text = 'all' OR ${track}::text = 'course')
             AND (
               ${batchId}::text IS NULL
-              OR e.batch_id = ${batchId}
-              OR (
-                e.batch_id IS NULL
-                AND EXISTS (
-                  SELECT 1 FROM user_batches ub
-                  WHERE ub.batch_id = ${batchId}
-                    AND LOWER(ub.user_email) = LOWER(e.user_email)
-                )
-              )
+              OR COALESCE(
+                CASE
+                  WHEN e.batch_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = e.module_id AND cmb.batch_id = e.batch_id
+                  ) THEN e.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = e.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(e.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                e.batch_id
+              ) = ${batchId}
             )
         )
         ORDER BY title ASC
