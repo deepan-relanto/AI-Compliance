@@ -770,7 +770,7 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
                       tone={b.modulesAssigned > 0 ? "brand" : "muted"}
                     />
                     <BatchStat
-                      label="Complete"
+                      label="Seats done"
                       value={
                         b.seatCount > 0
                           ? `${b.completed}/${b.seatCount}`
@@ -780,9 +780,20 @@ export function AnalyticsDashboard({ initialBatchId }: AnalyticsDashboardProps) 
                     />
                   </div>
                   <p className="text-[11px] text-zinc-500">
+                    {b.modulesAssigned > 0
+                      ? `${b.memberCount} people × ${b.modulesAssigned} ${
+                          b.modulesAssigned === 1
+                            ? track === "course"
+                              ? "course"
+                              : "assessment"
+                            : track === "course"
+                              ? "courses"
+                              : "assessments"
+                        }`
+                      : "No courses in seat count yet"}
                     {b.avgScore != null
-                      ? `Avg score ${b.avgScore}% among scored attempts`
-                      : "No scored attempts yet"}
+                      ? ` · Avg ${b.avgScore}%`
+                      : ""}
                     {b.failed > 0 ? ` · ${b.failed} locked` : ""}
                   </p>
                   <span className="inline-flex items-center justify-end text-xs font-medium text-[#2e3192]">

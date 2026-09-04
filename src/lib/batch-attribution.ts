@@ -12,9 +12,9 @@
  * 3. Otherwise keep the stored batch (historical / unassigned modules).
  *
  * Module list on a batch (analytics Courses / Compliance):
- * Show currently assigned modules, plus historically invited ones, plus
- * progress stamped on this batch only when the module is not assigned to a
- * different batch (avoids Hyderabad false positives after republish).
+ * Show currently assigned modules, historically invited ones, and any module
+ * with progress attributed to this batch (so seat KPIs match completions).
+ * Mis-stamped progress remaps away via attribution before it counts here.
  */
 
 export function resolveAttributedBatchId(input: {
@@ -39,11 +39,11 @@ export function resolveAttributedBatchId(input: {
 export function moduleVisibleOnBatch(input: {
   currentlyAssigned: boolean;
   hasInviteForBatch: boolean;
-  hasProgressOnBatch: boolean;
-  assignedToOtherBatch: boolean;
+  /** Progress remapped to this batch at read time. */
+  hasAttributedProgress: boolean;
 }): boolean {
   if (input.currentlyAssigned) return true;
   if (input.hasInviteForBatch) return true;
-  if (input.hasProgressOnBatch && !input.assignedToOtherBatch) return true;
+  if (input.hasAttributedProgress) return true;
   return false;
 }

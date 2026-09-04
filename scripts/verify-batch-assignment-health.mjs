@@ -47,26 +47,35 @@ assert(junctionIds.includes(PLAN), "AI basics assigned to Planning");
 
 for (const batchId of [SF, PLAN, HYD]) {
   const rows = await sql`
-    SELECT m.id, m.title,
-      EXISTS (
-        SELECT 1 FROM course_module_batches cmb
-        WHERE cmb.module_id = m.id AND cmb.batch_id = ${batchId}
-      ) AS currently_assigned
+    SELECT m.id, m.title
     FROM course_modules m
-    WHERE m.id IN (
+    WHERE m.id = ${MOD}
+      AND m.id IN (
       SELECT module_id FROM course_module_batches WHERE batch_id = ${batchId}
       UNION
       SELECT DISTINCT module_id FROM course_notification_events
       WHERE batch_id = ${batchId} AND notification_type = 'invited'
       UNION
       SELECT DISTINCT p.module_id FROM course_progress p
-      WHERE p.batch_id = ${batchId}
-        AND NOT EXISTS (
-          SELECT 1 FROM course_module_batches cmb
-          WHERE cmb.module_id = p.module_id AND cmb.batch_id <> ${batchId}
-        )
+      WHERE COALESCE(
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM course_module_batches cmb
+            WHERE cmb.module_id = p.module_id AND cmb.batch_id = p.batch_id
+          ) THEN p.batch_id
+        END,
+        (
+          SELECT ub.batch_id
+          FROM user_batches ub
+          INNER JOIN course_module_batches cmb
+            ON cmb.batch_id = ub.batch_id AND cmb.module_id = p.module_id
+          WHERE LOWER(ub.user_email) = LOWER(p.user_email)
+          ORDER BY ub.created_at ASC
+          LIMIT 1
+        ),
+        p.batch_id
+      ) = ${batchId}
     )
-    AND m.id = ${MOD}
   `;
   if (batchId === HYD) {
     assert(rows.length === 0, "Hyderabad does not list AI basics from mis-stamps");
@@ -140,8 +149,7 @@ assert(
   moduleVisibleOnBatch({
     currentlyAssigned: false,
     hasInviteForBatch: false,
-    hasProgressOnBatch: true,
-    assignedToOtherBatch: true,
+    hasAttributedProgress: false,
   }) === false,
   "mis-stamped progress alone does not show module on batch",
 );
@@ -149,8 +157,7 @@ assert(
   moduleVisibleOnBatch({
     currentlyAssigned: false,
     hasInviteForBatch: true,
-    hasProgressOnBatch: true,
-    assignedToOtherBatch: true,
+    hasAttributedProgress: true,
   }) === true,
   "invite history keeps previously assigned module visible",
 );
