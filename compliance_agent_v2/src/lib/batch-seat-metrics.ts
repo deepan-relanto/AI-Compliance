@@ -1,7 +1,7 @@
 /**
  * A batch is a roster. Courses/assessments are assigned independently.
- * One "seat" is one person on one assigned course — the only KPI that
- * stays honest when a batch has many courses.
+ * One "seat" is one person on one course tied to that roster (current or
+ * historical with marks) — the only KPI that stays honest with many courses.
  */
 
 export function assignedSeatCount(
@@ -36,8 +36,11 @@ export function seatMixPercents(input: {
   const completed = Math.max(0, input.completed);
   const inProgress = Math.max(0, input.inProgress);
   const locked = Math.max(0, input.locked);
+  const seats = Math.max(0, input.seats);
   const used = completed + inProgress + locked;
-  const denom = input.seats > 0 ? Math.max(input.seats, used) : used;
+  // Always scale to the seat denominator when known — never inflate seats to
+  // match overflow completions (that produced fake 100% bars).
+  const denom = seats > 0 ? seats : used;
   if (denom <= 0) return { completed: 0, inProgress: 0, locked: 0 };
   return {
     completed: (100 * completed) / denom,

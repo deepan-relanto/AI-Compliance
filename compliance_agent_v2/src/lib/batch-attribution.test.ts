@@ -57,8 +57,7 @@ describe("moduleVisibleOnBatch", () => {
       moduleVisibleOnBatch({
         currentlyAssigned: true,
         hasInviteForBatch: false,
-        hasProgressOnBatch: false,
-        assignedToOtherBatch: false,
+        hasAttributedProgress: false,
       }),
       true,
     );
@@ -69,34 +68,31 @@ describe("moduleVisibleOnBatch", () => {
       moduleVisibleOnBatch({
         currentlyAssigned: false,
         hasInviteForBatch: true,
-        hasProgressOnBatch: true,
-        assignedToOtherBatch: true,
+        hasAttributedProgress: false,
       }),
       true,
     );
   });
 
-  it("hides mis-stamped progress when another batch owns the assignment and there was no invite", () => {
+  it("shows modules with progress attributed to this batch", () => {
     assert.equal(
       moduleVisibleOnBatch({
         currentlyAssigned: false,
         hasInviteForBatch: false,
-        hasProgressOnBatch: true,
-        assignedToOtherBatch: true,
+        hasAttributedProgress: true,
+      }),
+      true,
+    );
+  });
+
+  it("hides modules with no assignment, invite, or attributed progress", () => {
+    assert.equal(
+      moduleVisibleOnBatch({
+        currentlyAssigned: false,
+        hasInviteForBatch: false,
+        hasAttributedProgress: false,
       }),
       false,
-    );
-  });
-
-  it("shows orphan progress when the module is not assigned elsewhere", () => {
-    assert.equal(
-      moduleVisibleOnBatch({
-        currentlyAssigned: false,
-        hasInviteForBatch: false,
-        hasProgressOnBatch: true,
-        assignedToOtherBatch: false,
-      }),
-      true,
     );
   });
 });

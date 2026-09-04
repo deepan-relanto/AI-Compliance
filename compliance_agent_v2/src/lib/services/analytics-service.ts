@@ -150,12 +150,9 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
             SELECT DISTINCT module_id FROM training_notification_events
             WHERE batch_id = b.id AND notification_type = 'invited'
             UNION
-            SELECT DISTINCT p.module_id FROM assessment_progress p
-            WHERE p.batch_id = b.id
-              AND NOT EXISTS (
-                SELECT 1 FROM module_batches mb
-                WHERE mb.module_id = p.module_id AND mb.batch_id <> b.id
-              )
+            SELECT DISTINCT ap_mod.module_id
+            FROM attributed_assessment_progress ap_mod
+            WHERE ap_mod.attributed_batch_id = b.id
           ) visible
           INNER JOIN training_modules m ON m.id = visible.module_id
           WHERE m.mcq_generation_status = 'completed'
@@ -298,12 +295,9 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
             SELECT DISTINCT module_id FROM course_notification_events
             WHERE batch_id = b.id AND notification_type = 'invited'
             UNION
-            SELECT DISTINCT p.module_id FROM course_progress p
-            WHERE p.batch_id = b.id
-              AND NOT EXISTS (
-                SELECT 1 FROM course_module_batches cmb
-                WHERE cmb.module_id = p.module_id AND cmb.batch_id <> b.id
-              )
+            SELECT DISTINCT ap_mod.module_id
+            FROM attributed_course_progress ap_mod
+            WHERE ap_mod.attributed_batch_id = b.id
           ) visible
           INNER JOIN course_modules m ON m.id = visible.module_id
           WHERE m.mcq_generation_status = 'completed'
@@ -419,12 +413,9 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
             SELECT DISTINCT module_id FROM training_notification_events
             WHERE batch_id = b.id AND notification_type = 'invited'
             UNION
-            SELECT DISTINCT p.module_id FROM assessment_progress p
-            WHERE p.batch_id = b.id
-              AND NOT EXISTS (
-                SELECT 1 FROM module_batches mb
-                WHERE mb.module_id = p.module_id AND mb.batch_id <> b.id
-              )
+            SELECT DISTINCT ap_mod.module_id
+            FROM attributed_assessment_progress ap_mod
+            WHERE ap_mod.attributed_batch_id = b.id
           ) visible
           INNER JOIN training_modules m ON m.id = visible.module_id
           WHERE m.mcq_generation_status = 'completed'
@@ -608,12 +599,9 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
             SELECT DISTINCT module_id FROM course_notification_events
             WHERE batch_id = b.id AND notification_type = 'invited'
             UNION
-            SELECT DISTINCT p.module_id FROM course_progress p
-            WHERE p.batch_id = b.id
-              AND NOT EXISTS (
-                SELECT 1 FROM course_module_batches cmb
-                WHERE cmb.module_id = p.module_id AND cmb.batch_id <> b.id
-              )
+            SELECT DISTINCT ap_mod.module_id
+            FROM attributed_course_progress ap_mod
+            WHERE ap_mod.attributed_batch_id = b.id
           ) visible
           INNER JOIN course_modules m ON m.id = visible.module_id
           WHERE m.mcq_generation_status = 'completed'
