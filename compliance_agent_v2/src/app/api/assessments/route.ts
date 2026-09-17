@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       invalidateAdminCaches();
 
       const inviteResult = await sendModuleInvitationEmails(sql, targetModuleId, {
-        forceResend: true,
+        batchIds: resolvedBatchIds,
         triggeredBy:
           typeof session?.user?.email === "string"
             ? session.user.email

@@ -313,14 +313,9 @@ export async function publishCourseModuleDb(
     throw new Error(formatAssignmentConflictMessage(conflicts, title));
   }
 
-  // Clear prior invite claims so republish emails can go out again.
-  // Do NOT wipe course_module_batches — selecting Planning alone used to
-  // unassign Support_Function_Batch_2 and other cohorts still using the course.
-  await sql`
-    DELETE FROM course_notifications
-    WHERE module_id = ${moduleId} AND notification_type = 'invited'
-  `;
-
+  // Keep existing batch links. Selecting Planning must add Planning, not
+  // unassign Support_Function_Batch_1. Invite claims stay intact so other
+  // cohorts are not re-mailed.
   await sql`
     INSERT INTO course_module_batches (module_id, batch_id)
     SELECT ${moduleId}, unnest(${ids}::text[])

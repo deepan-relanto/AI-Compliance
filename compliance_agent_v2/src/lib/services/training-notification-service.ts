@@ -1,6 +1,7 @@
 import type { getSql } from "@/lib/db";
 import { getGraphMailConfig } from "@/lib/graph-mail-config";
 import { firstNameFromEmail } from "@/lib/auth-env";
+import { resolveOutreachBatchIds } from "@/lib/outreach-batch-ids";
 import {
   buildCompletionResultSummary,
   completionResultSummaryHtml,
@@ -27,16 +28,19 @@ async function isCourseModule(sql: Sql, moduleId: string): Promise<boolean> {
 
 /**
  * Roster for invites / reminders / locked-learner mail.
- * Publish (no batchId) stays on currently assigned batches.
- * Batch outreach also includes previously assigned courses that still have
- * marks or invite history for that batch — same visibility analytics uses.
+ * Unrestricted (no batch ids) stays on currently assigned batches.
+ * A selected list emails only those rosters — assigning Planning must not
+ * mail Support_Function_Batch_1. Batch-page outreach also includes previously
+ * assigned courses that still have marks or invite history for that batch.
  */
 async function listModuleOutreachLearners(
   sql: Sql,
   moduleId: string,
-  batchId: string | null,
+  batchIds: string[] | null,
   isCourse: boolean,
 ) {
+  const ids = batchIds ?? [];
+  const restrictToSelected = ids.length > 0;
   if (isCourse) {
     return sql`
       SELECT DISTINCT
@@ -58,14 +62,17 @@ async function listModuleOutreachLearners(
         AND cp.batch_id = ub.batch_id
       WHERE u.role IN ('user', 'admin')
         AND u.email IS NOT NULL
-        AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
+        AND (
+          ${restrictToSelected}::boolean = FALSE
+          OR ub.batch_id = ANY(${ids}::text[])
+        )
         AND (
           EXISTS (
             SELECT 1 FROM course_module_batches mb
             WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
           )
           OR (
-            ${batchId}::text IS NOT NULL
+            ${restrictToSelected}::boolean = TRUE
             AND EXISTS (
               SELECT 1 FROM course_notification_events e
               WHERE e.module_id = ${moduleId}
@@ -75,7 +82,7 @@ async function listModuleOutreachLearners(
             )
           )
           OR (
-            ${batchId}::text IS NOT NULL
+            ${restrictToSelected}::boolean = TRUE
             AND EXISTS (
               SELECT 1 FROM course_progress p
               WHERE p.module_id = ${moduleId}
@@ -108,14 +115,17 @@ async function listModuleOutreachLearners(
       AND ap.batch_id = ub.batch_id
     WHERE u.role IN ('user', 'admin')
       AND u.email IS NOT NULL
-      AND (${batchId}::text IS NULL OR ub.batch_id = ${batchId})
+      AND (
+        ${restrictToSelected}::boolean = FALSE
+        OR ub.batch_id = ANY(${ids}::text[])
+      )
       AND (
         EXISTS (
           SELECT 1 FROM module_batches mb
           WHERE mb.batch_id = ub.batch_id AND mb.module_id = ${moduleId}
         )
         OR (
-          ${batchId}::text IS NOT NULL
+          ${restrictToSelected}::boolean = TRUE
           AND EXISTS (
             SELECT 1 FROM training_notification_events e
             WHERE e.module_id = ${moduleId}
@@ -125,7 +135,7 @@ async function listModuleOutreachLearners(
           )
         )
         OR (
-          ${batchId}::text IS NOT NULL
+          ${restrictToSelected}::boolean = TRUE
           AND EXISTS (
             SELECT 1 FROM assessment_progress p
             WHERE p.module_id = ${moduleId}
@@ -597,7 +607,7 @@ export async function sendFailedReviewGuidanceEmails(
   const learners = await listModuleOutreachLearners(
     sql,
     moduleId,
-    batchId,
+    resolveOutreachBatchIds({ batchId }),
     isCourse,
   );
 
@@ -847,20 +857,26 @@ export interface SendModuleInvitationOptions {
   forceResend?: boolean;
   /** Restrict sending to one batch when the module is assigned to multiple batches. */
   batchId?: string;
+  /** Restrict sending to these batches. Assign/publish must pass only the selected ones. */
+  batchIds?: string[];
   /** Email only learners who still have not started (courses and compliance). */
   reminderOnlyNotStarted?: boolean;
   /** Admin email that triggered the send (stored on event log). */
   triggeredBy?: string;
 }
 
-/** Email all learners in assigned batches when a module is ready. */
+/** Email learners in the selected batches, or every currently assigned batch if none given. */
 export async function sendModuleInvitationEmails(
   sql: Sql,
   moduleId: string,
   options?: SendModuleInvitationOptions,
 ): Promise<InvitationSendResult> {
   const forceResend = options?.forceResend === true;
-  const batchId = options?.batchId?.trim() || null;
+  const selectedBatchIds = resolveOutreachBatchIds({
+    batchId: options?.batchId,
+    batchIds: options?.batchIds,
+  });
+  const batchId = selectedBatchIds?.length === 1 ? selectedBatchIds[0] : null;
   const reminderOnlyNotStarted = options?.reminderOnlyNotStarted === true;
   const triggeredBy = options?.triggeredBy?.trim().toLowerCase() || null;
   const cfg = getGraphMailConfig();
@@ -914,7 +930,7 @@ export async function sendModuleInvitationEmails(
   const learners = await listModuleOutreachLearners(
     sql,
     moduleId,
-    batchId,
+    selectedBatchIds,
     isCourse,
   );
 
@@ -922,9 +938,12 @@ export async function sendModuleInvitationEmails(
   let skipped = 0;
   let failed = 0;
   const errors: string[] = [];
+  const mailed = new Set<string>();
 
   for (const row of learners) {
     const email = (row.email as string).trim().toLowerCase();
+    if (mailed.has(email)) continue;
+    mailed.add(email);
     const displayName =
       (row.display_name as string | null)?.trim() || firstNameFromEmail(email);
 
@@ -1062,7 +1081,7 @@ export async function sendModuleInvitationEmails(
             ? reminderOnlyNotStarted
               ? "No not-started learners in this batch matched this reminder."
               : "All learners were already notified."
-            : batchId
+            : selectedBatchIds
               ? "No learners found in the selected batch."
               : "No learners found in assigned batches.",
   };
