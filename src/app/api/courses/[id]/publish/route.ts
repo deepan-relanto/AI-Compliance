@@ -55,7 +55,13 @@ export async function POST(
     await publishCourseModuleDb(sql, id, batchIds);
     invalidateAdminCaches();
 
-    const invites = await sendModuleInvitationEmails(sql, id, { triggeredBy });
+    const selectedBatchIds = batchIds.includes("all")
+      ? undefined
+      : batchIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+    const invites = await sendModuleInvitationEmails(sql, id, {
+      triggeredBy,
+      batchIds: selectedBatchIds,
+    });
     return NextResponse.json(
       buildPublishResponse(invites, "Course assigned to selected batches."),
     );

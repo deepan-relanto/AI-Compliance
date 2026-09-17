@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     invalidateAdminCaches();
     const invites = await sendModuleInvitationEmails(sql, result.id, {
       triggeredBy,
+      batchIds,
     });
 
     const emailWarning =
