@@ -1,4 +1,5 @@
 import type { BatchPerformancePayload } from "@/lib/batch-performance-types";
+import { uniqueAssessmentsByModule } from "@/lib/prefer-assessment-row";
 import Papa from "papaparse";
 
 function downloadBlob(filename: string, blob: Blob) {
@@ -85,6 +86,17 @@ type LearnerExportRow = {
   "Proctor Warnings": number;
 };
 
+function uniqueLearnerExportRows(rows: LearnerExportRow[]): LearnerExportRow[] {
+  const byPersonAndCourse = new Map<string, LearnerExportRow>();
+  for (const row of rows) {
+    const key = `${row.Email.trim().toLowerCase()}\0${row.Assessment}`;
+    if (!byPersonAndCourse.has(key)) {
+      byPersonAndCourse.set(key, row);
+    }
+  }
+  return [...byPersonAndCourse.values()];
+}
+
 export function exportBatchPerformanceCsv(
   data: BatchPerformancePayload,
   options?: { moduleId?: string | null },
@@ -103,9 +115,11 @@ export function exportBatchPerformanceCsv(
     : null;
 
   const rows: LearnerExportRow[] = data.learners.flatMap((learner) => {
-    const assessments = moduleId
-      ? learner.assessments.filter((a) => a.moduleId === moduleId)
-      : learner.assessments;
+    const assessments = uniqueAssessmentsByModule(
+      moduleId
+        ? learner.assessments.filter((a) => a.moduleId === moduleId)
+        : learner.assessments,
+    );
 
     if (assessments.length === 0) {
       return [
@@ -169,11 +183,12 @@ export function exportBatchPerformanceCsv(
       };
     });
   });
+  const uniqueRows = uniqueLearnerExportRows(rows);
 
-  const totalReminders = rows.reduce((n, r) => n + r["Reminder Emails"], 0);
-  const totalRetakeEmails = rows.reduce((n, r) => n + r["Retake Emails Sent"], 0);
-  const totalInvites = rows.reduce((n, r) => n + r["Invite Emails"], 0);
-  const totalGuidance = rows.reduce((n, r) => n + r["Guidance Emails"], 0);
+  const totalReminders = uniqueRows.reduce((n, r) => n + r["Reminder Emails"], 0);
+  const totalRetakeEmails = uniqueRows.reduce((n, r) => n + r["Retake Emails Sent"], 0);
+  const totalInvites = uniqueRows.reduce((n, r) => n + r["Invite Emails"], 0);
+  const totalGuidance = uniqueRows.reduce((n, r) => n + r["Guidance Emails"], 0);
 
   const summaryRows = moduleSummary
     ? [
@@ -217,7 +232,7 @@ export function exportBatchPerformanceCsv(
   const summaryCsv = Papa.unparse(
     summaryRows as Record<string, string | number>[],
   );
-  const rowsCsv = Papa.unparse(rows);
+  const rowsCsv = Papa.unparse(uniqueRows);
 
   const title = moduleId
     ? "Relanto — Module Performance Export"

@@ -16,6 +16,7 @@ import {
   getBatchOutreachCounts,
   outreachCountKey,
 } from "@/lib/services/notification-events-service";
+import { uniqueAssessmentsByModule } from "@/lib/prefer-assessment-row";
 import { normalizeProgressStatus } from "@/lib/services/progress-db-service";
 
 type Sql = ReturnType<typeof getSql>;
@@ -302,27 +303,41 @@ export async function getBatchPerformance(
               ) = ${batchId}
             )
           ) bm
-          LEFT JOIN course_progress ap
-            ON LOWER(ap.user_email) = l.email
-            AND ap.module_id = bm.id
-            AND COALESCE(
-              CASE
-                WHEN EXISTS (
-                  SELECT 1 FROM course_module_batches cmb
-                  WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
-                ) THEN ap.batch_id
+          LEFT JOIN LATERAL (
+            SELECT ap.*
+            FROM course_progress ap
+            WHERE LOWER(ap.user_email) = l.email
+              AND ap.module_id = bm.id
+              AND COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
+                  ) THEN ap.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                ap.batch_id
+              ) = ${batchId}
+            ORDER BY
+              CASE WHEN ap.batch_id = ${batchId} THEN 0 ELSE 1 END,
+              CASE ap.status
+                WHEN 'completed' THEN 0
+                WHEN 'failed' THEN 1
+                WHEN 'permanently_failed' THEN 2
+                WHEN 'in_progress' THEN 3
+                ELSE 4
               END,
-              (
-                SELECT ub.batch_id
-                FROM user_batches ub
-                INNER JOIN course_module_batches cmb
-                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
-                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
-                ORDER BY ub.created_at ASC
-                LIMIT 1
-              ),
-              ap.batch_id
-            ) = ${batchId}
+              COALESCE(ap.completed_at, ap.last_accessed_at, ap.updated_at, ap.created_at) DESC NULLS LAST
+            LIMIT 1
+          ) ap ON TRUE
           ORDER BY l.email, bm.title
         `
       : sql`
@@ -411,27 +426,41 @@ export async function getBatchPerformance(
                 ) = ${batchId}
               )
           ) bm
-          LEFT JOIN assessment_progress ap
-            ON LOWER(ap.user_email) = l.email
-            AND ap.module_id = bm.id
-            AND COALESCE(
-              CASE
-                WHEN EXISTS (
-                  SELECT 1 FROM module_batches mb
-                  WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
-                ) THEN ap.batch_id
+          LEFT JOIN LATERAL (
+            SELECT ap.*
+            FROM assessment_progress ap
+            WHERE LOWER(ap.user_email) = l.email
+              AND ap.module_id = bm.id
+              AND COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+                  ) THEN ap.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                ap.batch_id
+              ) = ${batchId}
+            ORDER BY
+              CASE WHEN ap.batch_id = ${batchId} THEN 0 ELSE 1 END,
+              CASE ap.status
+                WHEN 'completed' THEN 0
+                WHEN 'failed' THEN 1
+                WHEN 'permanently_failed' THEN 2
+                WHEN 'in_progress' THEN 3
+                ELSE 4
               END,
-              (
-                SELECT ub.batch_id
-                FROM user_batches ub
-                INNER JOIN module_batches mb
-                  ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
-                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
-                ORDER BY ub.created_at ASC
-                LIMIT 1
-              ),
-              ap.batch_id
-            ) = ${batchId}
+              COALESCE(ap.completed_at, ap.last_accessed_at, ap.updated_at, ap.created_at) DESC NULLS LAST
+            LIMIT 1
+          ) ap ON TRUE
           ORDER BY l.email, bm.title
         `,
     isCourse
@@ -537,27 +566,41 @@ export async function getBatchPerformance(
               ) = ${batchId}
             ) visible_modules
           ) bm
-          LEFT JOIN course_progress ap
-            ON LOWER(ap.user_email) = l.email
-            AND ap.module_id = bm.id
-            AND COALESCE(
-              CASE
-                WHEN EXISTS (
-                  SELECT 1 FROM course_module_batches cmb
-                  WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
-                ) THEN ap.batch_id
+          LEFT JOIN LATERAL (
+            SELECT ap.*
+            FROM course_progress ap
+            WHERE LOWER(ap.user_email) = l.email
+              AND ap.module_id = bm.id
+              AND COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM course_module_batches cmb
+                    WHERE cmb.module_id = ap.module_id AND cmb.batch_id = ap.batch_id
+                  ) THEN ap.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN course_module_batches cmb
+                    ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                ap.batch_id
+              ) = ${batchId}
+            ORDER BY
+              CASE WHEN ap.batch_id = ${batchId} THEN 0 ELSE 1 END,
+              CASE ap.status
+                WHEN 'completed' THEN 0
+                WHEN 'failed' THEN 1
+                WHEN 'permanently_failed' THEN 2
+                WHEN 'in_progress' THEN 3
+                ELSE 4
               END,
-              (
-                SELECT ub.batch_id
-                FROM user_batches ub
-                INNER JOIN course_module_batches cmb
-                  ON cmb.batch_id = ub.batch_id AND cmb.module_id = ap.module_id
-                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
-                ORDER BY ub.created_at ASC
-                LIMIT 1
-              ),
-              ap.batch_id
-            ) = ${batchId}
+              COALESCE(ap.completed_at, ap.last_accessed_at, ap.updated_at, ap.created_at) DESC NULLS LAST
+            LIMIT 1
+          ) ap ON TRUE
         `
       : sql`
           SELECT
@@ -664,27 +707,41 @@ export async function getBatchPerformance(
             INNER JOIN training_modules tm
               ON tm.id = visible.module_id AND tm.mcq_generation_status = 'completed'
           ) bm
-          LEFT JOIN assessment_progress ap
-            ON LOWER(ap.user_email) = l.email
-            AND ap.module_id = bm.id
-            AND COALESCE(
-              CASE
-                WHEN EXISTS (
-                  SELECT 1 FROM module_batches mb
-                  WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
-                ) THEN ap.batch_id
+          LEFT JOIN LATERAL (
+            SELECT ap.*
+            FROM assessment_progress ap
+            WHERE LOWER(ap.user_email) = l.email
+              AND ap.module_id = bm.id
+              AND COALESCE(
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1 FROM module_batches mb
+                    WHERE mb.module_id = ap.module_id AND mb.batch_id = ap.batch_id
+                  ) THEN ap.batch_id
+                END,
+                (
+                  SELECT ub.batch_id
+                  FROM user_batches ub
+                  INNER JOIN module_batches mb
+                    ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
+                  WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
+                  ORDER BY ub.created_at ASC
+                  LIMIT 1
+                ),
+                ap.batch_id
+              ) = ${batchId}
+            ORDER BY
+              CASE WHEN ap.batch_id = ${batchId} THEN 0 ELSE 1 END,
+              CASE ap.status
+                WHEN 'completed' THEN 0
+                WHEN 'failed' THEN 1
+                WHEN 'permanently_failed' THEN 2
+                WHEN 'in_progress' THEN 3
+                ELSE 4
               END,
-              (
-                SELECT ub.batch_id
-                FROM user_batches ub
-                INNER JOIN module_batches mb
-                  ON mb.batch_id = ub.batch_id AND mb.module_id = ap.module_id
-                WHERE LOWER(ub.user_email) = LOWER(ap.user_email)
-                ORDER BY ub.created_at ASC
-                LIMIT 1
-              ),
-              ap.batch_id
-            ) = ${batchId}
+              COALESCE(ap.completed_at, ap.last_accessed_at, ap.updated_at, ap.created_at) DESC NULLS LAST
+            LIMIT 1
+          ) ap ON TRUE
         `,
     // Parallel with grid — batch-scoped outreach (no module-id dependency).
     getBatchOutreachCounts(sql, batchId, [], track),
@@ -797,6 +854,7 @@ export async function getBatchPerformance(
   }
 
   for (const learner of learnerMap.values()) {
+    learner.assessments = uniqueAssessmentsByModule(learner.assessments);
     const joinedAt = joinedAtByEmail.get(learner.email) ?? null;
     for (const a of learner.assessments) {
       a.emailHistoryAvailable = modulesWithEmailHistory.has(a.moduleId);

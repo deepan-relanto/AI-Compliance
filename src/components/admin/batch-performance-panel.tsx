@@ -15,6 +15,7 @@ import type {
 import type { InviteSendResult } from "@/lib/invite-result";
 import { exportBatchPerformanceCsv } from "@/lib/batch-performance-export";
 import { assignedSeatCount, percentOf } from "@/lib/batch-seat-metrics";
+import { uniqueAssessmentsByModule } from "@/lib/prefer-assessment-row";
 import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import { resolveDisplayScorePercent } from "@/lib/progress-score";
 import { cn } from "@/lib/utils";
@@ -197,7 +198,7 @@ export function BatchPerformancePanel({
         });
         continue;
       }
-      for (const a of learner.assessments) {
+      for (const a of uniqueAssessmentsByModule(learner.assessments)) {
         rows.push({
           key: `${learner.email}-${a.moduleId}`,
           email: learner.email,
