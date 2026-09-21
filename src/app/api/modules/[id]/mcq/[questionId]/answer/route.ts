@@ -30,7 +30,10 @@ export async function POST(
     } = body;
 
     const normalizedOptionIds = Array.isArray(optionIds)
-      ? optionIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+      ? optionIds.filter(
+          (id: unknown): id is string =>
+            typeof id === "string" && id.trim().length > 0,
+        )
       : [];
     if (!optionId && normalizedOptionIds.length === 0) {
       return NextResponse.json(

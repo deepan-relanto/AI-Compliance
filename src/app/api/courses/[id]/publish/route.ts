@@ -2,6 +2,10 @@ import { requireAdminSession } from "@/lib/api-admin";
 import { getSql } from "@/lib/db";
 import { invalidateAdminCaches } from "@/lib/invalidate-admin-cache";
 import type { InviteSendResult } from "@/lib/invite-result";
+import {
+  parseStringIdList,
+  resolveOutreachBatchIds,
+} from "@/lib/outreach-batch-ids";
 import { publishCourseModuleDb } from "@/lib/services/course-service";
 import { sendModuleInvitationEmails } from "@/lib/services/training-notification-service";
 import { NextRequest, NextResponse } from "next/server";
@@ -46,8 +50,8 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const body = await req.json();
-    const batchIds = Array.isArray(body.batchIds) ? body.batchIds : [];
+    const body = (await req.json()) as { batchIds?: unknown };
+    const batchIds = parseStringIdList(body.batchIds);
     const triggeredBy =
       typeof session?.user?.email === "string" ? session.user.email : undefined;
 
@@ -55,9 +59,7 @@ export async function POST(
     await publishCourseModuleDb(sql, id, batchIds);
     invalidateAdminCaches();
 
-    const selectedBatchIds = batchIds.includes("all")
-      ? undefined
-      : batchIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+    const selectedBatchIds = resolveOutreachBatchIds({ batchIds }) ?? undefined;
     const invites = await sendModuleInvitationEmails(sql, id, {
       triggeredBy,
       batchIds: selectedBatchIds,
