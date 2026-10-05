@@ -24,3 +24,19 @@ export function gateCountForSlides(slideCount: number): number {
   }
   return count;
 }
+
+/**
+ * How many questions a compliance attempt should score against.
+ * The DB may keep a larger question bank, but the slide player only assigns
+ * one gate every 3 slides — e.g. 22 slides → 7 questions from a pool of 10.
+ */
+export function assignedComplianceMcqCount(
+  slideCount: number,
+  questionPoolSize: number,
+): number {
+  const pool = Math.max(0, Math.floor(questionPoolSize));
+  if (pool <= 0) return 0;
+  const gates = gateCountForSlides(slideCount);
+  if (gates <= 0) return pool;
+  return Math.min(gates, pool);
+}
