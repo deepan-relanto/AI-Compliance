@@ -6,6 +6,7 @@ import {
   countMcqAnswers,
   resolveDisplayScorePercent,
 } from "@/lib/progress-score";
+import { assignedComplianceMcqCount } from "@/lib/mcq-dedupe";
 import { validateMcqSelection } from "@/lib/mcq-multi-select";
 import { getCachedCorrectOptionId } from "@/lib/services/mcq-answer-cache";
 import {
@@ -218,9 +219,23 @@ function mapProgressRow(r: Record<string, unknown>): ProgressRow {
 
 export async function getModuleMcqCount(sql: Sql, moduleId: string): Promise<number> {
   const rows = await sql`
+    SELECT
+      COALESCE(tm.slide_count, 1)::int AS slide_count,
+      (SELECT COUNT(*)::int FROM mcq_questions q WHERE q.module_id = ${moduleId}) AS pool
+    FROM training_modules tm
+    WHERE tm.id = ${moduleId}
+    LIMIT 1
+  `;
+  if (rows[0]) {
+    return assignedComplianceMcqCount(
+      Number(rows[0].slide_count ?? 1),
+      Number(rows[0].pool ?? 0),
+    );
+  }
+  const fallback = await sql`
     SELECT COUNT(*)::int AS c FROM mcq_questions WHERE module_id = ${moduleId}
   `;
-  return Number(rows[0]?.c ?? 0);
+  return Number(fallback[0]?.c ?? 0);
 }
 
 export async function getProgressRow(
@@ -374,7 +389,11 @@ export async function startTrainingSessionDb(
       module_title = EXCLUDED.module_title,
       total_slides = EXCLUDED.total_slides,
       mcq_total = CASE
-        WHEN assessment_progress.mcq_total > 0 THEN assessment_progress.mcq_total
+        WHEN assessment_progress.score_percent IS NOT NULL
+          THEN assessment_progress.mcq_total
+        WHEN assessment_progress.mcq_total > 0
+          AND assessment_progress.mcq_total <= EXCLUDED.mcq_total
+          THEN assessment_progress.mcq_total
         ELSE EXCLUDED.mcq_total
       END,
       current_slide = CASE
@@ -579,7 +598,7 @@ export async function validateAndRecordMcqAnswerDb(
             WHERE v = 'true'::jsonb
           ),
           mcq_total = CASE
-            WHEN mcq_total > 0 THEN mcq_total
+            WHEN mcq_total > 0 AND mcq_total <= ${mcqTotal} THEN mcq_total
             ELSE ${mcqTotal}
           END,
           status = CASE

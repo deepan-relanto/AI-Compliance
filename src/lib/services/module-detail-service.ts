@@ -209,19 +209,19 @@ export async function loadModuleDetail(
 
   const uniquePool = dedupeMcqsByPrompt(mcqPool);
   const gateTotal = gateCountForSlides(slideCount);
-  const needed =
-    viewerMode === "quiz_only_retake" || isCourse
-      ? uniquePool.length
-      : gateTotal > 0
-        ? Math.min(gateTotal, uniquePool.length)
-        : uniquePool.length;
+  // Compliance always scores against gate slots (e.g. 7 of 10), including quiz-only retakes.
+  // Courses keep the full bank.
+  const needed = isCourse
+    ? uniquePool.length
+    : gateTotal > 0
+      ? Math.min(gateTotal, uniquePool.length)
+      : uniquePool.length;
   const randomized = userEmail
     ? seededShuffle(uniquePool, `${moduleId}:${userEmail}:v2`)
     : uniquePool;
-  const sliceCount =
-    isCourse || viewerMode === "quiz_only_retake"
-      ? uniquePool.length
-      : Math.max(needed, uniquePool.length > 0 ? 1 : 0);
+  const sliceCount = isCourse
+    ? uniquePool.length
+    : Math.max(needed, uniquePool.length > 0 ? 1 : 0);
   const selected = randomized.slice(0, sliceCount);
 
   const mcqs = selected.map((q, index) => ({
