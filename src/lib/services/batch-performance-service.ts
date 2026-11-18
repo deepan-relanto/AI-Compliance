@@ -7,6 +7,7 @@ import type {
 } from "@/lib/batch-performance-types";
 import { resolveAssignedAt } from "@/lib/batch-assigned-at";
 import { batchSeatCompletion } from "@/lib/batch-seat-metrics";
+import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import {
   countMcqAnswers,
   resolveDisplayScorePercent,
