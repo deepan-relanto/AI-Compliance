@@ -37,6 +37,8 @@ export interface BatchAssessmentResult {
 export interface BatchLearnerPerformance {
   email: string;
   displayName: string;
+  /** True when the person left the batch but still has attributed marks here. */
+  isAlumni?: boolean;
   assessments: BatchAssessmentResult[];
 }
 

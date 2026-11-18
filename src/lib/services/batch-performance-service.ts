@@ -7,11 +7,11 @@ import type {
 } from "@/lib/batch-performance-types";
 import { resolveAssignedAt } from "@/lib/batch-assigned-at";
 import { batchSeatCompletion } from "@/lib/batch-seat-metrics";
-import { PASS_THRESHOLD_PERCENT } from "@/lib/constants";
 import {
   countMcqAnswers,
   resolveDisplayScorePercent,
 } from "@/lib/progress-score";
+import { summarizeRosterModule } from "@/lib/roster-module-summary";
 import {
   getBatchOutreachCounts,
   outreachCountKey,
@@ -756,7 +756,8 @@ export async function getBatchPerformance(
   const joinedAtByEmail = new Map<string, string | null>();
   const learnerMap = new Map<string, BatchLearnerPerformance>();
   for (const m of memberRows) {
-    const email = m.email as string;
+    const email = String(m.email ?? "").trim().toLowerCase();
+    if (!email) continue;
     joinedAtByEmail.set(email, (m.joined_at as string) ?? null);
     learnerMap.set(email, {
       email,
@@ -764,20 +765,25 @@ export async function getBatchPerformance(
         (m.display_name as string) ?? null,
         email,
       ),
+      isAlumni: Boolean(m.is_alumni),
       assessments: [],
     });
   }
 
   for (const row of gridRows) {
-    const email = row.email as string;
+    const email = String(row.email ?? "").trim().toLowerCase();
+    if (!email) continue;
     let learner = learnerMap.get(email);
     if (!learner) {
       learner = {
         email,
         displayName: formatLearnerDisplayName(row.display_name as string, email),
+        isAlumni: Boolean(row.is_alumni),
         assessments: [],
       };
       learnerMap.set(email, learner);
+    } else if (row.is_alumni != null) {
+      learner.isAlumni = Boolean(row.is_alumni);
     }
 
     const storedScorePercent =
@@ -885,53 +891,35 @@ export async function getBatchPerformance(
   }));
 
   const s = summaryRows[0] ?? {};
-  const currentRosterCount = memberRows.filter((m) => !m.is_alumni).length;
-  const memberCount = Number(b.member_count ?? currentRosterCount);
+  const currentRosterEmails = new Set(
+    memberRows
+      .filter((m) => !m.is_alumni)
+      .map((m) => String(m.email).trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const currentRosterCount = currentRosterEmails.size;
+  // Live roster is the denominator for every seat/card KPI. Alumni with
+  // leftover marks stay in the learner table but must not inflate totals.
+  const memberCount =
+    currentRosterCount > 0
+      ? currentRosterCount
+      : Number(b.member_count ?? 0);
 
   const moduleSummaries: BatchModuleSummary[] = modules.map((mod) => {
-    let started = 0;
-    let completed = 0;
-    let inProgress = 0;
-    let notStarted = 0;
-    let failed = 0;
-    const scored: number[] = [];
-    let passed = 0;
-
-    for (const learner of learnerMap.values()) {
-      const a = learner.assessments.find((x) => x.moduleId === mod.id);
-      const status = a?.status ?? "not_started";
-      if (status === "not_started") notStarted++;
-      else started++;
-      if (status === "completed") completed++;
-      else if (status === "in_progress") inProgress++;
-      else if (status === "failed" || status === "permanently_failed") failed++;
-      if (a?.scorePercent != null && a.mcqTotal > 0) {
-        scored.push(a.scorePercent);
-        if (a.scorePercent >= PASS_THRESHOLD_PERCENT) passed++;
-      }
-    }
-
-    const avgScore =
-      scored.length > 0
-        ? Math.round(scored.reduce((sum, n) => sum + n, 0) / scored.length)
-        : null;
-    const passRate =
-      scored.length > 0 ? Math.round((100 * passed) / scored.length) : null;
-    const compliance =
-      memberCount > 0 ? Math.round((100 * completed) / memberCount) : 0;
+    const rosterAssessments = [...currentRosterEmails].map((email) => {
+      const learner = learnerMap.get(email);
+      return learner?.assessments.find((x) => x.moduleId === mod.id) ?? null;
+    });
+    const totals = summarizeRosterModule({
+      memberCount,
+      assessments: rosterAssessments,
+    });
 
     return {
       id: mod.id,
       title: mod.title,
       currentlyAssigned: mod.currentlyAssigned,
-      started,
-      completed,
-      inProgress,
-      notStarted,
-      failed,
-      avgScore,
-      passRate,
-      compliance,
+      ...totals,
     };
   });
 
@@ -939,6 +927,10 @@ export async function getBatchPerformance(
   const seatInProgress = moduleSummaries.reduce((n, m) => n + m.inProgress, 0);
   const seatLocked = moduleSummaries.reduce((n, m) => n + m.failed, 0);
   const seatNotStarted = moduleSummaries.reduce((n, m) => n + m.notStarted, 0);
+  const learnersStarted = [...currentRosterEmails].filter((email) => {
+    const learner = learnerMap.get(email);
+    return (learner?.assessments ?? []).some((a) => a.status !== "not_started");
+  }).length;
 
   return {
     batch: {
@@ -949,7 +941,7 @@ export async function getBatchPerformance(
     },
     summary: {
       modulesAssigned: modulesOut.length,
-      learnersStarted: Number(s.learners_started ?? 0),
+      learnersStarted,
       completed: seatCompleted,
       inProgress: seatInProgress,
       failed: seatLocked,

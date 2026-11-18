@@ -175,7 +175,13 @@ async function getComplianceHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN attributed_assessment_progress ap ON ap.attributed_batch_id = b.id
+      LEFT JOIN attributed_assessment_progress ap
+        ON ap.attributed_batch_id = b.id
+       AND EXISTS (
+         SELECT 1 FROM user_batches ub
+         WHERE ub.batch_id = b.id
+           AND LOWER(ub.user_email) = LOWER(ap.user_email)
+       )
       WHERE EXISTS (SELECT 1 FROM module_batches mb WHERE mb.batch_id = b.id)
          OR EXISTS (
            SELECT 1 FROM training_notification_events e
@@ -320,7 +326,13 @@ async function getCourseHomeAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN attributed_course_progress ap ON ap.attributed_batch_id = b.id
+      LEFT JOIN attributed_course_progress ap
+        ON ap.attributed_batch_id = b.id
+       AND EXISTS (
+         SELECT 1 FROM user_batches ub
+         WHERE ub.batch_id = b.id
+           AND LOWER(ub.user_email) = LOWER(ap.user_email)
+       )
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
          OR EXISTS (
            SELECT 1 FROM course_notification_events e
@@ -438,7 +450,13 @@ async function getComplianceAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN attributed_assessment_progress ap ON ap.attributed_batch_id = b.id
+      LEFT JOIN attributed_assessment_progress ap
+        ON ap.attributed_batch_id = b.id
+       AND EXISTS (
+         SELECT 1 FROM user_batches ub
+         WHERE ub.batch_id = b.id
+           AND LOWER(ub.user_email) = LOWER(ap.user_email)
+       )
       WHERE EXISTS (SELECT 1 FROM module_batches mb WHERE mb.batch_id = b.id)
          OR EXISTS (
            SELECT 1 FROM training_notification_events e
@@ -624,7 +642,13 @@ async function getCourseAnalytics(sql: Sql): Promise<AnalyticsPayload> {
           / NULLIF(COUNT(ap.id), 0)
         )::int AS compliance
       FROM batches b
-      LEFT JOIN attributed_course_progress ap ON ap.attributed_batch_id = b.id
+      LEFT JOIN attributed_course_progress ap
+        ON ap.attributed_batch_id = b.id
+       AND EXISTS (
+         SELECT 1 FROM user_batches ub
+         WHERE ub.batch_id = b.id
+           AND LOWER(ub.user_email) = LOWER(ap.user_email)
+       )
       WHERE EXISTS (SELECT 1 FROM course_module_batches cmb WHERE cmb.batch_id = b.id)
          OR EXISTS (
            SELECT 1 FROM course_notification_events e

@@ -110,6 +110,7 @@ type FlatRow = {
   key: string;
   email: string;
   displayName: string;
+  isAlumni: boolean;
   moduleId: string;
   moduleTitle: string;
   status: string;
@@ -178,11 +179,13 @@ export function BatchPerformancePanel({
     const rows: FlatRow[] = [];
 
     for (const learner of data.learners) {
+      const isAlumni = Boolean(learner.isAlumni);
       if (learner.assessments.length === 0) {
         rows.push({
           key: `${learner.email}-none`,
           email: learner.email,
           displayName: learner.displayName,
+          isAlumni,
           moduleId: "none",
           moduleTitle: "—",
           status: "not_started",
@@ -203,6 +206,7 @@ export function BatchPerformancePanel({
           key: `${learner.email}-${a.moduleId}`,
           email: learner.email,
           displayName: learner.displayName,
+          isAlumni,
           moduleId: a.moduleId,
           moduleTitle: a.moduleTitle,
           status: a.status,
@@ -235,8 +239,14 @@ export function BatchPerformancePanel({
     if (data.moduleSummaries?.length) return data.moduleSummaries;
 
     const memberCount = data.batch.memberCount;
+    const alumniEmails = new Set(
+      data.learners.filter((l) => l.isAlumni).map((l) => l.email.toLowerCase()),
+    );
     return data.modules.map((m) => {
-      const rows = flatRows.filter((r) => r.moduleId === m.id);
+      const rows = flatRows.filter(
+        (r) =>
+          r.moduleId === m.id && !alumniEmails.has(r.email.toLowerCase()),
+      );
       let started = 0;
       let completed = 0;
       let inProgress = 0;
@@ -257,6 +267,9 @@ export function BatchPerformancePanel({
           if (r.scorePercent >= PASS_THRESHOLD_PERCENT) passed++;
         }
       }
+      if (rows.length < memberCount) {
+        notStarted += memberCount - rows.length;
+      }
       return {
         id: m.id,
         title: m.title,
@@ -264,7 +277,7 @@ export function BatchPerformancePanel({
         started,
         completed,
         inProgress,
-        notStarted: rows.length > 0 ? notStarted : memberCount,
+        notStarted,
         failed,
         avgScore:
           scored.length > 0
@@ -276,7 +289,7 @@ export function BatchPerformancePanel({
           memberCount > 0 ? Math.round((100 * completed) / memberCount) : 0,
       } satisfies BatchModuleSummary;
     });
-  }, [data.moduleSummaries, data.modules, data.batch.memberCount, flatRows]);
+  }, [data.moduleSummaries, data.modules, data.batch.memberCount, data.learners, flatRows]);
 
   const seatMetrics = useMemo(() => {
     const courseCount = moduleSummaries.length;
@@ -315,7 +328,10 @@ export function BatchPerformancePanel({
   }, [flatRows, activeModuleId]);
 
   const statusCounts = useMemo(() => {
-    const source = isOverview ? flatRows : moduleScopedRows;
+    // Filter chips must match roster KPIs — never count alumni leftovers.
+    const source = (isOverview ? flatRows : moduleScopedRows).filter(
+      (r) => !r.isAlumni,
+    );
     const counts: Record<StatusFilter, number> = {
       all: source.length,
       not_started: 0,
@@ -351,7 +367,8 @@ export function BatchPerformancePanel({
   const reminderRows = useMemo(
     () =>
       (isOverview ? [] : moduleScopedRows).filter(
-        (r) => r.status === "not_started" && r.moduleId !== "none",
+        (r) =>
+          !r.isAlumni && r.status === "not_started" && r.moduleId !== "none",
       ),
     [isOverview, moduleScopedRows],
   );
